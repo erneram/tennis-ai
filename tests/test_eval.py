@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from eval.run_eval import compute, macro_prf
@@ -8,7 +10,7 @@ def test_macro_prf():
     assert precision == pytest.approx(0.75)  # a: 1/1, b: 1/2
     assert recall == pytest.approx(0.75)  # a: 1/2, b: 1/1
     assert f1 == pytest.approx(2 / 3)
-    assert all(v != v for v in macro_prf([], []))  # NaN when there is nothing to score
+    assert all(math.isnan(v) for v in macro_prf([], []))
 
 
 def label(valid, phase="", category="", drill_id=""):

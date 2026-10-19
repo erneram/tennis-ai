@@ -20,6 +20,7 @@ class Stroke(Protocol):
     NAME: str
     PHASES: tuple[str, ...]  # in chronological order
     LABELS: dict[str, str]  # phase -> name shown to the player
+    MEASUREMENT_LABELS: dict[str, str]  # measurement -> name shown to the player
 
     def segment(self, xy: np.ndarray, fps: float) -> dict[str, int]:
         """Phase -> first frame. Raises core.analysis.InsufficientEvidence if phases are not found."""

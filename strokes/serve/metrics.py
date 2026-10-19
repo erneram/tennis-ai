@@ -9,6 +9,17 @@ import numpy as np
 from core.metrics import angle, point, torso_length
 from strokes.serve.phases import knee_angle, racket_side
 
+MEASUREMENT_LABELS = {
+    "toss_arm_extension_deg": "Extensión del brazo de lanzamiento (°)",
+    "toss_arm_elevation_deg": "Elevación del brazo de lanzamiento (°)",
+    "racket_elbow_height": "Altura del codo de la raqueta sobre el hombro (torsos)",
+    "racket_elbow_angle_deg": "Ángulo del codo de la raqueta en trofeo (°)",
+    "knee_bend_deg": "Flexión de rodillas (°)",
+    "contact_arm_extension_deg": "Extensión del brazo en el impacto (°)",
+    "contact_height": "Altura del impacto sobre la cabeza (torsos)",
+    "toss_to_contact_s": "Tiempo del lanzamiento al impacto (s)",
+}
+
 
 def measure(xy: np.ndarray, fps: float, phases: dict[str, int]) -> dict[str, float]:
     racket = racket_side(xy)

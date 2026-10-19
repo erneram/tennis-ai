@@ -17,13 +17,45 @@ uv sync --group yolo     # optional: YOLO Pose backend (AGPL-3.0, see docs/licen
 cp .env.example .env     # optional settings
 ```
 
+The first run downloads the models (about 3 GB for Qwen3-VL-4B, plus the pose model) into the Hugging Face cache and `models/`. After that, everything runs offline on the Mac.
+
 ## Usage
 
-*To be completed in Phase 4 (interface in `app/`).*
+```bash
+uv run python -m app                              # web app at http://127.0.0.1:7860
+uv run python -m core.pose data/raw/p01_s01.mp4   # pose overlay only (development)
+```
+
+In the app, upload one serve recorded from the side. The app shows:
+
+- the video in slow motion with the pose and the current phase,
+- the phase with the main opportunity for improvement, the frames that support it (★), and a drill,
+- the measurements against the coach ranges,
+- a comparison with the previous attempt.
+
+"Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`.
+
+If the video cannot be analyzed (wrong angle, player out of frame, too dark, too short), the app asks for a new recording instead of giving feedback. If the model fails, the app falls back to the rule-based recommendation and says so.
 
 ## Evaluation
 
-*To be completed in Phase 3: how to run `eval/run_eval.py` and reproduce the reported metrics.*
+1. Put the videos in `data/raw/` and the coach labels in `eval/serve/labels.csv` (format in [data/README.md](data/README.md)).
+2. Run the full system and the two baselines:
+
+```bash
+uv run python -m eval.run_eval --variant full   --note "v1 prompt"
+uv run python -m eval.run_eval --variant simple --note "baseline: frames only"
+uv run python -m eval.run_eval --variant rules  --note "baseline: no language model"
+```
+
+Each run saves its predictions in `eval/serve/runs/` and appends a row to `experiments/iterations.csv`: phase accuracy, category F1, hallucination rate, correct re-recording requests, latency, tokens, and peak memory.
+
+Settings that change results (pose model, language model, prompt version, temperature) are in `configs/default.yaml`. Change one at a time and run the evaluation again.
+
+## Privacy
+
+- Videos, pose caches, and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1` and Gradio analytics are disabled.
+- Ultralytics (optional YOLO backend) sends anonymous usage statistics by default. Turn them off once with `uv run yolo settings sync=False`.
 
 ## Tests
 
