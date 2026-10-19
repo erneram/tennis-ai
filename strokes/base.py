@@ -7,6 +7,7 @@ adding a folder with the same structure; nothing in core/ changes.
 
 from importlib import import_module
 from pathlib import Path
+from string import Template
 from typing import Protocol
 
 import numpy as np
@@ -76,4 +77,86 @@ def rule_feedback(stroke: Stroke, measurements: dict[str, float]) -> dict:
         "drill_id": drill["id"],
         "confidence": "medium" if worst["deviation"] > 0 else "low",
         "source": "rules",
+    }
+
+
+def feedback_schema(stroke: Stroke) -> dict:
+    """JSON schema of one feedback answer; the model can only pick known phases, categories, drills."""
+    criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
+    phases = list(stroke.PHASES)
+    return {
+        "type": "object",
+        "properties": {
+            "phase": {"type": "string", "enum": phases},
+            "category": {"type": "string", "enum": list(criteria["categories"])},
+            "observation": {"type": "string", "maxLength": 400},
+            "evidence_phases": {
+                "type": "array",
+                "items": {"type": "string", "enum": phases},
+                "minItems": 1,
+                "maxItems": 3,
+            },
+            "drill_id": {"type": "string", "enum": [d["id"] for d in drills]},
+            "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        },
+        "required": [
+            "phase",
+            "category",
+            "observation",
+            "evidence_phases",
+            "drill_id",
+            "confidence",
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _measurement_lines(criteria: dict, measurements: dict[str, float]) -> str:
+    checks = {r["metric"]: r for r in check_results(criteria, measurements)}
+    lines = []
+    for name, value in measurements.items():
+        check = checks.get(name)
+        if check is None:
+            lines.append(f"- {name} = {value} (informative)")
+            continue
+        limits = " and ".join(f"{k} {check[k]}" for k in ("min", "max") if k in check)
+        status = "OUT OF RANGE" if check["deviation"] > 0 else "within range"
+        lines.append(f"- {check['phase']}: {name} = {value} (coach range: {limits}) -> {status}")
+    return "\n".join(lines)
+
+
+def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str = "v1",
+             **generation) -> dict:  # fmt: skip
+    """Ask the vision-language model for the main improvement of one analyzed attempt.
+
+    variant "full" sends frames + measurements + coach criteria; "simple" (baseline) sends frames only.
+    """
+    prompts = load(stroke, f"prompts/{version}.yaml")["feedback" if variant == "full" else variant]
+    criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
+    categories = criteria["categories"]
+    fields = {
+        "frame_list": ", ".join(f"{i}. {p}" for i, p in enumerate(stroke.PHASES, 1)),
+        "phase_guide": "\n".join(f"- {p}: {s['observe']}" for p, s in criteria["phases"].items()),
+        "measurements": _measurement_lines(criteria, analysis.measurements),
+        "categories": "\n".join(
+            f"- {c['phase']}: {k}: {c['description']}" for k, c in categories.items()
+        ),
+        "drills": "\n".join(f"- {d['id']}: {d['category']}: {d['name']}" for d in drills),
+        "category_names": ", ".join(categories),
+        "drill_names": ", ".join(f"{d['id']} ({d['category']})" for d in drills),
+    }
+    user = Template(prompts["user"]).substitute(fields)
+    images = [analysis.images[p] for p in stroke.PHASES]
+    result = vlm.generate_json(
+        prompts["system"], user, images, feedback_schema(stroke), **generation
+    )
+    data = result.data
+    return {
+        **data,
+        "consistent": categories[data["category"]]["phase"] == data["phase"],
+        "source": f"vlm:{variant}:{version}",
+        "prompt_tokens": result.prompt_tokens,
+        "generation_tokens": result.generation_tokens,
+        "llm_seconds": round(result.seconds, 2),
+        "peak_memory_gb": round(result.peak_memory_gb, 2),
     }
