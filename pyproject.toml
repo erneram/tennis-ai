@@ -1,0 +1,26 @@
+[project]
+name = "tennis-ai"
+version = "0.1.0"
+description = "Serve Lab: AI assistant that analyzes the tennis serve from video."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mediapipe>=1.1",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+# AGPL-3.0: kept out of the default install. See docs/licenses.md.
+yolo = [
+    "ultralytics>=8.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

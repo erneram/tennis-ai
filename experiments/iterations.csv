@@ -1,0 +1,1 @@
+id,date,stroke,change,pose_backend,vlm_model,prompt_version,temperature,phase_acc,category_f1,hallucination_rate,retake_acc,latency_s,tokens,mem_gb,notes

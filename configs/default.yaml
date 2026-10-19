@@ -1,0 +1,6 @@
+# Shared settings. Stroke-specific criteria, drills, and prompts live in strokes/<stroke>/.
+pose:
+  backend: mediapipe   # mediapipe | yolo (yolo needs: uv sync --group yolo)
+
+llm:
+  model: mlx-community/Qwen3-VL-4B-Instruct-4bit   # Apache-2.0
