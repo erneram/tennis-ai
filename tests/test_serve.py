@@ -47,6 +47,16 @@ def test_segment_finds_phases_in_order():
     assert frames["stance"] == 4 and frames["follow_through"] == 47
 
 
+def test_mirrored_left_right_labels_give_the_same_phases():
+    xy = synthetic_serve()
+    mirrored = xy.copy()
+    for name in ("eye", "ear", "shoulder", "elbow", "wrist", "hip", "knee", "ankle"):
+        left, right = INDEX[f"left_{name}"], INDEX[f"right_{name}"]
+        mirrored[:, [left, right]] = xy[:, [right, left]]
+    assert serve.phases.racket_side(mirrored) == "left"
+    assert serve.segment(mirrored, FPS) == serve.segment(xy, FPS)
+
+
 def test_measure_and_rule_feedback():
     xy = synthetic_serve()
     values = serve.measure(xy, FPS, serve.segment(xy, FPS))

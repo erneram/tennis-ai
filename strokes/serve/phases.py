@@ -1,9 +1,13 @@
-"""Serve phase segmentation from a side view.
+"""Serve phase segmentation from pose (y grows downwards, so "highest" means smallest y).
 
-Events, in order (y grows downwards, so "highest" means smallest y):
+Each wrist peaks once in a serve: the toss arm first (trophy), the racket arm about one second
+later (contact). The order of the two peaks tells which arm holds the racket, which also works
+when the pose model mirrors left and right for a player seen from behind.
+
+Events:
 - contact: the racket wrist reaches its highest point.
-- trophy: the toss wrist reaches its highest point before contact.
-- toss: the toss wrist is at its lowest point before trophy (the arm starts rising).
+- trophy: the toss wrist reaches its highest point in the 2 s before contact.
+- toss: the toss wrist is at its lowest point in the 1.2 s before trophy (the arm starts rising).
 - leg_drive: deepest knee bend between trophy and contact (the push-off starts).
 - stance: from the start of the clip; follow_through: right after contact.
 """
@@ -22,13 +26,15 @@ LABELS = {
     "contact": "5. Impacto",
     "follow_through": "6. Terminación",
 }
-MIN_FOLLOW_SECONDS = 0.3
+MAX_TROPHY_TO_CONTACT_S = 2.0
+TOSS_WINDOW_S = 1.2
+MIN_FOLLOW_S = 0.3
 
 
 def racket_side(xy: np.ndarray) -> str:
-    """'right' or 'left': the wrist that reaches the highest point holds the racket."""
-    highest = {side: np.nanmin(point(xy, f"{side}_wrist")[:, 1]) for side in ("right", "left")}
-    return min(highest, key=highest.get)
+    """'left' or 'right' as labeled by the pose model: the wrist whose highest point comes later."""
+    peak = {side: int(np.nanargmin(point(xy, f"{side}_wrist")[:, 1])) for side in ("left", "right")}
+    return max(peak, key=peak.get)
 
 
 def knee_angle(xy: np.ndarray) -> np.ndarray:
@@ -53,15 +59,17 @@ def segment(xy: np.ndarray, fps: float) -> dict[str, int]:
     contact = int(np.nanargmin(racket_y))
     if not racket_y[contact] < point(xy, "nose")[contact, 1]:
         raise InsufficientEvidence("No se detecta el impacto por encima de la cabeza.")
-    if contact < 2:
+    if (len(xy) - 1 - contact) / fps < MIN_FOLLOW_S:
+        raise InsufficientEvidence("El video termina en el impacto; graba hasta la terminación.")
+
+    first = max(0, contact - round(MAX_TROPHY_TO_CONTACT_S * fps))
+    if contact - first < 2:
         raise InsufficientEvidence(
             "El video empieza en el impacto; graba desde la posición inicial."
         )
-    if (len(xy) - 1 - contact) / fps < MIN_FOLLOW_SECONDS:
-        raise InsufficientEvidence("El video termina en el impacto; graba hasta la terminación.")
-
-    trophy = int(np.nanargmin(toss_y[:contact]))
-    toss_start = int(np.nanargmax(toss_y[: trophy + 1]))
+    trophy = first + int(np.nanargmin(toss_y[first:contact]))
+    first = max(0, trophy - round(TOSS_WINDOW_S * fps))
+    toss_start = first + int(np.nanargmax(toss_y[first : trophy + 1]))
     knees = knee_angle(xy)[trophy : contact + 1]
     leg_drive = trophy + (int(np.nanargmin(knees)) if not np.isnan(knees).all() else 0)
 

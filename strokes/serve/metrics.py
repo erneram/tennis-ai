@@ -9,6 +9,8 @@ import numpy as np
 from core.metrics import angle, point, torso_length
 from strokes.serve.phases import knee_angle, racket_side
 
+CONTACT_WINDOW_S = 0.07
+
 MEASUREMENT_LABELS = {
     "toss_arm_extension_deg": "Extensión del brazo de lanzamiento (°)",
     "toss_arm_elevation_deg": "Elevación del brazo de lanzamiento (°)",
@@ -26,6 +28,9 @@ def measure(xy: np.ndarray, fps: float, phases: dict[str, int]) -> dict[str, flo
     toss = "left" if racket == "right" else "right"
     trophy, contact = phases["trophy"], phases["contact"]
     torso = torso_length(xy)
+    # At low frame rates the exact contact falls between frames: take the best value within ~70 ms.
+    reach = max(1, round(CONTACT_WINDOW_S * fps))
+    around_contact = range(max(0, contact - reach), min(len(xy), contact + reach + 1))
 
     def joint(name: str, frame: int) -> np.ndarray:
         return point(xy, name)[frame]
@@ -53,10 +58,15 @@ def measure(xy: np.ndarray, fps: float, phases: dict[str, int]) -> dict[str, flo
         # Knee bend: degrees away from straight legs at the deepest point before contact.
         "knee_bend_deg": 180 - np.nanmin(knee_angle(xy)[trophy : contact + 1]),
         # Contact: arm extension and wrist height above the head.
-        "contact_arm_extension_deg": joint_angle(
-            f"{racket}_shoulder", f"{racket}_elbow", f"{racket}_wrist", contact
+        "contact_arm_extension_deg": np.nanmax(
+            [
+                joint_angle(f"{racket}_shoulder", f"{racket}_elbow", f"{racket}_wrist", f)
+                for f in around_contact
+            ]
         ),
-        "contact_height": height_above("nose", f"{racket}_wrist", contact),
+        "contact_height": np.nanmax(
+            [height_above("nose", f"{racket}_wrist", f) for f in around_contact]
+        ),
         "toss_to_contact_s": (contact - phases["toss"]) / fps,
     }
     return {name: round(float(value), 2) for name, value in values.items()}
