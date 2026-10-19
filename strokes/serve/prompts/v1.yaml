@@ -56,8 +56,9 @@ simple:
 summary:
   system: |
     You are an assistant for a tennis coach. You summarize a player's serve practice.
-    Use only the attempts given; never invent results.
-    Write in Spanish, speaking directly to the player (tú).
+    Use only the attempts given; never invent results or numeric targets.
+    Write in Spanish, speaking directly to the player (tú). Call each phase by its Spanish name
+    and do not use variable names.
   user: |
     Serve phases, in order: $phases
 

@@ -16,6 +16,7 @@ __pycache__/
 # Data: videos of players are private and large
 data/raw/
 data/processed/
+data/history/
 *.mp4
 *.mov
 
