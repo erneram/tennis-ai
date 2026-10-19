@@ -59,18 +59,18 @@ def iter_frames(path: str | Path, step: int = 1) -> Iterator[tuple[int, np.ndarr
 
 
 def write_video(path: str | Path, frames: Iterable[np.ndarray], fps: float) -> int:
-    """Write BGR frames to an .mp4 file and return the number of frames written."""
-    # ponytail: mp4v plays in QuickTime/VLC; browsers need H.264, re-encode with ffmpeg for the web app.
+    """Write BGR frames to an H.264 .mp4 file and return the number of frames written."""
     writer = None
     count = 0
     try:
         for frame in frames:
             if writer is None:
-                height, width = frame.shape[:2]
+                # H.264 needs even sizes
+                height, width = (side - side % 2 for side in frame.shape[:2])
                 Path(path).parent.mkdir(parents=True, exist_ok=True)
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                fourcc = cv2.VideoWriter_fourcc(*"avc1")  # H.264: plays in browsers
                 writer = cv2.VideoWriter(str(path), fourcc, fps, (width, height))
-            writer.write(frame)
+            writer.write(np.ascontiguousarray(frame[:height, :width]))
             count += 1
     finally:
         if writer is not None:

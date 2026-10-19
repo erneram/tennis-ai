@@ -11,15 +11,12 @@ import time
 from pathlib import Path
 
 import numpy as np
-import yaml
 
-from core import pose, video
-
-CONFIG = Path(__file__).resolve().parents[2] / "configs" / "default.yaml"
+from core import load_config, pose, video
 
 
 def main() -> None:
-    config = yaml.safe_load(CONFIG.read_text())["pose"]
+    config = load_config()["pose"]
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("video", type=Path)
     parser.add_argument("--backend", default=config["backend"], choices=["mediapipe", "yolo"])

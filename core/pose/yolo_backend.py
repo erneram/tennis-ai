@@ -12,7 +12,8 @@ def load(model: str) -> Detector:
     MODELS_DIR.mkdir(exist_ok=True)
     net = YOLO(str(MODELS_DIR / model))
     device = "mps" if torch.backends.mps.is_available() else "cpu"  # ~3x faster than CPU on M5
-    net(np.zeros((640, 640, 3), np.uint8), device=device, verbose=False)  # warm up, keeps timings fair
+    # Warm up once so timings measure steady-state speed.
+    net(np.zeros((640, 640, 3), np.uint8), device=device, verbose=False)
 
     def detect(frame: np.ndarray, timestamp_ms: int) -> np.ndarray:
         result = net(frame, device=device, verbose=False)[0]
