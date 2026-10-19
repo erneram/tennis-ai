@@ -19,9 +19,10 @@ data/processed/
 *.mp4
 *.mov
 
-# Downloaded model weights
-*.pt
-*.onnx
-
 # Course brief: kept locally, not redistributed
 docs/Proyecto_3_Casos_de_Uso_LLM-1.pdf
+
+# Downloaded model weights
+models/
+*.pt
+*.onnx
