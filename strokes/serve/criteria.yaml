@@ -1,0 +1,72 @@
+# Serve criteria per phase.
+# DRAFT 0.1: ranges are starting values to be reviewed and agreed with the coach.
+# Every change is a new version, logged in experiments/iterations.csv.
+#
+# checks: measurable from one side camera (see strokes/serve/metrics.py). A value outside
+#         [min, max] points to the check's category.
+# Phases without checks are judged only from the frames by the model.
+version: 0.1-draft
+
+phases:
+  stance:
+    observe: Foot placement relative to the baseline and body orientation.
+    checks: []
+  toss:
+    observe: Height and placement of the toss relative to the body; stability of the tossing arm.
+    checks:
+      - metric: toss_arm_extension_deg
+        min: 150
+        category: toss_arm_bent
+  trophy:
+    observe: Shoulder alignment, racket elbow, and tossing arm extended toward the ball.
+    checks:
+      - metric: toss_arm_elevation_deg
+        min: 140
+        category: toss_arm_drops_early
+      - metric: racket_elbow_height
+        min: -0.15
+        category: racket_elbow_low
+  leg_drive:
+    observe: Knee bend and weight transfer before the push-off.
+    checks:
+      - metric: knee_bend_deg
+        min: 20
+        category: insufficient_knee_bend
+  contact:
+    observe: Arm extension and height of the contact point.
+    checks:
+      - metric: contact_arm_extension_deg
+        min: 155
+        category: bent_arm_at_contact
+      - metric: contact_height
+        min: 0.7
+        category: low_contact_point
+  follow_through:
+    observe: Continuity of the motion, balance, and landing.
+    checks: []
+
+categories:
+  stance_orientation:
+    phase: stance
+    description: Los pies o el cuerpo no están orientados de lado hacia la red al empezar.
+  toss_arm_bent:
+    phase: toss
+    description: El brazo de lanzamiento se dobla al soltar la pelota, lo que hace el lanzamiento irregular.
+  toss_arm_drops_early:
+    phase: trophy
+    description: El brazo de lanzamiento baja antes de tiempo y no apunta hacia la pelota en la posición de trofeo.
+  racket_elbow_low:
+    phase: trophy
+    description: El codo del brazo de la raqueta queda por debajo de la altura del hombro en la posición de trofeo.
+  insufficient_knee_bend:
+    phase: leg_drive
+    description: Las rodillas casi no se flexionan, así que las piernas aportan poco impulso.
+  bent_arm_at_contact:
+    phase: contact
+    description: El brazo de la raqueta no está extendido en el impacto.
+  low_contact_point:
+    phase: contact
+    description: El impacto ocurre bajo, lejos del punto más alto que alcanza el brazo.
+  unbalanced_finish:
+    phase: follow_through
+    description: El jugador pierde el equilibrio al terminar o no aterriza dentro de la cancha.

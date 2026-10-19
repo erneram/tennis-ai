@@ -1,0 +1,37 @@
+# Serve drills, one or more per category of criteria.yaml.
+# DRAFT 0.1: to be reviewed and approved by the coach before the evaluation.
+version: 0.1-draft
+
+drills:
+  - id: feet_line
+    category: stance_orientation
+    name: Pies sobre la línea
+    instructions: Coloca la raqueta en el suelo apuntando al cuadro de saque. Alinea las puntas de ambos pies con ella y haz 10 saques sin pelota manteniendo esa posición.
+  - id: toss_target
+    category: toss_arm_bent
+    name: Lanzamiento al blanco
+    instructions: Pon la raqueta en el suelo delante de tu pie adelantado. Lanza la pelota con el brazo recto, sin golpearla, y haz que caiga sobre las cuerdas. 3 series de 10.
+  - id: toss_hold
+    category: toss_arm_drops_early
+    name: Brazo arriba hasta el golpe
+    instructions: Lanza y deja el brazo de lanzamiento apuntando a la pelota hasta que la raqueta empiece a subir. Haz 3 series de 8 saques suaves concentrándote solo en esa pausa.
+  - id: trophy_pause
+    category: racket_elbow_low
+    name: Pausa en trofeo
+    instructions: Lleva la raqueta a la posición de trofeo y mantén 2 segundos el codo a la altura del hombro, frente a un espejo o una pared. Luego completa el saque. 3 series de 8.
+  - id: knee_load
+    category: insufficient_knee_bend
+    name: Carga de piernas
+    instructions: Desde la posición de trofeo, flexiona las rodillas hasta sentir carga en los muslos y empuja hacia arriba hacia la pelota. Practica 10 saltos sin raqueta y luego 10 saques.
+  - id: high_reach
+    category: bent_arm_at_contact
+    name: Alcanzar el punto más alto
+    instructions: Pide a un compañero que sostenga una pelota en alto, por encima de tu alcance con el brazo extendido. Haz 10 golpes de sombra tocándola con la raqueta y el brazo totalmente estirado.
+  - id: higher_toss
+    category: low_contact_point
+    name: Impacto arriba
+    instructions: Lanza un poco más alto y espera a golpear cuando la pelota empiece a bajar, con el brazo extendido. 3 series de 10 saques al 60 % de velocidad.
+  - id: land_and_hold
+    category: unbalanced_finish
+    name: Aterriza y sostén
+    instructions: Después de cada saque, aterriza sobre el pie adelantado dentro de la cancha y mantén el equilibrio 2 segundos. 3 series de 8.
