@@ -1,0 +1,15 @@
+date,video,backend,model,frames,fps,detected,confidence,jitter
+2026-10-19,jc-s1.MOV,mediapipe,full,239,171.2,1.0,0.859,0.0302
+2026-10-19,jc-s1.MOV,yolo,yolo26n-pose.pt,239,100.8,1.0,0.941,0.0549
+2026-10-19,jc-s2.MOV,mediapipe,full,209,164.7,1.0,0.888,0.0331
+2026-10-19,jc-s2.MOV,yolo,yolo26n-pose.pt,209,116.9,1.0,0.954,0.061
+2026-10-19,jc-s3.MOV,mediapipe,full,272,176.3,1.0,0.865,0.02
+2026-10-19,jc-s3.MOV,yolo,yolo26n-pose.pt,272,117.6,1.0,0.948,0.0371
+2026-10-19,jc-s4.MOV,mediapipe,full,240,118.0,1.0,0.8,0.0295
+2026-10-19,jc-s4.MOV,yolo,yolo26n-pose.pt,240,104.6,1.0,0.923,0.0503
+2026-10-19,jc-s5.MOV,mediapipe,full,225,171.6,1.0,0.841,0.0233
+2026-10-19,jc-s5.MOV,yolo,yolo26n-pose.pt,225,117.4,1.0,0.93,0.0419
+2026-10-19,jc-s6.MOV,mediapipe,full,291,175.3,1.0,0.793,0.0362
+2026-10-19,jc-s6.MOV,yolo,yolo26n-pose.pt,291,118.0,1.0,0.881,0.0498
+2026-10-19,jc-s7.MOV,mediapipe,full,286,176.7,1.0,0.78,0.0294
+2026-10-19,jc-s7.MOV,yolo,yolo26n-pose.pt,286,117.2,1.0,0.879,0.0626
