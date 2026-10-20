@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from eval.run_eval import compute, macro_prf
+from eval.run_eval import compute, kappa, macro_prf
 
 
 def test_macro_prf():
@@ -24,7 +24,7 @@ def test_compute_counts_wrong_rejections_as_errors():
         {"label": label(True, "contact", "low_contact_point", "higher_toss"), "valid": True,
          "prediction": answer, "grounded": True, "seconds": 2.0},
         # valid video wrongly rejected
-        {"label": label(True, "trophy", "racket_elbow_low"), "valid": False, "seconds": 1.0},
+        {"label": label(True, "trophy", "toss_arm_drops_early"), "valid": False, "seconds": 1.0},
         # invalid video correctly rejected
         {"label": label(False), "valid": False, "seconds": 1.0},
     ]  # fmt: skip
@@ -34,3 +34,10 @@ def test_compute_counts_wrong_rejections_as_errors():
     assert metrics["drill_acc"] == 1.0
     assert metrics["hallucination_rate"] == 0.0
     assert metrics["latency_s"] == 2.0
+
+
+def test_kappa():
+    assert kappa(["a", "b", "a", "b"], ["a", "b", "a", "b"]) == 1.0
+    assert kappa(["a", "a", "b", "b"], ["a", "b", "a", "b"]) == 0.0  # chance level
+    assert kappa(["a", "a", "a", "b"], ["a", "a", "b", "b"]) == pytest.approx(0.5)
+    assert kappa(["a"], ["a"]) == 1.0 and math.isnan(kappa([], []))

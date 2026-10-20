@@ -61,7 +61,7 @@ def test_measure_and_rule_feedback():
     xy = synthetic_serve()
     values = serve.measure(xy, FPS, serve.segment(xy, FPS))
     assert set(values) == set(serve.MEASUREMENT_LABELS)
-    assert values["racket_elbow_height"] == pytest.approx(-30 / 70, abs=0.01)  # 30 px below
+    assert values["toss_arm_extension_deg"] == pytest.approx(170.5, abs=0.1)  # elbow 5 px out
     assert values["toss_to_contact_s"] == pytest.approx(25 / FPS, abs=0.01)
 
     feedback = base.rule_feedback(serve, values)

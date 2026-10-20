@@ -1,67 +1,73 @@
 # Serve criteria per phase.
-# DRAFT 0.2: ranges are starting values to be reviewed and agreed with the coach.
-# Every change is a new version, logged in experiments/iterations.csv.
+# Version 0.3. There is no coach: every category points to published research (`sources` at the
+# end). Every change is a new version, logged in experiments/iterations.csv.
 #
-# checks: measurable from the recording angle (see strokes/serve/metrics.py). A value outside
-#         [min, max] points to the check's category.
-# Phases without checks are judged only from the frames by the model.
+# checks: measurable from one camera (see strokes/serve/metrics.py). A value outside [min, max]
+#         points to the check's category. Phases without checks are judged from the frames.
+# The studies measure 3D angles with lab cameras; ours are 2D from one phone. Their numbers decide
+# what to look at, but are not copied as limits. Limits are loose on purpose: for a player who
+# practices alone, a wrong correction is worse than a missed one.
 #
-# 0.2: removed knee_bend_deg, contact_arm_extension_deg and contact_height. With the camera
-#      behind the player they read far too low (arm and knees bend toward the net, away from
-#      the lens), so they flagged problems that were not there.
-version: 0.2-draft
+# 0.2: removed knee_bend_deg, contact_arm_extension_deg and contact_height (with the camera
+#      behind the player they read far too low).
+# 0.3: removed racket_elbow_height and racket_elbow_low. At the trophy position the elbow is
+#      normally below the shoulder (shoulder abduction 67-88°, tubez2021), but the -0.15 limit
+#      flagged 4 of 7 serves. Removed toss_arm_elevation_deg: measured at the top of the toss, it
+#      cannot show the arm dropping early (now judged from the frames). Removed
+#      stance_orientation: the start position is personal style (kovacs2011).
+version: "0.3"
 
 phases:
   stance:
-    observe: Foot placement relative to the baseline and body orientation.
+    observe: Starting position. Personal style, not corrected.
     checks: []
   toss:
-    observe: Height and placement of the toss relative to the body; stability of the tossing arm.
+    observe: Tossing arm straight, moving up from the shoulder; ball released slightly to the side of the head, not straight above it.
     checks:
+      # No published value: our limit. A straight arm is 180°.
       - metric: toss_arm_extension_deg
         min: 150
         category: toss_arm_bent
   trophy:
-    observe: Shoulder alignment, racket elbow, and tossing arm extended toward the ball.
-    checks:
-      - metric: toss_arm_elevation_deg
-        min: 140
-        category: toss_arm_drops_early
-      - metric: racket_elbow_height
-        min: -0.15
-        category: racket_elbow_low
+    observe: Tossing arm still up, pointing at the ball, while the racket drops behind the back.
+    checks: []
   leg_drive:
-    observe: Knee bend and weight transfer before the push-off.
+    observe: Front knee clearly bent before pushing up toward the ball.
     checks: []
   contact:
-    observe: Arm extension and height of the contact point.
+    observe: Contact high, with the arm well above the shoulder and the elbow only slightly bent.
     checks: []
   follow_through:
-    observe: Continuity of the motion, balance, and landing.
+    observe: Landing on the front foot and keeping balance.
     checks: []
 
 categories:
-  stance_orientation:
-    phase: stance
-    description: Los pies o el cuerpo no están orientados de lado hacia la red al empezar.
   toss_arm_bent:
     phase: toss
-    description: El brazo de lanzamiento se dobla al soltar la pelota, lo que hace el lanzamiento irregular.
+    description: El brazo de lanzamiento se dobla al soltar la pelota en lugar de subir recto desde el hombro.
+    source: no published value; straight tossing arm is common coaching advice
   toss_arm_drops_early:
     phase: trophy
-    description: El brazo de lanzamiento baja antes de tiempo y no apunta hacia la pelota en la posición de trofeo.
-  racket_elbow_low:
-    phase: trophy
-    description: El codo del brazo de la raqueta queda por debajo de la altura del hombro en la posición de trofeo.
+    description: El brazo de lanzamiento baja antes de tiempo y deja de apuntar a la pelota mientras la raqueta baja por detrás.
+    source: kovacs2011 (premature dropping of the tossing arm)
   insufficient_knee_bend:
     phase: leg_drive
-    description: Las rodillas casi no se flexionan, así que las piernas aportan poco impulso.
+    description: La rodilla delantera casi no se flexiona, así que las piernas aportan poco impulso.
+    source: kovacs2011 (front knee flexion above 15° recommended); jacquier2024 (about 65° at the trophy position)
   bent_arm_at_contact:
     phase: contact
-    description: El brazo de la raqueta no está extendido en el impacto.
+    description: El brazo de la raqueta está claramente doblado en el impacto; lo normal es casi recto.
+    source: kovacs2011 (elbow flexed about 20° at contact); jacquier2024 (about 30°)
   low_contact_point:
     phase: contact
-    description: El impacto ocurre bajo, lejos del punto más alto que alcanza el brazo.
+    description: El impacto ocurre bajo; el brazo no llega bien arriba por encima del hombro.
+    source: kovacs2011 (contact at about 100° of shoulder abduction); jacquier2024 (shoulder elevation about 105-111°)
   unbalanced_finish:
     phase: follow_through
-    description: El jugador pierde el equilibrio al terminar o no aterriza dentro de la cancha.
+    description: El jugador no aterriza sobre el pie delantero o pierde el equilibrio al aterrizar.
+    source: kovacs2011 (landing on the front foot, stage 8); balance has no published value
+
+sources:
+  kovacs2011: "Kovacs M, Ellenbecker T. An 8-stage model for evaluating the tennis serve: implications for performance enhancement and injury prevention. Sports Health. 2011;3(6):504-513. doi:10.1177/1941738111414175"
+  jacquier2024: "Jacquier-Bret J, Gorce P. Kinematics characteristics of key point of interest during tennis serve among tennis players: a systematic review and meta-analysis. Front Sports Act Living. 2024. doi:10.3389/fspor.2024.1432030"
+  tubez2021: "Tubez F, et al. Evolution of the trophy position along the tennis serve player's development. Sports Biomech. 2021. Values as cited in Gorce P, Jacquier-Bret J. Front Sports Act Living. 2024. doi:10.3389/fspor.2024.1451174"

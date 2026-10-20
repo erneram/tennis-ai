@@ -6,7 +6,7 @@ Videos of players are personal data. They are never committed to Git.
 | --- | --- | --- |
 | `raw/` | Original serve videos, recorded from the defined side angle. | No |
 | `processed/` | Derived files: extracted frames, keypoints, overlays. Can be regenerated from `raw/`. | No |
-| `annotations/` | Small annotation files (phases, coach labels). Format defined in Phase 1. | Yes |
+| `annotations/` | Small annotation files (players, development labels). | Yes |
 
 ## Rules
 
@@ -28,7 +28,7 @@ Videos of players are personal data. They are never committed to Git.
 | `consent_image` | `yes` if their face may appear in the demo video and poster. |
 | `notes` | Free text. |
 
-`eval/serve/labels.csv`: one row per serve video, filled in by the coach. Development videos can use the same format in `annotations/serve.csv`.
+`eval/serve/labels.csv`: one row per serve video, with the labels both annotators agreed on (see the guide below). Development videos can use the same format in `annotations/serve.csv`.
 
 | Column | Values |
 | --- | --- |
@@ -37,5 +37,16 @@ Videos of players are personal data. They are never committed to Git.
 | `valid` | `1` if the video can be analyzed; `0` if the system should ask for a new recording (wrong angle, out of frame, too dark, not a serve). |
 | `phase` | Phase with the main opportunity for improvement: `stance`, `toss`, `trophy`, `leg_drive`, `contact`, `follow_through`. Empty when `valid` is `0`. |
 | `category` | A category from `strokes/serve/criteria.yaml`. Empty when `valid` is `0`. |
-| `drill_id` | The drill the coach would recommend, from `strokes/serve/drills.yaml`. Optional. |
-| `notes` | Free text from the coach. |
+| `drill_id` | The drill for the chosen category, from `strokes/serve/drills.yaml`. Optional. |
+| `notes` | Free text from the annotator. |
+
+## Labeling guide
+
+There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is a tennis expert; the written report says so.
+
+1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos.
+2. Watch each video at normal speed and in slow motion. Judge it only with the category descriptions and the `observe` notes in `strokes/serve/criteria.yaml`.
+3. Set `valid` to `0` when a person could not judge the serve either: player out of frame, serve cut off, too dark, or not a serve.
+4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose the closest category and write `sin problema claro` in `notes`.
+5. Compare the two files with `uv run python -m eval.run_eval --agreement <file A> <file B>`. It prints Cohen's kappa per column and the videos you disagree on.
+6. Settle each disagreement together, write the agreed row in `eval/serve/labels.csv`, and report the kappa values.

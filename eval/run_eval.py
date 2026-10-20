@@ -1,10 +1,12 @@
-"""Evaluate one system variant against the coach labels.
+"""Evaluate one system variant against the reference labels.
 
-    uv run python -m eval.run_eval --variant full     # frames + measurements + coach criteria
+    uv run python -m eval.run_eval --variant full     # frames + measurements + criteria
     uv run python -m eval.run_eval --variant simple   # baseline: same frames, simple prompt
     uv run python -m eval.run_eval --variant rules    # baseline: fixed rules, no language model
+    uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
 
-Reads eval/<stroke>/labels.csv (format in data/README.md) and the videos in data/raw/.
+Reads eval/<stroke>/labels.csv (format and labeling guide in data/README.md) and the videos in
+data/raw/. --agreement compares the two annotators' independent labels before they are merged.
 Writes one JSON line per video to eval/<stroke>/runs/<run>.jsonl and appends the metrics
 to experiments/iterations.csv.
 """
@@ -40,9 +42,36 @@ def macro_prf(truth: list[str], predicted: list[str]) -> tuple[float, float, flo
     return tuple(float(np.mean(column)) for column in zip(*scores))
 
 
+def kappa(a: list[str], b: list[str]) -> float:
+    """Cohen's kappa between two annotators: 1 = same labels, 0 = no better than chance."""
+    if not a:
+        return float("nan")
+    observed = sum(x == y for x, y in zip(a, b)) / len(a)
+    expected = sum(a.count(c) * b.count(c) for c in set(a) | set(b)) / len(a) ** 2
+    return 1.0 if expected == 1 else (observed - expected) / (1 - expected)
+
+
+def agreement(path_a: Path, path_b: Path) -> None:
+    """Print kappa per column and the videos where the two annotators disagree."""
+    a, b = ({r["video"]: r for r in csv.DictReader(p.read_text().splitlines())}
+            for p in (path_a, path_b))  # fmt: skip
+    videos = sorted(a.keys() & b.keys())
+    if not videos:
+        raise SystemExit("The two label files share no video.")
+    columns = ("valid", "phase", "category", "drill_id")
+    for column in columns:
+        value = kappa([a[v][column] for v in videos], [b[v][column] for v in videos])
+        print(f"{column}: kappa {value:.2f}")
+    print(f"{len(videos)} videos in both files. Disagreements to settle together:")
+    for v in videos:
+        if any(a[v][c] != b[v][c] for c in columns[:3]):
+            x, y = a[v], b[v]
+            print(f"- {v}: {x['phase']}/{x['category']} vs {y['phase']}/{y['category']}")
+
+
 def grounded(prediction: dict, criteria: dict, measurements: dict) -> bool:
     """Automatic faithfulness proxy: the category belongs to the chosen phase and, if the category
-    has a measurable check, the measurement really is outside the coach range."""
+    has a measurable check, the measurement really is outside the reference range."""
     if criteria["categories"][prediction["category"]]["phase"] != prediction["phase"]:
         return False
     checks = [
@@ -91,7 +120,11 @@ def main() -> None:
     parser.add_argument("--stroke", default="serve")
     parser.add_argument("--labels", type=Path, help="default: eval/<stroke>/labels.csv")
     parser.add_argument("--note", default="", help="what changed in this iteration")
+    parser.add_argument("--agreement", nargs=2, type=Path, metavar=("A", "B"),
+                        help="compare two annotators' label files and exit")  # fmt: skip
     args = parser.parse_args()
+    if args.agreement:
+        return agreement(*args.agreement)
 
     config = load_config()
     stroke = base.get(args.stroke)
@@ -100,7 +133,7 @@ def main() -> None:
     with open(labels, newline="") as file:
         rows = list(csv.DictReader(file))
     if not rows:
-        raise SystemExit(f"{labels} has no rows yet: add the coach labels first.")
+        raise SystemExit(f"{labels} has no rows yet: add the agreed labels first (data/README.md).")
 
     pose, llm = config["pose"], config["llm"]
     generation = {k: llm[k] for k in ("temperature", "top_p", "max_tokens", "seed")}

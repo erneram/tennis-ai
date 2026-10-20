@@ -1,4 +1,4 @@
-"""Serve module: phases, measurements, coach criteria, drills, and versioned prompts."""
+"""Serve module: phases, measurements, criteria, drills, and versioned prompts."""
 
 from strokes.serve.metrics import MEASUREMENT_LABELS, measure
 from strokes.serve.phases import LABELS, PHASES, key_frames, segment

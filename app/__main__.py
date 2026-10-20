@@ -181,7 +181,7 @@ with gr.Blocks(title="Serve Lab", analytics_enabled=False, delete_cache=(3600, 3
     gr.Markdown(
         "# Serve Lab\nSube un video de tu saque grabado de lado. El asistente divide el saque en "
         "seis fases, señala la que más puedes mejorar con los cuadros que lo muestran y te "
-        "propone un ejercicio. No reemplaza a tu entrenador."
+        "propone un ejercicio. No reemplaza a un entrenador."
     )
     session = gr.State([])
     with gr.Row():
@@ -201,7 +201,7 @@ with gr.Blocks(title="Serve Lab", analytics_enabled=False, delete_cache=(3600, 3
     comparison_text = gr.Markdown()
     comparison_image = gr.Image(label="Intento anterior y actual", interactive=False)
     with gr.Accordion("Mediciones", open=False):
-        table = gr.Dataframe(headers=["Medición", "Valor", "Rango del entrenador", "Estado"],
+        table = gr.Dataframe(headers=["Medición", "Valor", "Rango de referencia", "Estado"],
                              interactive=False)  # fmt: skip
     summary_out = gr.Markdown()
 

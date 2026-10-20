@@ -1,12 +1,10 @@
 # Serve drills, one or more per category of criteria.yaml.
-# DRAFT 0.1: to be reviewed and approved by the coach before the evaluation.
-version: 0.1-draft
+# Version 0.2. Written by the team from common practice; not reviewed by a coach. Kept short,
+# slow and low-load so they are safe to do alone.
+# 0.2: removed feet_line and trophy_pause with their categories (see criteria.yaml 0.3).
+version: "0.2"
 
 drills:
-  - id: feet_line
-    category: stance_orientation
-    name: Pies sobre la línea
-    instructions: Coloca la raqueta en el suelo apuntando al cuadro de saque. Alinea las puntas de ambos pies con ella y haz 10 saques sin pelota manteniendo esa posición.
   - id: toss_target
     category: toss_arm_bent
     name: Lanzamiento al blanco
@@ -15,10 +13,6 @@ drills:
     category: toss_arm_drops_early
     name: Brazo arriba hasta el golpe
     instructions: Lanza y deja el brazo de lanzamiento apuntando a la pelota hasta que la raqueta empiece a subir. Haz 3 series de 8 saques suaves concentrándote solo en esa pausa.
-  - id: trophy_pause
-    category: racket_elbow_low
-    name: Pausa en trofeo
-    instructions: Lleva la raqueta a la posición de trofeo y mantén 2 segundos el codo a la altura del hombro, frente a un espejo o una pared. Luego completa el saque. 3 series de 8.
   - id: knee_load
     category: insufficient_knee_bend
     name: Carga de piernas

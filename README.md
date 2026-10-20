@@ -30,7 +30,7 @@ In the app, upload one serve recorded from the side. The app shows:
 
 - the video in slow motion with the pose and the current phase,
 - the phase with the main opportunity for improvement, the frames that support it (★), and a drill,
-- the measurements against the coach ranges,
+- the measurements against reference ranges based on published studies,
 - a comparison with the previous attempt.
 
 "Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`.
@@ -39,11 +39,16 @@ If the video cannot be analyzed (wrong angle, player out of frame, too dark, too
 
 ## Evaluation
 
-1. Put the videos in `data/raw/` and the coach labels in `eval/serve/labels.csv` (format in [data/README.md](data/README.md)).
+1. Put the videos in `data/raw/`. There is no coach: both members label each serve on their own, compare, and write the agreed labels in `eval/serve/labels.csv` (guide in [data/README.md](data/README.md)):
+
+```bash
+uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
+```
+
 2. Run the full system and the two baselines:
 
 ```bash
-uv run python -m eval.run_eval --variant full   --note "v1 prompt"
+uv run python -m eval.run_eval --variant full   --note "v3 prompt"
 uv run python -m eval.run_eval --variant simple --note "baseline: frames only"
 uv run python -m eval.run_eval --variant rules  --note "baseline: no language model"
 ```
