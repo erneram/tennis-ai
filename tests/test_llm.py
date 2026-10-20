@@ -51,3 +51,28 @@ def test_validate_rejects_unknown_values():
         validate({**good, "drill_id": "invented"}, schema)
     with pytest.raises(ValueError):
         validate({**good, "evidence_phases": ["warmup"]}, schema)
+
+
+def test_evidence_limits_the_categories_the_model_can_choose():
+    criteria = base.load(serve, "criteria.yaml")
+    out_of_range = {
+        "racket_elbow_height": -0.4,
+        "toss_arm_elevation_deg": 175,
+        "toss_arm_extension_deg": 170,
+    }
+    assert base.evidence_categories(criteria, out_of_range) == ["racket_elbow_low"]
+
+    all_fine = {**out_of_range, "racket_elbow_height": 0.1}
+    allowed = base.evidence_categories(criteria, all_fine)
+    assert "racket_elbow_low" not in allowed and "toss_arm_drops_early" not in allowed
+    assert "low_contact_point" in allowed  # not measurable: left to the frames
+
+    schema = base.feedback_schema(serve, ["racket_elbow_low"])
+    assert schema["properties"]["phase"]["enum"] == ["trophy"]
+    assert schema["properties"]["drill_id"]["enum"] == ["trophy_pause"]
+
+
+def test_v2_prompt_sends_the_restricted_schema():
+    vlm = FakeVLM()
+    result = base.feedback(serve, analysis({"racket_elbow_height": -0.4}), vlm, version="v2")
+    assert result["category"] == "racket_elbow_low" and result["source"] == "vlm:full:v2"

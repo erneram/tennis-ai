@@ -81,15 +81,31 @@ def rule_feedback(stroke: Stroke, measurements: dict[str, float]) -> dict:
     }
 
 
-def feedback_schema(stroke: Stroke) -> dict:
-    """JSON schema of one feedback answer; the model can only pick known phases, categories, drills."""
+def evidence_categories(criteria: dict, measurements: dict[str, float]) -> list[str]:
+    """Categories the measurements leave open: the ones out of range (furthest first) or, if none
+    is, the ones that could not be measured. An in-range measurement rules its category out."""
+    results = check_results(criteria, measurements)
+    out = [
+        r["category"] for r in sorted(results, key=lambda r: -r["deviation"]) if r["deviation"] > 0
+    ]
+    if out:
+        return list(dict.fromkeys(out))
+    measured = {r["category"] for r in results}
+    return [c for c in criteria["categories"] if c not in measured]
+
+
+def feedback_schema(stroke: Stroke, allowed: list[str] | None = None) -> dict:
+    """JSON schema of one feedback answer. The model can only pick known phases, categories and
+    drills, restricted to the `allowed` categories when given."""
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
+    categories = allowed or list(criteria["categories"])
+    allowed_phases = {criteria["categories"][c]["phase"] for c in categories}
     phases = list(stroke.PHASES)
     return {
         "type": "object",
         "properties": {
-            "phase": {"type": "string", "enum": phases},
-            "category": {"type": "string", "enum": list(criteria["categories"])},
+            "phase": {"type": "string", "enum": [p for p in phases if p in allowed_phases]},
+            "category": {"type": "string", "enum": categories},
             "observation": {"type": "string", "maxLength": 400},
             "evidence_phases": {
                 "type": "array",
@@ -97,7 +113,10 @@ def feedback_schema(stroke: Stroke) -> dict:
                 "minItems": 1,
                 "maxItems": 3,
             },
-            "drill_id": {"type": "string", "enum": [d["id"] for d in drills]},
+            "drill_id": {
+                "type": "string",
+                "enum": [d["id"] for d in drills if d["category"] in categories],
+            },
             "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
         },
         "required": [
@@ -131,6 +150,7 @@ def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str 
     """Ask the vision-language model for the main improvement of one analyzed attempt.
 
     variant "full" sends frames + measurements + coach criteria; "simple" (baseline) sends frames only.
+    A prompt with `constrain_to_evidence: true` limits the answer to evidence_categories().
     """
     prompts = load(stroke, f"prompts/{version}.yaml")["feedback" if variant == "full" else variant]
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
@@ -148,9 +168,11 @@ def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str 
     }
     user = Template(prompts["user"]).substitute(fields)
     images = [analysis.images[p] for p in stroke.PHASES]
-    result = vlm.generate_json(
-        prompts["system"], user, images, feedback_schema(stroke), **generation
-    )
+    allowed = None
+    if prompts.get("constrain_to_evidence"):
+        allowed = evidence_categories(criteria, analysis.measurements)
+    schema = feedback_schema(stroke, allowed)
+    result = vlm.generate_json(prompts["system"], user, images, schema, **generation)
     data = result.data
     return {
         **data,
