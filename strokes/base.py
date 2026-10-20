@@ -42,9 +42,9 @@ def load(stroke: Stroke, file: str) -> dict:
 
 
 def check_results(criteria: dict, measurements: dict[str, float]) -> list[dict]:
-    """Evaluate every measurable check of the coach criteria.
+    """Evaluate every measurable check of the criteria.
 
-    `deviation` > 0 means the value is outside the coach range, relative to the limit.
+    `deviation` > 0 means the value is outside the reference range, relative to the limit.
     """
     results = []
     for phase, spec in criteria["phases"].items():
@@ -141,7 +141,9 @@ def _measurement_lines(criteria: dict, measurements: dict[str, float]) -> str:
             continue
         limits = " and ".join(f"{k} {check[k]}" for k in ("min", "max") if k in check)
         status = "OUT OF RANGE" if check["deviation"] > 0 else "within range"
-        lines.append(f"- {check['phase']}: {name} = {value} (coach range: {limits}) -> {status}")
+        lines.append(
+            f"- {check['phase']}: {name} = {value} (reference range: {limits}) -> {status}"
+        )
     return "\n".join(lines)
 
 
@@ -149,7 +151,7 @@ def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str 
              **generation) -> dict:  # fmt: skip
     """Ask the vision-language model for the main improvement of one analyzed attempt.
 
-    variant "full" sends frames + measurements + coach criteria; "simple" (baseline) sends frames only.
+    variant "full" sends frames + measurements + criteria; "simple" (baseline) sends frames only.
     A prompt with `constrain_to_evidence: true` limits the answer to evidence_categories().
     """
     prompts = load(stroke, f"prompts/{version}.yaml")["feedback" if variant == "full" else variant]

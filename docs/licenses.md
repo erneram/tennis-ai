@@ -43,6 +43,16 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | [RacketVision](https://github.com/OrcustD/RacketVision/) | MIT (code) | OK. Future work. |
 | Own recordings | Player consent | Written consent required. Never committed (see `data/README.md`). |
 
+## Published research behind the serve criteria
+
+Only facts and numbers are used, cited in `strokes/serve/criteria.yaml`; no text or figures are copied.
+
+| Source | Access | Used for |
+| --- | --- | --- |
+| Kovacs & Ellenbecker (2011), *Sports Health* 3(6):504-513, [doi:10.1177/1941738111414175](https://doi.org/10.1177/1941738111414175) | Free on PubMed Central | Serve stages, common errors (tossing arm dropping early, front knee bent more than 15°, contact high with the elbow slightly bent), start position as personal style. |
+| Jacquier-Bret & Gorce (2024), *Frontiers in Sports and Active Living*, [doi:10.3389/fspor.2024.1432030](https://doi.org/10.3389/fspor.2024.1432030) | CC BY | Meta-analysis: knee flexion at the trophy position, shoulder and elbow angles at contact. |
+| Tubez et al. (2021), *Sports Biomechanics*, as cited by Gorce & Jacquier-Bret (2024), [doi:10.3389/fspor.2024.1451174](https://doi.org/10.3389/fspor.2024.1451174) | CC BY (citing article) | Shoulder abduction at the trophy position (elbow normally below shoulder height). |
+
 ## Reference repositories
 
 | Repository | License | Status |
