@@ -26,7 +26,7 @@ uv run python -m app                              # web app at http://127.0.0.1:
 uv run python -m core.pose data/raw/p01_s01.mp4   # pose overlay only (development)
 ```
 
-In the app, upload one serve recorded from the side. The app shows:
+In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish). The app shows:
 
 - the video in slow motion with the pose and the current phase,
 - the phase with the main opportunity for improvement, the frames that support it (★), and a drill,

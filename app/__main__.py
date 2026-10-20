@@ -29,11 +29,11 @@ GENERATION = {k: CONFIG["llm"][k] for k in ("temperature", "top_p", "max_tokens"
 CONFIDENCE = {"high": "alta", "medium": "media", "low": "baja"}
 OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="servelab-"))
 
-RECORDING_TIPS = """**Cómo grabar el saque**
-- Teléfono en trípode a la altura de la cadera, a 5–6 m, sin zoom.
-- De lado: la cámara mira de frente al pecho cuando estás de perfil a la red.
-- Todo el cuerpo en el cuadro, con espacio arriba para el lanzamiento.
-- Un solo saque por video, de 3 a 5 segundos, a 60 o 120 fps, con buena luz."""
+RECORDING_TIPS = """**Cómo grabar el saque** (guía completa: docs/grabacion.md)
+- Teléfono horizontal, a la altura del pecho y recto, a unos 6 m, lente 1x sin zoom.
+- De lado: la cámara mira tu pecho, sobre la prolongación de la línea de fondo.
+- Todo el cuerpo y la raqueta arriba dentro del cuadro, sin el sol detrás de ti.
+- Un solo saque por video, de 4 a 8 segundos, a 1080p y 60 fps."""
 
 print(f"Cargando {CONFIG['llm']['model']}…")
 VLM_MODEL = VLM(CONFIG["llm"]["model"])

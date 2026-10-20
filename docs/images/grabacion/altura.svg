@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" font-family="Helvetica, Arial, sans-serif">
+  <title>Vista lateral: altura y distancia de la cámara</title>
+  <defs>
+    <marker id="d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1d2733"/>
+    </marker>
+    <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#ffffff"/>
+    </marker>
+  </defs>
+  <!-- Escala: 40 px = 1 m. Suelo en y = 250. -->
+  <rect width="640" height="300" fill="#eef3f6"/>
+  <rect y="250" width="640" height="50" fill="#2f6690"/>
+
+  <!-- Lo que ve la cámara (campo vertical de unos 40° con el lente 1x) -->
+  <polygon points="76,198 380,87.3 380,250 219,250" fill="#f2b705" opacity="0.2"/>
+  <g stroke="#b07d00" stroke-width="1.5" stroke-dasharray="6 4">
+    <line x1="76" y1="198" x2="380" y2="87.3"/>
+    <line x1="76" y1="198" x2="219" y2="250"/>
+  </g>
+
+  <!-- Trípode y teléfono a 1.3 m -->
+  <g stroke="#1d2733" stroke-width="3" stroke-linecap="round">
+    <line x1="70" y1="206" x2="56" y2="250"/>
+    <line x1="70" y1="206" x2="84" y2="250"/>
+    <line x1="70" y1="206" x2="70" y2="250"/>
+  </g>
+  <rect x="64" y="190" width="12" height="16" rx="2" fill="#f2b705" stroke="#1d2733" stroke-width="2"/>
+
+  <!-- Jugador en el impacto, a 6 m -->
+  <g stroke="#1d2733" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="303,250 308,231 308,212"/>
+    <polyline points="316,250 312,231 308,212"/>
+    <line x1="308" y1="212" x2="310" y2="192"/>
+    <polyline points="310,193 312,181 314,169"/>
+    <polyline points="309,195 316,203 311,210"/>
+    <line x1="314" y1="169" x2="316" y2="152" stroke-width="2.5"/>
+    <ellipse cx="317" cy="145" rx="4" ry="8" stroke-width="2.5"/>
+  </g>
+  <circle cx="311" cy="184" r="7" fill="#f0c9a0" stroke="#1d2733" stroke-width="2"/>
+
+  <!-- Medidas -->
+  <g stroke="#1d2733" stroke-width="1.5">
+    <line x1="36" y1="200" x2="36" y2="248" marker-start="url(#d)" marker-end="url(#d)"/>
+  </g>
+  <text x="26" y="224" fill="#1d2733" font-size="12" font-weight="bold" text-anchor="middle" transform="rotate(-90 26 224)">1.2–1.5 m</text>
+  <g stroke="#ffffff" stroke-width="1.5">
+    <line x1="72" y1="270" x2="308" y2="270" marker-start="url(#w)" marker-end="url(#w)"/>
+  </g>
+  <text x="190" y="290" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">≈ 6 m</text>
+
+  <g fill="#1d2733">
+    <text x="20" y="36" font-size="14" font-weight="bold">Teléfono horizontal y recto</text>
+    <text x="20" y="54" font-size="12">No lo inclines hacia arriba ni hacia abajo.</text>
+    <text x="20" y="70" font-size="12">Si algo se corta, aléjate un paso; no uses zoom.</text>
+    <text x="330" y="124" font-size="12">la raqueta arriba queda</text>
+    <text x="330" y="140" font-size="12">dentro del cuadro</text>
+  </g>
+</svg>

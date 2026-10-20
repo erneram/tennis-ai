@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 660 340" font-family="Helvetica, Arial, sans-serif">
+  <title>Encuadre correcto y errores comunes</title>
+  <defs>
+    <!-- Jugador con la raqueta arriba: 40 x 100 unidades, pies en y = 100 -->
+    <symbol id="p" viewBox="0 0 40 100" overflow="visible">
+      <g stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <polyline points="23,100 21,84 16,68 11,84 8,99"/>
+        <line x1="16" y1="68" x2="18" y2="42"/>
+        <polyline points="17,47 25,55 19,60"/>
+        <polyline points="19,45 21,35 22,26 23,19"/>
+        <ellipse cx="24" cy="11" rx="5" ry="8" stroke-width="2.5"/>
+      </g>
+      <circle cx="18" cy="36" r="6" stroke-width="2.5"/>
+    </symbol>
+  </defs>
+  <rect width="660" height="340" fill="#ffffff"/>
+
+  <!-- 1. Correcto -->
+  <svg x="15" y="15" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="56" fill="#cfe3ee"/><rect y="56" width="200" height="56" fill="#4f7f62"/>
+    <rect x="100" y="70" width="100" height="42" fill="#2f6690"/>
+    <line x1="100" y1="70" x2="100" y2="112" stroke="#ffffff" stroke-width="2"/>
+    <use xlink:href="#p" href="#p" x="84" y="28" width="25" height="62" stroke="#1d2733" fill="#f0c9a0"/>
+  </svg>
+  <!-- 2. Cortado -->
+  <svg x="230" y="15" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="56" fill="#cfe3ee"/><rect y="56" width="200" height="56" fill="#4f7f62"/>
+    <rect x="100" y="70" width="100" height="42" fill="#2f6690"/>
+    <line x1="100" y1="70" x2="100" y2="112" stroke="#ffffff" stroke-width="2"/>
+    <use xlink:href="#p" href="#p" x="72" y="-30" width="60" height="150" stroke="#1d2733" fill="#f0c9a0"/>
+  </svg>
+  <!-- 3. Desde atrás: la red aparece delante del jugador y la línea de fondo cruza la imagen -->
+  <svg x="445" y="15" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="50" fill="#cfe3ee"/><rect y="50" width="200" height="62" fill="#2f6690"/>
+    <rect x="0" y="44" width="200" height="8" fill="#ffffff" opacity="0.7"/>
+    <g stroke="#1d2733" stroke-width="0.6" opacity="0.6">
+      <line x1="0" y1="48" x2="200" y2="48"/>
+      <line x1="20" y1="44" x2="20" y2="52"/><line x1="40" y1="44" x2="40" y2="52"/><line x1="60" y1="44" x2="60" y2="52"/>
+      <line x1="80" y1="44" x2="80" y2="52"/><line x1="100" y1="44" x2="100" y2="52"/><line x1="120" y1="44" x2="120" y2="52"/>
+      <line x1="140" y1="44" x2="140" y2="52"/><line x1="160" y1="44" x2="160" y2="52"/><line x1="180" y1="44" x2="180" y2="52"/>
+    </g>
+    <line x1="0" y1="92" x2="200" y2="92" stroke="#ffffff" stroke-width="2"/>
+    <line x1="60" y1="92" x2="88" y2="52" stroke="#ffffff" stroke-width="1.5"/>
+    <line x1="140" y1="92" x2="112" y2="52" stroke="#ffffff" stroke-width="1.5"/>
+    <use xlink:href="#p" href="#p" x="86" y="30" width="25" height="62" stroke="#1d2733" fill="#1d2733"/>
+  </svg>
+  <!-- 4. Contraluz -->
+  <svg x="15" y="175" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="56" fill="#fff6d8"/><rect y="56" width="200" height="56" fill="#6d7f86"/>
+    <circle cx="112" cy="30" r="30" fill="#ffe27a" opacity="0.6"/>
+    <circle cx="112" cy="30" r="16" fill="#ffd23f"/>
+    <use xlink:href="#p" href="#p" x="84" y="28" width="25" height="62" stroke="#0f141a" fill="#0f141a"/>
+  </svg>
+  <!-- 5. Muy lejos -->
+  <svg x="230" y="175" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="56" fill="#cfe3ee"/><rect y="56" width="200" height="56" fill="#4f7f62"/>
+    <rect x="100" y="62" width="100" height="50" fill="#2f6690"/>
+    <line x1="100" y1="62" x2="100" y2="112" stroke="#ffffff" stroke-width="1.5"/>
+    <use xlink:href="#p" href="#p" x="96" y="50" width="8" height="20" stroke="#1d2733" fill="#f0c9a0"/>
+  </svg>
+  <!-- 6. Otra persona -->
+  <svg x="445" y="175" width="200" height="112" viewBox="0 0 200 112">
+    <rect width="200" height="56" fill="#cfe3ee"/><rect y="56" width="200" height="56" fill="#4f7f62"/>
+    <rect x="100" y="70" width="100" height="42" fill="#2f6690"/>
+    <line x1="100" y1="70" x2="100" y2="112" stroke="#ffffff" stroke-width="2"/>
+    <use xlink:href="#p" href="#p" x="128" y="38" width="20" height="50" stroke="#5c6b78" fill="#d9b48f"/>
+    <use xlink:href="#p" href="#p" x="78" y="28" width="25" height="62" stroke="#1d2733" fill="#f0c9a0"/>
+  </svg>
+
+  <!-- Marcos, insignias y textos -->
+  <g fill="none" stroke="#1d2733" stroke-width="2">
+    <rect x="15" y="15" width="200" height="112" rx="4"/>
+    <rect x="230" y="15" width="200" height="112" rx="4"/>
+    <rect x="445" y="15" width="200" height="112" rx="4"/>
+    <rect x="15" y="175" width="200" height="112" rx="4"/>
+    <rect x="230" y="175" width="200" height="112" rx="4"/>
+    <rect x="445" y="175" width="200" height="112" rx="4"/>
+  </g>
+  <g font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <circle cx="31" cy="31" r="11" fill="#2e8b57"/><text x="31" y="36">✓</text>
+    <circle cx="246" cy="31" r="11" fill="#c0392b"/><text x="246" y="36">✗</text>
+    <circle cx="461" cy="31" r="11" fill="#c0392b"/><text x="461" y="36">✗</text>
+    <circle cx="31" cy="191" r="11" fill="#c0392b"/><text x="31" y="196">✗</text>
+    <circle cx="246" cy="191" r="11" fill="#c0392b"/><text x="246" y="196">✗</text>
+    <circle cx="461" cy="191" r="11" fill="#c0392b"/><text x="461" y="196">✗</text>
+  </g>
+  <g fill="#1d2733" font-size="13">
+    <text x="15" y="145" font-weight="bold">Correcto</text>
+    <text x="15" y="161">cuerpo completo, con margen</text>
+    <text x="230" y="145" font-weight="bold">Cortado</text>
+    <text x="230" y="161">la raqueta o los pies se salen</text>
+    <text x="445" y="145" font-weight="bold">Desde atrás</text>
+    <text x="445" y="161">rodillas y brazo se ven cortos</text>
+    <text x="15" y="305" font-weight="bold">Contraluz</text>
+    <text x="15" y="321">el sol detrás del jugador</text>
+    <text x="230" y="305" font-weight="bold">Muy lejos</text>
+    <text x="230" y="321">el jugador se ve pequeño</text>
+    <text x="445" y="305" font-weight="bold">Otra persona en el cuadro</text>
+    <text x="445" y="321">el sistema puede seguir a otra</text>
+  </g>
+</svg>
