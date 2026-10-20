@@ -60,9 +60,9 @@ def test_mirrored_left_right_labels_give_the_same_phases():
 def test_measure_and_rule_feedback():
     xy = synthetic_serve()
     values = serve.measure(xy, FPS, serve.segment(xy, FPS))
-    assert values["contact_arm_extension_deg"] == pytest.approx(180)
-    assert values["contact_height"] > 1
-    assert values["knee_bend_deg"] > 20
+    assert set(values) == set(serve.MEASUREMENT_LABELS)
+    assert values["racket_elbow_height"] == pytest.approx(-30 / 70, abs=0.01)  # 30 px below
+    assert values["toss_to_contact_s"] == pytest.approx(25 / FPS, abs=0.01)
 
     feedback = base.rule_feedback(serve, values)
     drills = {d["id"] for d in base.load(serve, "drills.yaml")["drills"]}

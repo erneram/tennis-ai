@@ -1,11 +1,15 @@
 # Serve criteria per phase.
-# DRAFT 0.1: ranges are starting values to be reviewed and agreed with the coach.
+# DRAFT 0.2: ranges are starting values to be reviewed and agreed with the coach.
 # Every change is a new version, logged in experiments/iterations.csv.
 #
-# checks: measurable from one side camera (see strokes/serve/metrics.py). A value outside
+# checks: measurable from the recording angle (see strokes/serve/metrics.py). A value outside
 #         [min, max] points to the check's category.
 # Phases without checks are judged only from the frames by the model.
-version: 0.1-draft
+#
+# 0.2: removed knee_bend_deg, contact_arm_extension_deg and contact_height. With the camera
+#      behind the player they read far too low (arm and knees bend toward the net, away from
+#      the lens), so they flagged problems that were not there.
+version: 0.2-draft
 
 phases:
   stance:
@@ -28,19 +32,10 @@ phases:
         category: racket_elbow_low
   leg_drive:
     observe: Knee bend and weight transfer before the push-off.
-    checks:
-      - metric: knee_bend_deg
-        min: 20
-        category: insufficient_knee_bend
+    checks: []
   contact:
     observe: Arm extension and height of the contact point.
-    checks:
-      - metric: contact_arm_extension_deg
-        min: 155
-        category: bent_arm_at_contact
-      - metric: contact_height
-        min: 0.7
-        category: low_contact_point
+    checks: []
   follow_through:
     observe: Continuity of the motion, balance, and landing.
     checks: []

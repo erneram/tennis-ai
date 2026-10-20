@@ -1,24 +1,22 @@
 """Serve measurements, computed from the cleaned pose at the key events.
 
+Only measurements that hold up from the recording angle (camera behind the player) are kept:
+vertical distances, arms pointing up, and timing. Angles that bend toward the net (knees,
+racket elbow, arm at contact) look shorter than they are from behind, so they were removed
+after testing on the first recordings; those categories are judged from the frames instead.
+
 Distances are divided by the torso length, so they do not depend on camera distance.
-The wrist stands in for the racket: the racket itself is not tracked.
 """
 
 import numpy as np
 
 from core.metrics import angle, point, torso_length
-from strokes.serve.phases import knee_angle, racket_side
-
-CONTACT_WINDOW_S = 0.07
+from strokes.serve.phases import racket_side
 
 MEASUREMENT_LABELS = {
     "toss_arm_extension_deg": "Extensión del brazo de lanzamiento (°)",
     "toss_arm_elevation_deg": "Elevación del brazo de lanzamiento (°)",
     "racket_elbow_height": "Altura del codo de la raqueta sobre el hombro (torsos)",
-    "racket_elbow_angle_deg": "Ángulo del codo de la raqueta en trofeo (°)",
-    "knee_bend_deg": "Flexión de rodillas (°)",
-    "contact_arm_extension_deg": "Extensión del brazo en el impacto (°)",
-    "contact_height": "Altura del impacto sobre la cabeza (torsos)",
     "toss_to_contact_s": "Tiempo del lanzamiento al impacto (s)",
 }
 
@@ -26,47 +24,22 @@ MEASUREMENT_LABELS = {
 def measure(xy: np.ndarray, fps: float, phases: dict[str, int]) -> dict[str, float]:
     racket = racket_side(xy)
     toss = "left" if racket == "right" else "right"
-    trophy, contact = phases["trophy"], phases["contact"]
-    torso = torso_length(xy)
-    # At low frame rates the exact contact falls between frames: take the best value within ~70 ms.
-    reach = max(1, round(CONTACT_WINDOW_S * fps))
-    around_contact = range(max(0, contact - reach), min(len(xy), contact + reach + 1))
+    trophy = phases["trophy"]
 
-    def joint(name: str, frame: int) -> np.ndarray:
-        return point(xy, name)[frame]
-
-    def joint_angle(a: str, b: str, c: str, frame: int) -> float:
-        return angle(joint(a, frame), joint(b, frame), joint(c, frame))
-
-    def height_above(lower: str, upper: str, frame: int) -> float:
-        """How far `upper` is above `lower`, in torso lengths."""
-        return (joint(lower, frame)[1] - joint(upper, frame)[1]) / torso
+    def joint(name: str) -> np.ndarray:
+        return point(xy, name)[trophy]
 
     values = {
         # Toss arm at trophy: straight (180) and pointing up (180 between torso and arm).
-        "toss_arm_extension_deg": joint_angle(
-            f"{toss}_shoulder", f"{toss}_elbow", f"{toss}_wrist", trophy
+        "toss_arm_extension_deg": angle(
+            joint(f"{toss}_shoulder"), joint(f"{toss}_elbow"), joint(f"{toss}_wrist")
         ),
-        "toss_arm_elevation_deg": joint_angle(
-            f"{toss}_hip", f"{toss}_shoulder", f"{toss}_wrist", trophy
+        "toss_arm_elevation_deg": angle(
+            joint(f"{toss}_hip"), joint(f"{toss}_shoulder"), joint(f"{toss}_wrist")
         ),
-        # Racket elbow at trophy: height above the shoulder and bend.
-        "racket_elbow_height": height_above(f"{racket}_shoulder", f"{racket}_elbow", trophy),
-        "racket_elbow_angle_deg": joint_angle(
-            f"{racket}_shoulder", f"{racket}_elbow", f"{racket}_wrist", trophy
-        ),
-        # Knee bend: degrees away from straight legs at the deepest point before contact.
-        "knee_bend_deg": 180 - np.nanmin(knee_angle(xy)[trophy : contact + 1]),
-        # Contact: arm extension and wrist height above the head.
-        "contact_arm_extension_deg": np.nanmax(
-            [
-                joint_angle(f"{racket}_shoulder", f"{racket}_elbow", f"{racket}_wrist", f)
-                for f in around_contact
-            ]
-        ),
-        "contact_height": np.nanmax(
-            [height_above("nose", f"{racket}_wrist", f) for f in around_contact]
-        ),
-        "toss_to_contact_s": (contact - phases["toss"]) / fps,
+        # Racket elbow at trophy: height above the shoulder, in torso lengths.
+        "racket_elbow_height": (joint(f"{racket}_shoulder")[1] - joint(f"{racket}_elbow")[1])
+        / torso_length(xy),
+        "toss_to_contact_s": (phases["contact"] - phases["toss"]) / fps,
     }
     return {name: round(float(value), 2) for name, value in values.items()}
