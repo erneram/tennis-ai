@@ -92,7 +92,7 @@ The proposal starts from an existing multimodal model, run locally with MLX-VLM.
 
 The model only receives key frames selected per phase, not the full video, to control context window usage and latency.
 
-Training a model from scratch is not proposed. If the results justify it, a light fine-tuning with LoRA can be done using reviewed examples. Its usefulness must be checked against the original model, using videos of players who do not appear in the training data.
+The model is not trained in Project 3: it is used as downloaded, with a prompt. The labeled serves are only the answer key for the evaluation ([what the labels are for](../data/README.md#what-the-labels-are-for)).
 
 ## Prototype scope
 
@@ -155,7 +155,7 @@ Broadly, **Ernesto** is in charge of the technical core (`core/`): pose, vision-
 | Ernesto | Hugo |
 | --- | --- |
 | Implement `core/history/`: session history, progress summary, and practice plan. | Implement the interface in `app/`: video upload, results, evidence frames, and drill. |
-| Light fine-tuning with LoRA, only if the metrics justify it. | Implement the visual comparison between attempts. |
+| Prompt iterations against the evaluation set. | Implement the visual comparison between attempts. |
 | Measure latency and memory usage on the Mac M5. | Error handling: invalid videos, requests for a new recording, and wait times. |
 
 **Outcome:** a product usable end to end by someone outside the group.

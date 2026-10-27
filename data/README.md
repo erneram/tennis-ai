@@ -40,6 +40,14 @@ Videos of players are personal data. They are never committed to Git.
 | `drill_id` | The drill for the chosen category, from `strokes/serve/drills.yaml`. Optional. |
 | `notes` | Free text from the annotator. |
 
+## What the labels are for
+
+In Spanish, "entrenar" means two different things. In this repository, *training* always means adjusting the model's weights. The player *practices*, and a *coach* teaches the player.
+
+In Project 3 the model is not trained: it is used as downloaded, with a prompt. The labels are only the answer key. They are written once, before looking at the system's answers; the model answers without seeing them, and `eval/run_eval.py` compares its answers with them. The app then gives feedback on new videos that nobody labeled.
+
+A label is the main error of the serve, chosen from the categories in `strokes/serve/criteria.yaml` (for example `toss_arm_bent`). Style is not an error: a personal start position, for example, is never labeled as one.
+
 ## Labeling guide
 
 There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is a tennis expert; the written report says so.

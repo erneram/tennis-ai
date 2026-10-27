@@ -39,6 +39,8 @@ If the video cannot be analyzed (wrong angle, player out of frame, too dark, too
 
 ## Evaluation
 
+The labels written by the team are only the answer key: in Project 3 the model is not trained, it is used as downloaded with a prompt. See [what the labels are for](data/README.md#what-the-labels-are-for).
+
 1. Put the videos in `data/raw/`. There is no coach: both members label each serve on their own, compare, and write the agreed labels in `eval/serve/labels.csv` (guide in [data/README.md](data/README.md)):
 
 ```bash

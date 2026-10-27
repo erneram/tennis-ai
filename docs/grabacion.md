@@ -102,7 +102,7 @@ El proyecto necesita un conjunto de evaluación de **30 a 50 saques**.
 - **Jugadores:** idealmente de 3 a 5 jugadores distintos, de 6 a 10 saques cada uno. Al menos uno no debe aparecer en los videos de desarrollo.
 - **Consentimiento:** cada jugador firma su consentimiento antes de grabarlo. Anótalo en `data/annotations/players.csv` con un ID anónimo (`p01`, `p02`…), su mano dominante y su nivel. Las reglas están en [data/README.md](../data/README.md).
 - **Videos inválidos a propósito:** agrega de 4 a 6 videos mal grabados (cortado, desde atrás, oscuro, sin saque). Sirven para medir si el sistema pide repetir cuando debe. En las etiquetas van con `valid = 0`.
-- **Desarrollo y evaluación separados:** los primeros 7 videos y los de prueba son de desarrollo. Los de evaluación no se usan para ajustar el sistema, y se etiquetan antes de ver lo que responde el sistema ([guía de etiquetado](../data/README.md#labeling-guide)).
+- **Desarrollo y evaluación separados:** los primeros 7 videos y los de prueba son de desarrollo: con ellos se ajustan los prompts. Los de evaluación no se usan para ajustar nada: se etiquetan antes de ver lo que responde el sistema y solo sirven para revisar sus respuestas. En el Proyecto 3 el modelo no se entrena; se usa tal como se descarga ([para qué sirven las etiquetas](../data/README.md#what-the-labels-are-for) y [guía de etiquetado](../data/README.md#labeling-guide)).
 
 ## 8. Nombres y envío
 
