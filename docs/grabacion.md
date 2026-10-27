@@ -97,12 +97,12 @@ Así debe verse la pantalla:
 
 ## 7. Cuántos videos y de quién
 
-El proyecto necesita un conjunto de evaluación de **30 a 50 saques**.
+El Proyecto Final necesita de **40 a 60 saques etiquetados**: con una parte se entrena el modelo y con otra se examina.
 
 - **Jugadores:** idealmente de 3 a 5 jugadores distintos, de 6 a 10 saques cada uno. Al menos uno no debe aparecer en los videos de desarrollo.
 - **Consentimiento:** cada jugador firma su consentimiento antes de grabarlo. Anótalo en `data/annotations/players.csv` con un ID anónimo (`p01`, `p02`…), su mano dominante y su nivel. Las reglas están en [data/README.md](../data/README.md).
 - **Videos inválidos a propósito:** agrega de 4 a 6 videos mal grabados (cortado, desde atrás, oscuro, sin saque). Sirven para medir si el sistema pide repetir cuando debe. En las etiquetas van con `valid = 0`.
-- **Desarrollo y evaluación separados:** los primeros 7 videos y los de prueba son de desarrollo. Los de evaluación no se usan para ajustar el sistema, y se etiquetan antes de ver lo que responde el sistema ([guía de etiquetado](../data/README.md#labeling-guide)).
+- **Entrenamiento y prueba separados por jugador:** aquí "entrenar" se refiere al modelo, no al jugador. Los saques de unos jugadores son ejemplos resueltos con los que el modelo aprende (LoRA). Los de otros jugadores son el examen: el modelo nunca los ve al entrenarse. Los primeros 7 videos y los de prueba son de desarrollo. Todos se etiquetan antes de ver lo que responde el sistema ([para qué sirven las etiquetas](../data/README.md#what-the-labels-are-for) y [guía de etiquetado](../data/README.md#labeling-guide)).
 
 ## 8. Nombres y envío
 
@@ -112,7 +112,7 @@ El proyecto necesita un conjunto de evaluación de **30 a 50 saques**.
 
 ## 9. Prueba antes de grabar todo
 
-Antes de grabar los 30 a 50 saques:
+Antes de grabar todos los saques:
 
 1. Graba 3 saques con esta configuración.
 2. Envíalos y revisamos que las fases y las mediciones salgan bien.

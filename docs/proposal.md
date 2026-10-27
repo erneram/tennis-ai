@@ -1,5 +1,7 @@
 # Serve Lab
 
+> This is the Project 3 proposal. The Final Project proposal is `docs/propuesta-proyecto-final.pdf`: there the model is adjusted with LoRA, and the labels are also training examples ([what the labels are for](../data/README.md#what-the-labels-are-for)).
+
 ## Proposal summary
 
 Serve Lab is an interactive assistant specialized in analyzing the **tennis serve**. From a short video, it splits the motion into phases, identifies which phase holds the main opportunity for improvement, explains the observation with the frames that support it, and suggests a drill. It also keeps a history of each session to show the player's progress and suggest the focus of the next practice.
