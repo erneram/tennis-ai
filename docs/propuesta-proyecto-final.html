@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Serve Lab · Propuesta Proyecto Final</title>
+<style>
+  @page {
+    size: letter;
+    margin: 2cm 2.2cm;
+    @bottom-right { content: counter(page) " / " counter(pages); font: 8pt Arial, sans-serif; color: #777; }
+  }
+  body { font: 10.5pt/1.45 Arial, Helvetica, sans-serif; color: #222; }
+  h1 { font-size: 20pt; margin: 0 0 2pt; }
+  .subtitle { color: #666; margin: 0 0 14pt; }
+  h2 { font-size: 13pt; color: #2b5a8c; margin: 16pt 0 5pt; }
+  p { margin: 0 0 7pt; }
+  code { white-space: nowrap; }
+  ul { margin: 0 0 7pt; padding-left: 16pt; }
+  li { margin-bottom: 4pt; }
+  .refs { font-size: 8.5pt; color: #444; }
+  .refs li { margin-bottom: 2pt; }
+</style>
+</head>
+<body>
+
+<h1>Serve Lab</h1>
+<p class="subtitle">Mejora del saque de tenis con IA frente a un entrenador personal · Propuesta de proyecto ·
+CC3092 Proyecto Final · Ernesto y Hugo · 26 de octubre de 2026</p>
+
+<h2>1. Propuesta</h2>
+<p>Serve Lab analiza el saque de tenis a partir de un video corto grabado con el teléfono y le dice al
+jugador qué corregir y con qué ejercicio. Es la evolución del asistente del Proyecto 3, que usa solo un
+modelo de visión y lenguaje (Qwen3-VL-4B). En el Proyecto Final le agregamos MediaPipe Pose Landmarker,
+la biblioteca gratuita y de código abierto de Google (Apache-2.0) que ubica 33 puntos del cuerpo, en
+coordenadas, en cada cuadro del video. MediaPipe corre en la misma computadora, sin internet, sin clave
+de API y sin costo por video; en nuestras pruebas con 7 saques procesó unos 165 cuadros por segundo en
+una Mac M5, contra 113 de YOLO Pose, con 44&nbsp;% menos temblor entre cuadros. Lo usamos sin
+reentrenar, como extractor de características, para ubicar el cuadro exacto de cada fase del saque,
+recortar al jugador, medir ángulos contra rangos publicados y limitar la respuesta del modelo a lo que
+la evidencia respalda. Sobre esas entradas ajustamos Qwen3-VL con LoRA usando nuestros saques
+etiquetados. La métrica de negocio es <b>cuánto mejora el saque de una persona, en porcentaje, desde que
+empieza a usar Serve Lab, comparado con una persona que no lo usa y entrena con un entrenador personal
+en persona</b> durante el mismo periodo. Ambos grupos hacen la misma prueba al inicio y al final, y la
+mejora se calcula como (resultado final − resultado inicial) / resultado inicial. Además comparamos tres
+versiones del modelo: A, el sistema del Proyecto 3 sin pose; B, con pose y prompt; y C, con pose y LoRA.
+Las comparamos en métricas técnicas (F1 por categoría de error, tasa de alucinación y latencia) y en la
+mejora que se espera que produzca cada una.</p>
+
+<h2>2. Justificación</h2>
+<p>Un entrenador personal es la forma habitual de mejorar el saque, pero cobra por hora y no está
+presente cada vez que el jugador practica solo. La pregunta de negocio es qué parte de la mejora que
+logra un entrenador consigue Serve Lab, y a qué costo: si el grupo con Serve Lab mejora <i>x</i>&nbsp;% y
+el grupo con entrenador mejora <i>y</i>&nbsp;%, el cociente <i>x</i>/<i>y</i> indica cuánto del efecto
+de las clases reemplaza la app, y el costo por punto de mejora (costo del periodo / mejora) indica si
+conviene. El precio de la clase lo cotizaremos con academias de la ciudad; el costo de Serve Lab es casi
+cero porque todo corre en la computadora del jugador. Esa mejora depende de la calidad del modelo: una
+recomendación correcta lleva la práctica al error real, y una alucinación hace practicar el ejercicio
+equivocado. Ya lo vimos con los primeros 7 videos: el modelo dijo en todos que el brazo de lanzamiento
+baja antes de tiempo, aunque la pose muestra que en 2 de ellos sigue arriba hasta el impacto. Por eso
+relacionamos la métrica técnica con la de negocio: durante el estudio registramos qué recomendaciones
+fueron correctas según las etiquetas acordadas, estimamos cuánto mejora un jugador por cada
+recomendación correcta y usamos esa relación para traducir el F1 y la tasa de alucinación de las
+versiones A, B y C en mejora esperada y costo por punto. Usamos deep learning porque las reglas fijas
+sobre ángulos no alcanzan con una sola cámara: varios errores solo se ven en los cuadros. Los supuestos
+(precio de la clase, sesiones por semana y relación entre aciertos y mejora) pasan por un análisis de
+sensibilidad de ±20&nbsp;% y ±50&nbsp;%.</p>
+
+<h2>3. Fuente de datos</h2>
+<ul>
+  <li><b>Estudio de mejora (datos nuevos):</b> dos grupos de 3 a 5 jugadores amateurs de nivel parecido.
+  El grupo Serve Lab practica solo con la app; el grupo de control no usa la app y ya toma clases con un
+  entrenador personal en persona. Los dos practican del 3 al 13 de noviembre con el mismo número de
+  sesiones, y cada sesión queda registrada (fecha, duración y saques practicados).</li>
+  <li><b>Prueba inicial y final, igual para todos:</b> 20 saques grabados de lado según
+  <code>docs/grabacion.md</code>. Medimos dos resultados: el porcentaje de saques que entran en el cuadro
+  de saque, que anota en la cancha un integrante del grupo, y un puntaje técnico, el porcentaje de fases
+  sin error visible, que Ernesto y Hugo califican con los videos mezclados, sin saber de qué grupo ni de
+  qué prueba son.</li>
+  <li><b>Saques etiquetados para ajustar y evaluar el modelo:</b> de 40 a 60 saques tomados de las
+  pruebas y de la práctica, más 4 a 6 videos inválidos a propósito. Ernesto y Hugo etiquetan por separado
+  el error principal de cada saque (validez, fase, categoría de error y ejercicio); reportamos su acuerdo
+  con el kappa de Cohen y resolvemos juntos los desacuerdos. Aquí "entrenar" se refiere al modelo, no al
+  jugador: los saques se dividen por jugador en entrenamiento, validación y prueba. Con los de
+  entrenamiento el modelo aprende (LoRA), la validación indica cuándo detener el ajuste y la prueba es el
+  examen final, que el modelo nunca ve. Las etiquetas se escriben una sola vez: el objetivo no es acertar
+  en esos saques, que ya tienen respuesta, sino diagnosticar los saques nuevos de jugadores que nadie
+  etiquetó.</li>
+  <li><b>Datos derivados:</b> secuencias de 33 puntos por cuadro generadas con MediaPipe, cuadros clave y
+  ángulos de cada saque.</li>
+  <li><b>Criterios de referencia:</b> estudios publicados de biomecánica del saque (Kovacs y
+  Ellenbecker, 2011; Jacquier-Bret y Gorce, 2024).</li>
+  <li><b>Privacidad y límites:</b> todos los jugadores firman su consentimiento, los videos no se suben
+  al repositorio y se procesan localmente. Los grupos no son aleatorios, el periodo es corto y los
+  calificadores no son expertos; lo reportamos como limitación.</li>
+</ul>
+
+<h2>Referencias</h2>
+<ul class="refs">
+  <li>Kovacs, M. y Ellenbecker, T. (2011). An 8-stage model for evaluating the tennis serve. <i>Sports
+  Health</i>, 3(6), 504-513. doi:10.1177/1941738111414175</li>
+  <li>Jacquier-Bret, J. y Gorce, P. (2024). Kinematics characteristics of key point of interest during
+  tennis serve among tennis players: a systematic review and meta-analysis. <i>Frontiers in Sports and
+  Active Living</i>. doi:10.3389/fspor.2024.1432030</li>
+  <li>MediaPipe Pose Landmarker: github.com/google-ai-edge/mediapipe · Qwen3-VL-4B-Instruct:
+  huggingface.co/Qwen/Qwen3-VL-4B-Instruct · MLX-VLM: github.com/Blaizzy/mlx-vlm</li>
+</ul>
+
+</body>
+</html>

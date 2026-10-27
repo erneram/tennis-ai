@@ -39,6 +39,8 @@ If the video cannot be analyzed (wrong angle, player out of frame, too dark, too
 
 ## Evaluation
 
+The labels written by the team are the answer key for the model. In the Final Project, the labels of some players will also train a LoRA adapter; the other players are the test set and are never used for training. See [what the labels are for](data/README.md#what-the-labels-are-for).
+
 1. Put the videos in `data/raw/`. There is no coach: both members label each serve on their own, compare, and write the agreed labels in `eval/serve/labels.csv` (guide in [data/README.md](data/README.md)):
 
 ```bash
