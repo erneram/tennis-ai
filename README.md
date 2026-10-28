@@ -2,7 +2,7 @@
 
 Interactive assistant that analyzes the **tennis serve** from a short video. It splits the motion into phases, finds the phase with the main opportunity for improvement, shows the frames that support the observation, and suggests a drill. It keeps a history of sessions to follow the player's progress.
 
-Project 3 of CC3092 Deep Learning y Sistemas Inteligentes (UVG). Full proposal: [docs/proposal.md](docs/proposal.md).
+Final Project of CC3092 Deep Learning y Sistemas Inteligentes (UVG). It adds pose estimation (MediaPipe) and a LoRA adapter to the Project 3 assistant, which uses only the vision-language model and lives on the `proyecto-3` branch. Proposal: [docs/propuesta-proyecto-final.pdf](docs/propuesta-proyecto-final.pdf); the earlier Project 3 plan is [docs/proposal.md](docs/proposal.md).
 
 ## Requirements
 
@@ -54,6 +54,17 @@ uv run python -m eval.run_eval --variant full   --note "v3 prompt"
 uv run python -m eval.run_eval --variant simple --note "baseline: frames only"
 uv run python -m eval.run_eval --variant rules  --note "baseline: no language model"
 ```
+
+3. Run version A (the Project 3 system, without pose) from the `proyecto-3` branch, in a separate worktree, so its code never mixes with this branch:
+
+```bash
+git worktree add ../tennis-ai-p3 proyecto-3      # once; use the p3-entrega tag after November 6
+cd ../tennis-ai-p3 && uv sync
+ln -s ../../tennis-ai/data/raw data/raw          # same videos
+uv run python -m eval.run_eval --labels ../tennis-ai/eval/serve/labels.csv --note "version A"
+```
+
+Version A writes its row to `experiments/iterations.csv` in that worktree; copy it here to compare it with versions B and C.
 
 Each run saves its predictions in `eval/serve/runs/` and appends a row to `experiments/iterations.csv`: phase accuracy, category F1, hallucination rate, correct re-recording requests, latency, tokens, and peak memory.
 

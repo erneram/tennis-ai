@@ -1,6 +1,6 @@
 # Serve Lab
 
-> This is the Project 3 proposal. The Final Project proposal is `docs/propuesta-proyecto-final.pdf`: there the model is adjusted with LoRA, and the labels are also training examples ([what the labels are for](../data/README.md#what-the-labels-are-for)).
+> This is the Project 3 proposal as it was before October 27, with pose estimation. The Project 3 version that uses only the language model is on the `proyecto-3` branch. The Final Project proposal is `docs/propuesta-proyecto-final.pdf`: there the model is adjusted with LoRA, and the labels are also training examples ([what the labels are for](../data/README.md#what-the-labels-are-for)).
 
 ## Proposal summary
 
