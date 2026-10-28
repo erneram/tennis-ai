@@ -1,21 +1,16 @@
 # Shared settings. Stroke-specific criteria, drills, and prompts live in strokes/<stroke>/.
 # Every change that affects results is a new iteration in experiments/iterations.csv.
-pose:
-  backend: mediapipe          # mediapipe | yolo (yolo needs: uv sync --group yolo)
-  mediapipe: full             # lite | full | heavy
-  yolo: yolo26n-pose.pt       # yolo26{n,s,m,l,x}-pose.pt
-
 analysis:
-  step: 1                     # process every n-th frame
+  frames: 32                  # evenly spaced frames the model sees to find the phases
   max_seconds: 20             # longer videos are rejected: one serve per video
 
 llm:
   model: mlx-community/Qwen3-VL-4B-Instruct-4bit   # Apache-2.0
-  prompt_version: v3          # strokes/<stroke>/prompts/<version>.yaml
+  prompt_version: v4          # strokes/<stroke>/prompts/<version>.yaml
   temperature: 0.2
   top_p: 0.9
   max_tokens: 400
   seed: 0
 
 app:
-  slowdown: 4                 # slow-motion factor of the overlay video
+  slowdown: 4                 # slow-motion factor of the labeled video

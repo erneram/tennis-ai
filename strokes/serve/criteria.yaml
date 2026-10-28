@@ -1,12 +1,13 @@
 # Serve criteria per phase.
-# Version 0.3. There is no coach: every category points to published research (`sources` at the
+# Version 0.4. There is no coach: every category points to published research (`sources` at the
 # end). Every change is a new version, logged in experiments/iterations.csv.
 #
-# checks: measurable from one camera (see strokes/serve/metrics.py). A value outside [min, max]
-#         points to the check's category. Phases without checks are judged from the frames.
-# The studies measure 3D angles with lab cameras; ours are 2D from one phone. Their numbers decide
-# what to look at, but are not copied as limits. Limits are loose on purpose: for a player who
-# practices alone, a wrong correction is worse than a missed one.
+# looks_like: how the language model finds the phase in the frames (strokes/base.py, locate_phases).
+# observe: what it judges in the key frame of the phase (strokes/base.py, feedback).
+# Project 3 uses only the language model: there are no measurements, so every category is judged
+# from the frames. The studies measure 3D angles with lab cameras; their numbers decide what to
+# look at, but the model never states numbers. For a player who practices alone, a wrong
+# correction is worse than a missed one.
 #
 # 0.2: removed knee_bend_deg, contact_arm_extension_deg and contact_height (with the camera
 #      behind the player they read far too low).
@@ -15,31 +16,29 @@
 #      flagged 4 of 7 serves. Removed toss_arm_elevation_deg: measured at the top of the toss, it
 #      cannot show the arm dropping early (now judged from the frames). Removed
 #      stance_orientation: the start position is personal style (kovacs2011).
-version: "0.3"
+# 0.4: Project 3 without pose estimation. Removed the last measured check
+#      (toss_arm_extension_deg, min 150°) and added looks_like to every phase.
+version: "0.4"
 
 phases:
   stance:
+    looks_like: Standing still before the toss, side-on to the net, ball and racket held in front of the body.
     observe: Starting position. Personal style, not corrected.
-    checks: []
   toss:
+    looks_like: The tossing arm rises and the ball leaves the hand.
     observe: Tossing arm straight, moving up from the shoulder; ball released slightly to the side of the head, not straight above it.
-    checks:
-      # No published value: our limit. A straight arm is 180°.
-      - metric: toss_arm_extension_deg
-        min: 150
-        category: toss_arm_bent
   trophy:
+    looks_like: Tossing arm fully up pointing at the ball, racket arm bent with the racket behind the head.
     observe: Tossing arm still up, pointing at the ball, while the racket drops behind the back.
-    checks: []
   leg_drive:
+    looks_like: Knees at their deepest bend, just before the player pushes up toward the ball.
     observe: Front knee clearly bent before pushing up toward the ball.
-    checks: []
   contact:
+    looks_like: Racket arm stretched up above the head, hitting the ball at the highest point.
     observe: Contact high, with the arm well above the shoulder and the elbow only slightly bent.
-    checks: []
   follow_through:
+    looks_like: After the hit, the racket comes down across the body and the player lands inside the court.
     observe: Landing on the front foot and keeping balance.
-    checks: []
 
 categories:
   toss_arm_bent:

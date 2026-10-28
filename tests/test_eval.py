@@ -18,11 +18,16 @@ def label(valid, phase="", category="", drill_id=""):
 
 
 def test_compute_counts_wrong_rejections_as_errors():
-    answer = {"phase": "contact", "category": "low_contact_point", "drill_id": "higher_toss"}
+    answer = {
+        "phase": "contact",
+        "category": "low_contact_point",
+        "drill_id": "higher_toss",
+        "consistent": True,
+    }
     records = [
         # correct answer
         {"label": label(True, "contact", "low_contact_point", "higher_toss"), "valid": True,
-         "prediction": answer, "grounded": True, "seconds": 2.0},
+         "prediction": answer, "seconds": 2.0, "tokens": 6000, "mem_gb": 5.0},
         # valid video wrongly rejected
         {"label": label(True, "trophy", "toss_arm_drops_early"), "valid": False, "seconds": 1.0},
         # invalid video correctly rejected
@@ -34,6 +39,7 @@ def test_compute_counts_wrong_rejections_as_errors():
     assert metrics["drill_acc"] == 1.0
     assert metrics["hallucination_rate"] == 0.0
     assert metrics["latency_s"] == 2.0
+    assert metrics["tokens"] == 6000 and metrics["mem_gb"] == 5.0
 
 
 def test_kappa():

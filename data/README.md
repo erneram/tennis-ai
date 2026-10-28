@@ -5,7 +5,7 @@ Videos of players are personal data. They are never committed to Git.
 | Folder | Content | In Git |
 | --- | --- | --- |
 | `raw/` | Original serve videos, recorded as described in [docs/grabacion.md](../docs/grabacion.md). | No |
-| `processed/` | Derived files: extracted frames, keypoints, overlays. Can be regenerated from `raw/`. | No |
+| `processed/` | Derived files, such as extracted frames. Can be regenerated from `raw/`. | No |
 | `annotations/` | Small annotation files (players, development labels). | Yes |
 
 ## Rules

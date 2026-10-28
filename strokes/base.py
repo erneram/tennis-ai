@@ -1,8 +1,13 @@
-"""Interface every stroke implements, plus helpers shared by all strokes.
+"""Interface every stroke implements, plus the two model calls shared by all strokes.
 
 A stroke is a package strokes/<name>/ whose __init__.py exposes the Stroke attributes below,
 with criteria.yaml, drills.yaml and prompts/<version>.yaml next to it. Adding a stroke means
 adding a folder with the same structure; nothing in core/ changes.
+
+Only the language model looks at the video:
+1. locate_phases: from evenly spaced frames, it decides whether the video can be analyzed and
+   picks the frame that best shows each phase.
+2. feedback: from those key frames, it chooses the main improvement and a drill.
 """
 
 from importlib import import_module
@@ -13,23 +18,16 @@ from typing import Protocol
 import numpy as np
 import yaml
 
+from core.analysis import InsufficientEvidence, label, resize
+
 STROKES_DIR = Path(__file__).resolve().parent
+LOCATE_SIDE = 512  # frames for locate_phases: about 150 tokens each with Qwen3-VL
 
 
 class Stroke(Protocol):
     NAME: str
     PHASES: tuple[str, ...]  # in chronological order
     LABELS: dict[str, str]  # phase -> name shown to the player
-    MEASUREMENT_LABELS: dict[str, str]  # measurement -> name shown to the player
-
-    def segment(self, xy: np.ndarray, fps: float) -> dict[str, int]:
-        """Phase -> first frame. Raises core.analysis.InsufficientEvidence if phases are not found."""
-
-    def key_frames(self, phases: dict[str, int], n_frames: int, fps: float) -> dict[str, int]:
-        """Phase -> frame that best shows it (sent to the model and shown to the player)."""
-
-    def measure(self, xy: np.ndarray, fps: float, phases: dict[str, int]) -> dict[str, float]:
-        """Measurement name -> value, computed only from the pose."""
 
 
 def get(name: str) -> Stroke:
@@ -37,75 +35,65 @@ def get(name: str) -> Stroke:
 
 
 def load(stroke: Stroke, file: str) -> dict:
-    """Read a versioned configuration file of the stroke: criteria.yaml, drills.yaml, prompts/v1.yaml."""
+    """Read a versioned configuration file of the stroke: criteria.yaml, drills.yaml, prompts/v4.yaml."""
     return yaml.safe_load((STROKES_DIR / stroke.NAME / file).read_text())
 
 
-def check_results(criteria: dict, measurements: dict[str, float]) -> list[dict]:
-    """Evaluate every measurable check of the criteria.
-
-    `deviation` > 0 means the value is outside the reference range, relative to the limit.
-    """
-    results = []
-    for phase, spec in criteria["phases"].items():
-        for check in spec.get("checks", []):
-            value = measurements.get(check["metric"])
-            if value is None or np.isnan(value):
-                continue
-            deviation = -np.inf
-            if "min" in check:
-                deviation = (check["min"] - value) / max(abs(check["min"]), 1)
-            if "max" in check:
-                deviation = max(deviation, (value - check["max"]) / max(abs(check["max"]), 1))
-            results.append({**check, "phase": phase, "value": value, "deviation": float(deviation)})
-    return results
-
-
-def rule_feedback(stroke: Stroke, measurements: dict[str, float]) -> dict:
-    """Baseline without a language model: the check furthest outside (or closest to) its range wins."""
-    criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
-    results = check_results(criteria, measurements)
-    if not results:
-        raise ValueError("No measurable check: cannot give rule-based feedback")
-    worst = max(results, key=lambda r: r["deviation"])
-    category = criteria["categories"][worst["category"]]
-    drill = next(d for d in drills if d["category"] == worst["category"])
+def phases_schema(stroke: Stroke, n_frames: int, reasons: list[str]) -> dict:
+    """JSON schema of locate_phases: "none" or the reason to record again, then the number
+    (1 to n_frames) of the frame that best shows each phase."""
+    frame = {"type": "integer", "enum": list(range(1, n_frames + 1))}
     return {
-        "phase": worst["phase"],
-        "category": worst["category"],
-        "observation": f"{category['description']} (medida {worst['metric']} = {worst['value']}).",
-        "evidence_phases": [worst["phase"]],
-        "drill_id": drill["id"],
-        "confidence": "medium" if worst["deviation"] > 0 else "low",
-        "source": "rules",
+        "type": "object",
+        "properties": {
+            "retake": {"type": "string", "enum": ["none", *reasons]},
+            **{phase: frame for phase in stroke.PHASES},
+        },
+        "required": ["retake", *stroke.PHASES],
+        "additionalProperties": False,
     }
 
 
-def evidence_categories(criteria: dict, measurements: dict[str, float]) -> list[str]:
-    """Categories the measurements leave open: the ones out of range (furthest first) or, if none
-    is, the ones that could not be measured. An in-range measurement rules its category out."""
-    results = check_results(criteria, measurements)
-    out = [
-        r["category"] for r in sorted(results, key=lambda r: -r["deviation"]) if r["deviation"] > 0
+def locate_phases(stroke: Stroke, images: list[np.ndarray], vlm, version: str, **generation):
+    """First model call. Returns (phase -> index into `images`, Generation).
+
+    Raises InsufficientEvidence with the message for the player when the model asks for a new
+    recording. Every frame is numbered on the image, so the model can refer to it.
+    """
+    prompts = load(stroke, f"prompts/{version}.yaml")["phases"]
+    criteria = load(stroke, "criteria.yaml")
+    retake = prompts["retake"]
+    user = Template(prompts["user"]).substitute(
+        n_frames=len(images),
+        phase_guide="\n".join(f"- {p}: {s['looks_like']}" for p, s in criteria["phases"].items()),
+        reasons="\n".join(f"- {reason}: {spec['when']}" for reason, spec in retake.items()),
+    )
+    numbered = [
+        label(resize(image, LOCATE_SIDE), str(n), height=0.1) for n, image in enumerate(images, 1)
     ]
-    if out:
-        return list(dict.fromkeys(out))
-    measured = {r["category"] for r in results}
-    return [c for c in criteria["categories"] if c not in measured]
+    schema = phases_schema(stroke, len(images), list(retake))
+    result = vlm.generate_json(prompts["system"], user, numbered, schema, **generation)
+    if result.data["retake"] != "none":
+        raise InsufficientEvidence(retake[result.data["retake"]]["message"])
+
+    key_frames, last = {}, 0
+    for phase in stroke.PHASES:
+        # ponytail: a frame that goes back in time is moved up to the previous phase's frame
+        last = max(last, result.data[phase] - 1)
+        key_frames[phase] = last
+    return key_frames, result
 
 
-def feedback_schema(stroke: Stroke, allowed: list[str] | None = None) -> dict:
+def feedback_schema(stroke: Stroke) -> dict:
     """JSON schema of one feedback answer. The model can only pick known phases, categories and
-    drills, restricted to the `allowed` categories when given."""
+    drills."""
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
-    categories = allowed or list(criteria["categories"])
-    allowed_phases = {criteria["categories"][c]["phase"] for c in categories}
     phases = list(stroke.PHASES)
     return {
         "type": "object",
         "properties": {
-            "phase": {"type": "string", "enum": [p for p in phases if p in allowed_phases]},
-            "category": {"type": "string", "enum": categories},
+            "phase": {"type": "string", "enum": phases},
+            "category": {"type": "string", "enum": list(criteria["categories"])},
             "observation": {"type": "string", "maxLength": 400},
             "evidence_phases": {
                 "type": "array",
@@ -113,10 +101,7 @@ def feedback_schema(stroke: Stroke, allowed: list[str] | None = None) -> dict:
                 "minItems": 1,
                 "maxItems": 3,
             },
-            "drill_id": {
-                "type": "string",
-                "enum": [d["id"] for d in drills if d["category"] in categories],
-            },
+            "drill_id": {"type": "string", "enum": [d["id"] for d in drills]},
             "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
         },
         "required": [
@@ -131,28 +116,12 @@ def feedback_schema(stroke: Stroke, allowed: list[str] | None = None) -> dict:
     }
 
 
-def _measurement_lines(criteria: dict, measurements: dict[str, float]) -> str:
-    checks = {r["metric"]: r for r in check_results(criteria, measurements)}
-    lines = []
-    for name, value in measurements.items():
-        check = checks.get(name)
-        if check is None:
-            lines.append(f"- {name} = {value} (informative)")
-            continue
-        limits = " and ".join(f"{k} {check[k]}" for k in ("min", "max") if k in check)
-        status = "OUT OF RANGE" if check["deviation"] > 0 else "within range"
-        lines.append(
-            f"- {check['phase']}: {name} = {value} (reference range: {limits}) -> {status}"
-        )
-    return "\n".join(lines)
-
-
-def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str = "v1",
+def feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, variant: str, version: str,
              **generation) -> dict:  # fmt: skip
-    """Ask the vision-language model for the main improvement of one analyzed attempt.
+    """Second model call: the main improvement, judged from the key frame of each phase.
 
-    variant "full" sends frames + measurements + criteria; "simple" (baseline) sends frames only.
-    A prompt with `constrain_to_evidence: true` limits the answer to evidence_categories().
+    variant "full" sends the frames + what to observe + criteria + drills; "simple" (baseline)
+    sends the frames with only the category and drill names.
     """
     prompts = load(stroke, f"prompts/{version}.yaml")["feedback" if variant == "full" else variant]
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
@@ -160,7 +129,6 @@ def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str 
     fields = {
         "frame_list": ", ".join(f"{i}. {p}" for i, p in enumerate(stroke.PHASES, 1)),
         "phase_guide": "\n".join(f"- {p}: {s['observe']}" for p, s in criteria["phases"].items()),
-        "measurements": _measurement_lines(criteria, analysis.measurements),
         "categories": "\n".join(
             f"- {c['phase']}: {k}: {c['description']}" for k, c in categories.items()
         ),
@@ -169,12 +137,10 @@ def feedback(stroke: Stroke, analysis, vlm, variant: str = "full", version: str 
         "drill_names": ", ".join(f"{d['id']} ({d['category']})" for d in drills),
     }
     user = Template(prompts["user"]).substitute(fields)
-    images = [analysis.images[p] for p in stroke.PHASES]
-    allowed = None
-    if prompts.get("constrain_to_evidence"):
-        allowed = evidence_categories(criteria, analysis.measurements)
-    schema = feedback_schema(stroke, allowed)
-    result = vlm.generate_json(prompts["system"], user, images, schema, **generation)
+    frames = [images[p] for p in stroke.PHASES]
+    result = vlm.generate_json(
+        prompts["system"], user, frames, feedback_schema(stroke), **generation
+    )
     data = result.data
     return {
         **data,

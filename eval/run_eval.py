@@ -1,8 +1,8 @@
 """Evaluate one system variant against the reference labels.
 
-    uv run python -m eval.run_eval --variant full     # frames + measurements + criteria
+    uv run python -m eval.run_eval --variant full     # key frames + criteria + drills
     uv run python -m eval.run_eval --variant simple   # baseline: same frames, simple prompt
-    uv run python -m eval.run_eval --variant rules    # baseline: fixed rules, no language model
+    uv run python -m eval.run_eval --model mlx-community/Qwen3-VL-2B-Instruct-4bit  # baseline
     uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
 
 Reads eval/<stroke>/labels.csv (format and labeling guide in data/README.md) and the videos in
@@ -21,7 +21,8 @@ from pathlib import Path
 import numpy as np
 
 from core import ROOT, load_config
-from core.analysis import InsufficientEvidence, analyze
+from core.analysis import InsufficientEvidence, sample
+from core.llm import VLM
 from strokes import base
 
 ITERATIONS = ROOT / "experiments" / "iterations.csv"
@@ -69,21 +70,12 @@ def agreement(path_a: Path, path_b: Path) -> None:
             print(f"- {v}: {x['phase']}/{x['category']} vs {y['phase']}/{y['category']}")
 
 
-def grounded(prediction: dict, criteria: dict, measurements: dict) -> bool:
-    """Automatic faithfulness proxy: the category belongs to the chosen phase and, if the category
-    has a measurable check, the measurement really is outside the reference range."""
-    if criteria["categories"][prediction["category"]]["phase"] != prediction["phase"]:
-        return False
-    checks = [
-        r
-        for r in base.check_results(criteria, measurements)
-        if r["category"] == prediction["category"]
-    ]
-    return not checks or any(r["deviation"] > 0 for r in checks)
-
-
 def compute(records: list[dict]) -> dict[str, float]:
-    """Quality and operational metrics. A video wrongly rejected counts as a wrong answer."""
+    """Quality and operational metrics. A video wrongly rejected counts as a wrong answer.
+
+    hallucination_rate is an automatic proxy: answers whose category belongs to another phase.
+    Whether each observation matches its frames is checked by hand in the written report.
+    """
 
     def predicted(record, key):
         return (record.get("prediction") or {}).get(key, "none")
@@ -94,7 +86,6 @@ def compute(records: list[dict]) -> dict[str, float]:
     precision, recall, f1 = macro_prf(
         [r["label"]["category"] for r in valid], [predicted(r, "category") for r in valid]
     )
-    vlm = [r["prediction"] for r in answered if "prompt_tokens" in r["prediction"]]
 
     def mean(values):
         return round(float(np.mean(values)), 3) if len(values) else float("nan")
@@ -107,16 +98,17 @@ def compute(records: list[dict]) -> dict[str, float]:
         "category_recall": round(recall, 3),
         "category_f1": round(f1, 3),
         "drill_acc": mean([predicted(r, "drill_id") == r["label"]["drill_id"] for r in with_drill]),
-        "hallucination_rate": mean([not r["grounded"] for r in answered]),
+        "hallucination_rate": mean([not r["prediction"]["consistent"] for r in answered]),
         "latency_s": mean([r["seconds"] for r in answered]),
-        "tokens": mean([p["prompt_tokens"] + p["generation_tokens"] for p in vlm]),
-        "mem_gb": max((p["peak_memory_gb"] for p in vlm), default=float("nan")),
+        "tokens": mean([r["tokens"] for r in answered]),
+        "mem_gb": max((r["mem_gb"] for r in answered), default=float("nan")),
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--variant", choices=["full", "simple", "rules"], default="full")
+    parser.add_argument("--variant", choices=["full", "simple"], default="full")
+    parser.add_argument("--model", help="default: llm.model in configs/default.yaml")
     parser.add_argument("--stroke", default="serve")
     parser.add_argument("--labels", type=Path, help="default: eval/<stroke>/labels.csv")
     parser.add_argument("--note", default="", help="what changed in this iteration")
@@ -128,20 +120,16 @@ def main() -> None:
 
     config = load_config()
     stroke = base.get(args.stroke)
-    criteria = base.load(stroke, "criteria.yaml")
     labels = args.labels or ROOT / "eval" / args.stroke / "labels.csv"
     with open(labels, newline="") as file:
         rows = list(csv.DictReader(file))
     if not rows:
         raise SystemExit(f"{labels} has no rows yet: add the agreed labels first (data/README.md).")
 
-    pose, llm = config["pose"], config["llm"]
+    llm = {**config["llm"], "model": args.model or config["llm"]["model"]}
+    version = llm["prompt_version"]
     generation = {k: llm[k] for k in ("temperature", "top_p", "max_tokens", "seed")}
-    vlm = None
-    if args.variant != "rules":
-        from core.llm import VLM
-
-        vlm = VLM(llm["model"])
+    vlm = VLM(llm["model"])
 
     records = []
     for row in rows:
@@ -152,16 +140,16 @@ def main() -> None:
         }
         start = time.perf_counter()
         try:
-            analysis = analyze(ROOT / "data" / "raw" / row["video"], stroke, pose["backend"],
-                               pose[pose["backend"]], **config["analysis"])  # fmt: skip
-            record["valid"], record["measurements"] = True, analysis.measurements
-            if args.variant == "rules":
-                prediction = base.rule_feedback(stroke, analysis.measurements)
-            else:
-                prediction = base.feedback(stroke, analysis, vlm, args.variant,
-                                           llm["prompt_version"], **generation)  # fmt: skip
+            frames = sample(ROOT / "data" / "raw" / row["video"], **config["analysis"])
+            key_frames, located = base.locate_phases(stroke, frames.images, vlm, version,
+                                                     **generation)  # fmt: skip
+            record["valid"], record["key_frames"] = True, key_frames
+            images = {phase: frames.images[i] for phase, i in key_frames.items()}
+            prediction = base.feedback(stroke, images, vlm, args.variant, version, **generation)
             record["prediction"] = prediction
-            record["grounded"] = grounded(prediction, criteria, analysis.measurements)
+            record["tokens"] = (located.prompt_tokens + located.generation_tokens
+                                + prediction["prompt_tokens"] + prediction["generation_tokens"])  # fmt: skip
+            record["mem_gb"] = max(located.peak_memory_gb, prediction["peak_memory_gb"])
         except InsufficientEvidence as reason:
             record["valid"], record["reason"] = False, str(reason)
         except Exception as error:  # noqa: BLE001 - a failed answer is a wrong answer, not a crash
@@ -181,12 +169,10 @@ def main() -> None:
     out.parent.mkdir(exist_ok=True)
     out.write_text("".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in records))
 
-    uses_vlm = args.variant != "rules"
     with open(ITERATIONS, "a", newline="") as file:
         csv.writer(file).writerow([
             run, f"{datetime.now():%Y-%m-%d}", args.stroke, f"{args.variant}: {args.note}".strip(": "),
-            f"{pose['backend']}:{pose[pose['backend']]}", llm["model"] if uses_vlm else "",
-            llm["prompt_version"] if uses_vlm else "", llm["temperature"] if uses_vlm else "",
+            config["analysis"]["frames"], llm["model"], version, llm["temperature"],
             metrics["phase_acc"], metrics["category_f1"], metrics["hallucination_rate"],
             metrics["retake_acc"], metrics["latency_s"], metrics["tokens"], metrics["mem_gb"],
             (f"n={metrics['n']} P={metrics['category_precision']} "

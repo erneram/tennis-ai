@@ -5,8 +5,8 @@ description = "Serve Lab: AI assistant that analyzes the tennis serve from video
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "gradio>=6.30.0",
-    "mediapipe>=1.1",
     "mlx-vlm>=0.7.9",
+    "opencv-python>=4.10",
     "pyyaml>=6.0",
 ]
 
@@ -14,10 +14,6 @@ dependencies = [
 dev = [
     "pytest>=8",
     "ruff>=0.6",
-]
-# AGPL-3.0: kept out of the default install. See docs/licenses.md.
-yolo = [
-    "ultralytics>=8.3",
 ]
 
 [tool.pytest.ini_options]

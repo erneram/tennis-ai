@@ -8,6 +8,7 @@ import os
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leaves the machine
 
 import tempfile
+import time
 from pathlib import Path
 
 import cv2
@@ -15,13 +16,12 @@ import gradio as gr
 import numpy as np
 
 from core import history, load_config
-from core.analysis import InsufficientEvidence, analyze, write_overlay
+from core.analysis import InsufficientEvidence, sample, write_slow_motion
 from core.llm import VLM
 from strokes import base
 
 CONFIG = load_config()
 STROKE = base.get("serve")
-CRITERIA = base.load(STROKE, "criteria.yaml")
 DRILLS = {d["id"]: d for d in base.load(STROKE, "drills.yaml")["drills"]}
 VERSION = CONFIG["llm"]["prompt_version"]
 PROMPTS = base.load(STROKE, f"prompts/{VERSION}.yaml")
@@ -51,34 +51,19 @@ def feedback_markdown(feedback: dict, seconds: float) -> str:
         f"**Ejercicio recomendado: {drill['name']}.** {drill['instructions']}",
         f"Confianza: {CONFIDENCE[feedback['confidence']]} · Tiempo de análisis: {seconds:.0f} s",
     ]
-    if feedback["confidence"] == "low" or not feedback.get("consistent", True):
+    if feedback["confidence"] == "low" or not feedback["consistent"]:
         lines.append(
             "_La evidencia es débil: toma esta observación con cautela y graba otro intento._"
-        )
-    if feedback["source"] == "rules":
-        lines.append(
-            "_El modelo no respondió correctamente; esta recomendación sale de reglas fijas._"
         )
     return "\n\n".join(lines)
 
 
-def measurement_rows(measurements: dict[str, float]) -> list[list]:
-    checks = {r["metric"]: r for r in base.check_results(CRITERIA, measurements)}
-    rows = []
-    for name, value in measurements.items():
-        check = checks.get(name)
-        limits = " y ".join(f"{k} {check[k]}" for k in ("min", "max") if check and k in check)
-        status = "" if check is None else ("fuera de rango" if check["deviation"] > 0 else "bien")
-        rows.append([STROKE.MEASUREMENT_LABELS.get(name, name), value, limits, status])
-    return rows
-
-
 def comparison(previous: dict | None, current: dict):
-    """Side-by-side key frame of the current main phase, and how the measurements changed."""
+    """Side-by-side key frame of the current main phase, and whether the main point changed."""
     if previous is None:
         return "Sube otro intento para compararlo con este.", None
     phase = current["feedback"]["phase"]
-    before, after = previous["overlays"][phase], current["overlays"][phase]
+    before, after = previous["images"][phase], current["images"][phase]
     height = min(before.shape[0], after.shape[0])
     pair = [
         cv2.resize(i, (round(i.shape[1] * height / i.shape[0]), height)) for i in (before, after)
@@ -91,59 +76,49 @@ def comparison(previous: dict | None, current: dict):
     else:
         verdict = (f"Cambió el punto principal: antes {STROKE.LABELS[old['phase']]}, "
                    f"ahora {STROKE.LABELS[phase]}.")  # fmt: skip
-    changes = [
-        f"- {STROKE.MEASUREMENT_LABELS.get(k, k)}: {previous['measurements'][k]} → {v}"
-        for k, v in current["measurements"].items()
-        if k in previous["measurements"] and v != previous["measurements"][k]
-    ]
-    text = f"**{verdict}** Izquierda: intento anterior; derecha: intento actual.\n\n" + "\n".join(
-        changes
-    )
-    return text, image
+    return f"**{verdict}** Izquierda: intento anterior; derecha: intento actual.", image
 
 
 def analyze_attempt(video_path, session, progress=gr.Progress()):  # noqa: B008 - Gradio pattern
-    empty = ("", None, None, [], "", None, session)
+    empty = ("", None, None, "", None, session)
     if not video_path:
         return ("Sube un video de tu saque.", *empty)
-    pose = CONFIG["pose"]
+    start = time.perf_counter()
     try:
-        progress(0.1, desc="Detectando la pose…")
-        analysis = analyze(video_path, STROKE, pose["backend"], pose[pose["backend"]],
-                           cache=False, **CONFIG["analysis"])  # fmt: skip
+        progress(0.1, desc="Revisando el video…")
+        frames = sample(video_path, **CONFIG["analysis"])
     except InsufficientEvidence as reason:
         return (f"### Necesitamos una nueva grabación\n{reason}\n\n{RECORDING_TIPS}", *empty)
     except (ValueError, FileNotFoundError):
         return ("No se pudo leer el video. Sube un archivo .mp4 o .mov de un solo saque.", *empty)
 
-    progress(0.5, desc="Generando la retroalimentación…")
     try:
-        feedback = base.feedback(STROKE, analysis, VLM_MODEL, "full", VERSION, **GENERATION)
-    except Exception:  # noqa: BLE001 - any model failure falls back to the rule baseline
-        feedback = base.rule_feedback(STROKE, analysis.measurements)
-    seconds = analysis.seconds + feedback.get("llm_seconds", 0)
+        progress(0.3, desc="Buscando las fases del saque…")
+        key_frames, _ = base.locate_phases(STROKE, frames.images, VLM_MODEL, VERSION, **GENERATION)
+        images = {phase: frames.images[i] for phase, i in key_frames.items()}
+        progress(0.6, desc="Generando la retroalimentación…")
+        feedback = base.feedback(STROKE, images, VLM_MODEL, "full", VERSION, **GENERATION)
+    except InsufficientEvidence as reason:
+        return (f"### Necesitamos una nueva grabación\n{reason}\n\n{RECORDING_TIPS}", *empty)
+    except Exception:  # noqa: BLE001 - any model failure: ask to try again, never crash
+        return ("El modelo no respondió correctamente. Intenta analizar el video otra vez.", *empty)
+    seconds = time.perf_counter() - start
 
     progress(0.85, desc="Preparando la cámara lenta…")
-    overlay = write_overlay(analysis, OUTPUT_DIR / f"overlay-{len(session) + 1}-{os.getpid()}.mp4",
-                            STROKE.LABELS, CONFIG["app"]["slowdown"])  # fmt: skip
+    slow = write_slow_motion(frames, key_frames, STROKE.LABELS,
+                             OUTPUT_DIR / f"slow-{len(session) + 1}-{os.getpid()}.mp4",
+                             CONFIG["app"]["slowdown"])  # fmt: skip
     evidence = set(feedback["evidence_phases"])
     gallery = [
-        (rgb(analysis.overlays[p]), STROKE.LABELS[p] + (" ★" if p in evidence else ""))
-        for p in STROKE.PHASES
+        (rgb(images[p]), STROKE.LABELS[p] + (" ★" if p in evidence else "")) for p in STROKE.PHASES
     ]
-    current = {
-        "feedback": feedback,
-        "measurements": analysis.measurements,
-        "overlays": analysis.overlays,
-        "record": history.attempt(feedback, analysis.measurements),
-    }
+    current = {"feedback": feedback, "images": images, "record": history.attempt(feedback)}
     compare_text, compare_image = comparison(session[-1] if session else None, current)
     return (
         f"Intento {len(session) + 1} analizado.",
         feedback_markdown(feedback, seconds),
-        str(overlay),
+        str(slow),
         gallery,
-        measurement_rows(analysis.measurements),
         compare_text,
         compare_image,
         [*session, current],
@@ -196,28 +171,16 @@ with gr.Blocks(title="Serve Lab", analytics_enabled=False, delete_cache=(3600, 3
         with gr.Column(scale=2):
             status = gr.Markdown()
             feedback_out = gr.Markdown()
-            overlay_out = gr.Video(label="Cámara lenta con la pose", interactive=False)
+            slow_out = gr.Video(label="Cámara lenta con las fases", interactive=False)
     gallery_out = gr.Gallery(label="Cuadros clave (★ = evidencia de la observación)", columns=6)
     comparison_text = gr.Markdown()
     comparison_image = gr.Image(label="Intento anterior y actual", interactive=False)
-    with gr.Accordion("Mediciones", open=False):
-        table = gr.Dataframe(headers=["Medición", "Valor", "Rango de referencia", "Estado"],
-                             interactive=False)  # fmt: skip
     summary_out = gr.Markdown()
 
     analyze_button.click(
         analyze_attempt,
         [video_in, session],
-        [
-            status,
-            feedback_out,
-            overlay_out,
-            gallery_out,
-            table,
-            comparison_text,
-            comparison_image,
-            session,
-        ],
+        [status, feedback_out, slow_out, gallery_out, comparison_text, comparison_image, session],
     )
     finish_button.click(finish_session, [player, session], [summary_out, session])
 
