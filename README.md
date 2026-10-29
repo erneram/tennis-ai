@@ -24,11 +24,14 @@ The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. Af
 uv run python -m app     # web app at http://127.0.0.1:7860
 ```
 
-How one video is analyzed:
+How one video is analyzed (prompt v6):
 
 1. OpenCV checks the video (frame rate, length) and takes 32 evenly spaced frames.
-2. First model call: the model decides whether the video can be analyzed and picks the frame that best shows each of the six phases. Each frame has its number drawn on it.
-3. Second model call: from those six key frames, the criteria, and the drills, the model chooses the phase to improve, the category, the frames that support it, and a drill. Both answers are JSON constrained by a schema, so the model can only choose known phases, categories, and drills.
+2. The model decides whether the video can be analyzed and where the serve starts and ends. Players bounce the ball before serving, so most of a video is not the serve.
+3. OpenCV takes 32 frames again, only inside the serve, and the model picks the frame that best shows each of the six phases. Each frame has its number drawn on it.
+4. One yes / no / unclear question per category, each about the key frame of its phase only (`check` in `strokes/serve/criteria.yaml`). The earliest phase with a clear "no" is the point to improve, with its drill; with none, the answer is "no clear problem". One more call writes the observation.
+
+Every answer is JSON constrained by a schema, so the model can only choose known frames, phases, categories, and drills. Why each step exists is in the header of each prompt version, `strokes/serve/prompts/v*.yaml`.
 
 In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish). The app shows:
 
@@ -39,6 +42,16 @@ In the app, upload one serve recorded from the side, following [docs/grabacion.m
 "Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`.
 
 If the video cannot be analyzed (wrong angle, player out of frame, too dark, too short), the app asks for a new recording instead of giving feedback. If the model gives no valid answer, the app says so and asks to try again.
+
+### Demo mode (fair)
+
+One analysis takes 15 to 45 s on the Mac. For the fair, put the demo videos in `data/demo/` (only players with `consent_image` = `yes`; include one bad recording to show the request for a new one) and run:
+
+```bash
+uv run python -m app --demo
+```
+
+At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear as examples under the upload box. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
 
 ## Evaluation
 
