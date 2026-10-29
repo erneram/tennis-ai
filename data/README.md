@@ -35,7 +35,7 @@ Videos of players are personal data. They are never committed to Git.
 | `video` | File name inside `raw/`, for example `p03_s02.mp4`. |
 | `player` | Player ID from `players.csv`. |
 | `valid` | `1` if the video can be analyzed; `0` if the system should ask for a new recording (wrong angle, out of frame, too dark, not a serve). |
-| `phase` | Phase with the main opportunity for improvement: `stance`, `toss`, `trophy`, `leg_drive`, `contact`, `follow_through`. Empty when `valid` is `0`. |
+| `phase` | Phase with the main opportunity for improvement: `stance`, `toss`, `trophy`, `leg_drive`, `contact`, `follow_through`, or `none` with `no_clear_problem`. Empty when `valid` is `0`. |
 | `category` | A category from `strokes/serve/criteria.yaml`. Empty when `valid` is `0`. |
 | `drill_id` | The drill for the chosen category, from `strokes/serve/drills.yaml`. Optional. |
 | `notes` | Free text from the annotator. |
@@ -55,6 +55,6 @@ There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is 
 1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos.
 2. Watch each video at normal speed and in slow motion. Judge it only with the category descriptions and the `observe` notes in `strokes/serve/criteria.yaml`.
 3. Set `valid` to `0` when a person could not judge the serve either: player out of frame, serve cut off, too dark, or not a serve.
-4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose the closest category and write `sin problema claro` in `notes`.
+4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose category `no_clear_problem` with phase `none`.
 5. Compare the two files with `uv run python -m eval.run_eval --agreement <file A> <file B>`. It prints Cohen's kappa per column and the videos you disagree on.
 6. Settle each disagreement together, write the agreed row in `eval/serve/labels.csv`, and report the kappa values.

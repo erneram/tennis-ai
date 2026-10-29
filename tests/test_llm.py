@@ -1,25 +1,30 @@
 import numpy as np
 import pytest
 
-from core.analysis import InsufficientEvidence
+from core import video
+from core.analysis import InsufficientEvidence, sample
 from core.llm import Generation, validate
 from strokes import base, serve
 
-FEEDBACK = {"phase": "toss", "category": "toss_arm_bent", "observation": "Estira el brazo.",
-            "evidence_phases": ["toss"], "drill_id": "toss_target", "confidence": "high"}  # fmt: skip
+FEEDBACK = {"seen": "Toss: arm bent.", "phase": "toss", "category": "toss_arm_bent",
+            "observation": "Estira el brazo.", "evidence_phases": ["toss"],
+            "drill_id": "toss_target", "confidence": "high"}  # fmt: skip
+NO_PROBLEM = {**FEEDBACK, "phase": "none", "category": "no_clear_problem",
+              "drill_id": "steady_serves", "confidence": "medium"}  # fmt: skip
 
 
 class FakeVLM:
-    """Records the prompt and answers like the real model would."""
+    """Records the last prompt and gives the answers in order, like the real model would."""
 
-    def __init__(self, answer: dict):
-        self.answer = answer
+    def __init__(self, *answers: dict):
+        self.answers = list(answers)
 
     def generate_json(self, system, user, images, schema, **generation):
         self.system, self.user, self.images = system, user, images
-        validate(self.answer, schema)
+        answer = self.answers.pop(0)
+        validate(answer, schema)
         return Generation(
-            self.answer, prompt_tokens=900, generation_tokens=60, seconds=2.0, peak_memory_gb=4
+            answer, prompt_tokens=900, generation_tokens=60, seconds=2.0, peak_memory_gb=4
         )
 
 
@@ -46,6 +51,44 @@ def test_locate_phases_asks_for_a_new_recording():
     answer = {"retake": "not_from_the_side", **dict.fromkeys(serve.PHASES, 1)}
     with pytest.raises(InsufficientEvidence, match="no está de lado"):
         base.locate_phases(serve, frames(8), FakeVLM(answer), "v4")
+
+
+def phases(*numbers: int) -> dict:
+    return dict(zip(serve.PHASES, numbers, strict=True))
+
+
+def test_v5_finds_the_serve_then_samples_inside_it(tmp_path):
+    path = tmp_path / "serve.mp4"
+    video.write_video(path, [np.full((64, 96, 3), i, np.uint8) for i in range(40)], fps=30)
+    frames = sample(path, frames=8)  # source frames 0, 6, 11, 17, 22, 28, 33, 39
+    vlm = FakeVLM({"retake": "none", "start": 3, "end": 6}, phases(1, 2, 4, 5, 7, 8))
+    frames, key_frames, calls = base.phase_frames(serve, frames, vlm, "v5")
+    # one frame of margin on each side: source frames 6 to 33
+    assert frames.indices[0] == 6 and frames.indices[-1] == 33 and len(frames.images) == 8
+    assert key_frames == phases(0, 1, 3, 4, 6, 7) and len(calls) == 2
+    assert "Frames: 1 to 8." in vlm.user and "$" not in vlm.user
+
+
+def test_v5_rejects_six_frames_in_a_row(tmp_path):
+    path = tmp_path / "serve.mp4"
+    video.write_video(path, [np.zeros((64, 96, 3), np.uint8)] * 40, fps=30)
+    vlm = FakeVLM({"retake": "none", "start": 1, "end": 8}, phases(1, 2, 3, 4, 5, 6))
+    with pytest.raises(ValueError, match="guess"):
+        base.phase_frames(serve, sample(path, frames=8), vlm, "v5")
+
+
+def test_v5_asks_for_a_new_recording_before_looking_for_phases():
+    vlm = FakeVLM({"retake": "serve_incomplete", "start": 1, "end": 1})
+    with pytest.raises(InsufficientEvidence, match="saque completo"):
+        base.find_window(serve, frames(8), vlm, "v5")
+    assert "bouncing is not part of the serve" in vlm.system
+
+
+def test_no_clear_problem_is_a_consistent_answer():
+    vlm = FakeVLM(NO_PROBLEM)
+    result = base.feedback(serve, dict(zip(serve.PHASES, frames(6))), vlm, "full", "v5")
+    assert result["consistent"] and result["seen"] == "Toss: arm bent."
+    assert "no_clear_problem" in vlm.user and "steady_serves" in vlm.user
 
 
 def test_phases_schema_only_allows_existing_frames():
@@ -76,7 +119,7 @@ def test_simple_baseline_prompt_has_no_criteria():
 
 def test_validate_rejects_unknown_values():
     schema = base.feedback_schema(serve)
-    good = {"phase": "contact", "category": "low_contact_point", "observation": "x",
+    good = {"seen": "x", "phase": "contact", "category": "low_contact_point", "observation": "x",
             "evidence_phases": ["contact"], "drill_id": "higher_toss", "confidence": "low"}  # fmt: skip
     validate(good, schema)
     with pytest.raises(ValueError):

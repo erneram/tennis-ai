@@ -5,7 +5,7 @@ def test_every_category_has_a_drill_and_a_known_phase():
     criteria = base.load(serve, "criteria.yaml")
     drill_categories = {d["category"] for d in base.load(serve, "drills.yaml")["drills"]}
     assert set(criteria["categories"]) == drill_categories
-    assert {c["phase"] for c in criteria["categories"].values()} <= set(serve.PHASES)
+    assert {c["phase"] for c in criteria["categories"].values()} <= {*serve.PHASES, "none"}
     assert list(criteria["phases"]) == list(serve.PHASES)  # same order: prompts list them in order
 
 

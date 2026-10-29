@@ -24,6 +24,7 @@ def test_sample_spreads_frames_over_the_whole_video(tmp_path):
     path = clip(tmp_path / "clip.mp4", n=40)
     assert [i for i, _ in video.sample(path, 4)] == [0, 13, 26, 39]
     assert len(video.sample(path, 100)) == 40
+    assert [i for i, _ in video.sample(path, 4, first=10, last=19)] == [10, 13, 16, 19]
 
 
 def test_check_video_rejects_short_low_fps_video():
