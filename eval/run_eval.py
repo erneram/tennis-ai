@@ -141,15 +141,15 @@ def main() -> None:
         start = time.perf_counter()
         try:
             frames = sample(ROOT / "data" / "raw" / row["video"], **config["analysis"])
-            key_frames, located = base.locate_phases(stroke, frames.images, vlm, version,
-                                                     **generation)  # fmt: skip
+            frames, key_frames, calls = base.phase_frames(stroke, frames, vlm, version,
+                                                          **generation)  # fmt: skip
             record["valid"], record["key_frames"] = True, key_frames
             images = {phase: frames.images[i] for phase, i in key_frames.items()}
             prediction = base.feedback(stroke, images, vlm, args.variant, version, **generation)
             record["prediction"] = prediction
-            record["tokens"] = (located.prompt_tokens + located.generation_tokens
+            record["tokens"] = (sum(c.prompt_tokens + c.generation_tokens for c in calls)
                                 + prediction["prompt_tokens"] + prediction["generation_tokens"])  # fmt: skip
-            record["mem_gb"] = max(located.peak_memory_gb, prediction["peak_memory_gb"])
+            record["mem_gb"] = max(*(c.peak_memory_gb for c in calls), prediction["peak_memory_gb"])
         except InsufficientEvidence as reason:
             record["valid"], record["reason"] = False, str(reason)
         except Exception as error:  # noqa: BLE001 - a failed answer is a wrong answer, not a crash

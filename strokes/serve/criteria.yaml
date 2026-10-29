@@ -18,26 +18,30 @@
 #      stance_orientation: the start position is personal style (kovacs2011).
 # 0.4: Project 3 without pose estimation. Removed the last measured check
 #      (toss_arm_extension_deg, min 150°) and added looks_like to every phase.
-version: "0.4"
+# 0.5: added no_clear_problem (phase "none"). Without it the model had to find a problem in every
+#      serve: all 11 professional serves came back as toss_arm_bent with high confidence.
+#      looks_like of toss, trophy, contact and follow_through rewritten: the model took the ball
+#      bouncing for the toss and marked phases one or two frames early.
+version: "0.5"
 
 phases:
   stance:
     looks_like: Standing still before the toss, side-on to the net, ball and racket held in front of the body.
     observe: Starting position. Personal style, not corrected.
   toss:
-    looks_like: The tossing arm rises and the ball leaves the hand.
+    looks_like: The ball has just left the tossing hand, which is moving up; the racket is still low. Bouncing the ball on the ground before the serve is not the toss.
     observe: Tossing arm straight, moving up from the shoulder; ball released slightly to the side of the head, not straight above it.
   trophy:
-    looks_like: Tossing arm fully up pointing at the ball, racket arm bent with the racket behind the head.
+    looks_like: The ball is high in the air; the tossing arm is fully up pointing at it and the racket arm is bent with the racket behind the head or shoulder.
     observe: Tossing arm still up, pointing at the ball, while the racket drops behind the back.
   leg_drive:
     looks_like: Knees at their deepest bend, just before the player pushes up toward the ball.
     observe: Front knee clearly bent before pushing up toward the ball.
   contact:
-    looks_like: Racket arm stretched up above the head, hitting the ball at the highest point.
+    looks_like: Racket arm stretched up above the head, racket meeting the ball at the highest point; the feet are often off the ground.
     observe: Contact high, with the arm well above the shoulder and the elbow only slightly bent.
   follow_through:
-    looks_like: After the hit, the racket comes down across the body and the player lands inside the court.
+    looks_like: After the hit, the racket has come down across the body and the player is landing or has landed inside the court.
     observe: Landing on the front foot and keeping balance.
 
 categories:
@@ -65,6 +69,10 @@ categories:
     phase: follow_through
     description: El jugador no aterriza sobre el pie delantero o pierde el equilibrio al aterrizar.
     source: kovacs2011 (landing on the front foot, stage 8); balance has no published value
+  no_clear_problem:
+    phase: none
+    description: Los cuadros no muestran con claridad ninguno de los problemas anteriores.
+    source: none; for a player who practices alone, a wrong correction is worse than a missed one
 
 sources:
   kovacs2011: "Kovacs M, Ellenbecker T. An 8-stage model for evaluating the tennis serve: implications for performance enhancement and injury prevention. Sports Health. 2011;3(6):504-513. doi:10.1177/1941738111414175"

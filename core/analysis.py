@@ -60,6 +60,18 @@ def sample(path, frames: int = 32, max_seconds: float = 20) -> Frames:
     )
 
 
+def resample(frames: Frames, first: int, last: int) -> Frames:
+    """As many frames as `frames` has, evenly spaced between source frames `first` and `last`:
+    a closer look at one part of the video."""
+    pairs = video.sample(frames.video, len(frames.images), first, last)
+    return Frames(
+        video=frames.video,
+        fps=frames.fps,
+        indices=[index for index, _ in pairs],
+        images=[resize(frame, FRAME_SIDE) for _, frame in pairs],
+    )
+
+
 def resize(image: np.ndarray, longest: int) -> np.ndarray:
     scale = longest / max(image.shape[:2])
     return (

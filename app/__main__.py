@@ -43,10 +43,16 @@ def rgb(image: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+def phase_name(phase: str) -> str:
+    return STROKE.LABELS.get(phase, "sin problema claro")  # phase "none": no_clear_problem
+
+
 def feedback_markdown(feedback: dict, seconds: float) -> str:
     drill = DRILLS[feedback["drill_id"]]
     lines = [
-        f"### Fase a mejorar: {STROKE.LABELS[feedback['phase']]}",
+        "### No vemos un problema claro"
+        if feedback["phase"] == "none"
+        else f"### Fase a mejorar: {phase_name(feedback['phase'])}",
         feedback["observation"],
         f"**Ejercicio recomendado: {drill['name']}.** {drill['instructions']}",
         f"Confianza: {CONFIDENCE[feedback['confidence']]} · Tiempo de análisis: {seconds:.0f} s",
@@ -62,20 +68,23 @@ def comparison(previous: dict | None, current: dict):
     """Side-by-side key frame of the current main phase, and whether the main point changed."""
     if previous is None:
         return "Sube otro intento para compararlo con este.", None
-    phase = current["feedback"]["phase"]
+    old, new = previous["feedback"], current["feedback"]
+    if old["category"] == new["category"]:
+        verdict = f"El punto a mejorar sigue siendo el mismo ({phase_name(new['phase'])})."
+    else:
+        verdict = (f"Cambió el punto principal: antes {phase_name(old['phase'])}, "
+                   f"ahora {phase_name(new['phase'])}.")  # fmt: skip
+
+    # key frame of the main phase now, or of the one flagged before when now there is none
+    phase = next((p for p in (new["phase"], old["phase"]) if p in STROKE.LABELS), None)
+    if phase is None:
+        return f"**{verdict}**", None
     before, after = previous["images"][phase], current["images"][phase]
     height = min(before.shape[0], after.shape[0])
     pair = [
         cv2.resize(i, (round(i.shape[1] * height / i.shape[0]), height)) for i in (before, after)
     ]
     image = rgb(cv2.hconcat(pair))
-
-    old, new = previous["feedback"], current["feedback"]
-    if old["category"] == new["category"]:
-        verdict = f"El punto a mejorar sigue siendo el mismo ({STROKE.LABELS[phase]})."
-    else:
-        verdict = (f"Cambió el punto principal: antes {STROKE.LABELS[old['phase']]}, "
-                   f"ahora {STROKE.LABELS[phase]}.")  # fmt: skip
     return f"**{verdict}** Izquierda: intento anterior; derecha: intento actual.", image
 
 
@@ -94,7 +103,7 @@ def analyze_attempt(video_path, session, progress=gr.Progress()):  # noqa: B008 
 
     try:
         progress(0.3, desc="Buscando las fases del saque…")
-        key_frames, _ = base.locate_phases(STROKE, frames.images, VLM_MODEL, VERSION, **GENERATION)
+        frames, key_frames, _ = base.phase_frames(STROKE, frames, VLM_MODEL, VERSION, **GENERATION)
         images = {phase: frames.images[i] for phase, i in key_frames.items()}
         progress(0.6, desc="Generando la retroalimentación…")
         feedback = base.feedback(STROKE, images, VLM_MODEL, "full", VERSION, **GENERATION)
