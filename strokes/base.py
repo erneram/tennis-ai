@@ -10,8 +10,8 @@ Only the language model looks at the video:
    bounce the ball before serving, so most of the video is not the stroke.
 2. locate_phases: in frames sampled again inside that window, it picks the frame that best shows
    each phase. Up to v4 it worked on the whole video and also decided whether to record again.
-3. feedback: from those key frames, it describes what it sees, then chooses the main improvement
-   (or no_clear_problem) and a drill.
+3. feedback: from those key frames, the main improvement (or no_clear_problem) and a drill.
+   From v6 on, one yes / no / unclear question per category, each about one key frame.
 phase_frames runs 1 and 2.
 """
 
@@ -187,14 +187,40 @@ def feedback_schema(stroke: Stroke) -> dict:
     }
 
 
+def check_schema() -> dict:
+    """JSON schema of one check (v6): what the frame shows, then yes / no / unclear."""
+    return {
+        "type": "object",
+        "properties": {
+            "seen": {"type": "string", "maxLength": 200},
+            "answer": {"type": "string", "enum": ["yes", "no", "unclear"]},
+        },
+        "required": ["seen", "answer"],
+        "additionalProperties": False,
+    }
+
+
+def _usage(calls: list) -> dict:
+    return {
+        "prompt_tokens": sum(c.prompt_tokens for c in calls),
+        "generation_tokens": sum(c.generation_tokens for c in calls),
+        "llm_seconds": round(sum(c.seconds for c in calls), 2),
+        "peak_memory_gb": round(max(c.peak_memory_gb for c in calls), 2),
+    }
+
+
 def feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, variant: str, version: str,
              **generation) -> dict:  # fmt: skip
-    """Second model call: the main improvement, judged from the key frame of each phase.
+    """The main improvement, judged from the key frame of each phase.
 
     variant "full" sends the frames + what to observe + criteria + drills; "simple" (baseline)
-    sends the frames with only the category and drill names.
+    sends the frames with only the category and drill names. From v6 on, "full" asks one
+    question per category instead (checked_feedback).
     """
-    prompts = load(stroke, f"prompts/{version}.yaml")["feedback" if variant == "full" else variant]
+    prompts = load(stroke, f"prompts/{version}.yaml")
+    if variant == "full" and "checks" in prompts:
+        return checked_feedback(stroke, images, vlm, prompts, version, **generation)
+    prompts = prompts["feedback" if variant == "full" else variant]
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
     categories = criteria["categories"]
     fields = {
@@ -217,8 +243,71 @@ def feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, variant: str, v
         **data,
         "consistent": categories[data["category"]]["phase"] == data["phase"],
         "source": f"vlm:{variant}:{version}",
-        "prompt_tokens": result.prompt_tokens,
-        "generation_tokens": result.generation_tokens,
-        "llm_seconds": round(result.seconds, 2),
-        "peak_memory_gb": round(result.peak_memory_gb, 2),
+        **_usage([result]),
+    }
+
+
+def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts: dict,
+                     version: str, **generation) -> dict:  # fmt: skip
+    """v6: one yes / no / unclear question per category (its `check` in criteria.yaml), each
+    about the key frame of its phase only. A single choice among all categories followed the
+    order of the list, not the frames (v5).
+
+    Each question asks about the good position, so "no" is the problem. The main improvement
+    is the "no" of the earliest phase, as in the labeling guide; one more call writes the
+    observation for it. With no "no" the answer is no_clear_problem, with confidence "low" if
+    any check was unclear. Phase, category and drill are chosen by code, so the answer is
+    always consistent.
+    """
+    criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
+    phases, categories = criteria["phases"], criteria["categories"]
+    calls, checks = [], {}
+    for category, spec in categories.items():
+        if "check" not in spec:  # no_clear_problem
+            continue
+        phase = spec["phase"]
+        user = Template(prompts["checks"]["user"]).substitute(
+            phase=phase, looks_like=phases[phase]["looks_like"], question=spec["check"]
+        )
+        result = vlm.generate_json(prompts["checks"]["system"], user, [images[phase]],
+                                   check_schema(), **generation)  # fmt: skip
+        calls.append(result)
+        checks[category] = result.data
+
+    found = [c for c, check in checks.items() if check["answer"] == "no"]
+    if found:
+        category = min(found, key=lambda c: stroke.PHASES.index(categories[c]["phase"]))
+        phase = categories[category]["phase"]
+        user = Template(prompts["observation"]["user"]).substitute(
+            phase=phase,
+            description=categories[category]["description"],
+            observe=phases[phase]["observe"],
+            seen=checks[category]["seen"],
+        )
+        schema = {
+            "type": "object",
+            "properties": {"observation": {"type": "string", "maxLength": 400}},
+            "required": ["observation"],
+            "additionalProperties": False,
+        }
+        result = vlm.generate_json(prompts["observation"]["system"], user, [images[phase]],
+                                   schema, **generation)  # fmt: skip
+        calls.append(result)
+        observation, confidence, evidence = result.data["observation"], "medium", [phase]
+    else:
+        category, phase = "no_clear_problem", "none"
+        observation = prompts["observation"]["no_clear_problem"].strip()
+        unclear = any(check["answer"] == "unclear" for check in checks.values())
+        confidence, evidence = ("low" if unclear else "high"), []
+    return {
+        "phase": phase,
+        "category": category,
+        "observation": observation,
+        "evidence_phases": evidence,
+        "drill_id": next(d["id"] for d in drills if d["category"] == category),
+        "confidence": confidence,
+        "checks": checks,
+        "consistent": True,
+        "source": f"vlm:full:{version}",
+        **_usage(calls),
     }

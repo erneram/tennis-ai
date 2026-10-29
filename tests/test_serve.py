@@ -12,3 +12,8 @@ def test_every_category_has_a_drill_and_a_known_phase():
 def test_every_phase_says_how_to_find_it_and_what_to_observe():
     for spec in base.load(serve, "criteria.yaml")["phases"].values():
         assert spec["looks_like"].strip() and spec["observe"].strip()
+
+
+def test_every_problem_has_a_check_question():
+    categories = base.load(serve, "criteria.yaml")["categories"]
+    assert all(c.get("check") for name, c in categories.items() if name != "no_clear_problem")
