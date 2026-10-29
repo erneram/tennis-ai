@@ -17,6 +17,7 @@ __pycache__/
 data/raw/
 data/processed/
 data/history/
+data/demo/
 *.mp4
 *.mov
 
