@@ -6,7 +6,7 @@ analysis:
 
 llm:
   model: mlx-community/Qwen3-VL-4B-Instruct-4bit   # Apache-2.0
-  prompt_version: v5          # strokes/<stroke>/prompts/<version>.yaml
+  prompt_version: v6          # strokes/<stroke>/prompts/<version>.yaml
   temperature: 0.2
   top_p: 0.9
   max_tokens: 600             # feedback writes "seen" before judging

@@ -126,3 +126,28 @@ def test_validate_rejects_unknown_values():
         validate({**good, "drill_id": "invented"}, schema)
     with pytest.raises(ValueError):
         validate({**good, "evidence_phases": ["warmup"]}, schema)
+
+
+def check(answer: str) -> dict:
+    return {"seen": "Arm visible.", "answer": answer}
+
+
+def test_v6_picks_the_earliest_phase_with_a_clear_no():
+    # one check per category, in criteria order: toss, trophy, leg_drive, contact x2, follow_through
+    vlm = FakeVLM(check("yes"), check("unclear"), check("no"), check("no"), check("yes"),
+                  check("yes"), {"observation": "Flexiona más las rodillas."})  # fmt: skip
+    result = base.feedback(serve, dict(zip(serve.PHASES, frames(6))), vlm, "full", "v6")
+    assert (result["phase"], result["category"], result["drill_id"]) == (
+        "leg_drive", "insufficient_knee_bend", "knee_load")  # fmt: skip
+    assert result["confidence"] == "medium" and result["evidence_phases"] == ["leg_drive"]
+    assert len(result["checks"]) == 6 and result["prompt_tokens"] == 7 * 900
+    assert len(vlm.images) == 1 and "Arm visible." in vlm.user  # the observation call
+
+
+def test_v6_without_a_clear_no_has_no_clear_problem():
+    vlm = FakeVLM(*[check("yes")] * 5, check("unclear"))
+    result = base.feedback(serve, dict(zip(serve.PHASES, frames(6))), vlm, "full", "v6")
+    assert (result["phase"], result["category"], result["drill_id"]) == (
+        "none", "no_clear_problem", "steady_serves")  # fmt: skip
+    assert result["confidence"] == "low" and result["consistent"] and not vlm.answers
+    assert "Question: Is the player balanced" in vlm.user and "$" not in vlm.user
