@@ -254,3 +254,25 @@ def test_v9_still_fails_after_two_guesses(tmp_path):
     with pytest.raises(ValueError, match="guess"):
         base.phase_frames(serve, serve_video(tmp_path, frames=16), vlm, "v9")
     assert not vlm.answers
+
+
+def test_v10_looks_closer_at_the_contact_then_the_leg_drive(tmp_path):
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
+                  phases(1, 2, 4, 5, 7, 8),  # trophy 18, leg_drive 21, contact 29
+                  {"frame": 9},  # contact among 21 to 33: 30
+                  {"frame": 6})  # leg_drive among 18, 19, 20, 21, 22, 23, ... 30: 23  # fmt: skip
+    frames, key_frames, calls = base.phase_frames(serve, serve_video(tmp_path), vlm, "v10")
+    assert sources(frames, key_frames) == [6, 10, 18, 23, 30, 33] and len(calls) == 7
+    assert "pushes up" in vlm.user
+
+
+def test_v10_judges_the_tossing_arm_on_the_leg_drive_frame():
+    images = {p: np.full((8, 8, 3), i, np.uint8) for i, p in enumerate(serve.PHASES)}
+    answers = [("yes", "no"), ("no", "yes")] + [("yes", "no")] * 4  # the tossing arm dropped
+    vlm = FakeVLM(
+        *(check(a) for pair in answers for a in pair), {"observation": "Sostén el brazo."}
+    )
+    result = base.feedback(serve, images, vlm, "full", "v10")
+    assert (result["phase"], result["category"]) == ("trophy", "toss_arm_drops_early")
+    assert result["checks"]["toss_arm_drops_early"]["phase"] == "leg_drive"
+    assert result["evidence_phases"] == ["leg_drive"] and vlm.images[0].max() == 3

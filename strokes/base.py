@@ -403,16 +403,23 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
     what its "yes" means: `check` (good position) and `problem`. v6 always found the position
     good and v7 always found the problem, so the wording decided. A check is "yes" or "no" only
     when every question agrees, otherwise "unclear".
+
+    v10 (prompts["checks"]["questions"]): the version's own wording of some categories' fields,
+    over criteria.yaml, so the earlier versions still ask what they asked. checks.frames: the
+    phase whose key frame a category is judged on, when not its own (stored in each check).
     """
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
     phases, categories = criteria["phases"], criteria["categories"]
     choose = prompts["checks"].get("choose", False)
     ask = prompts["checks"].get("ask", {"check": "good"})
+    questions = prompts["checks"].get("questions", {})
+    frames = prompts["checks"].get("frames", {})
     calls, checks = [], {}
     for category, spec in categories.items():
         if "check" not in spec:  # no_clear_problem
             continue
-        phase = spec["phase"]
+        spec = {**spec, **questions.get(category, {})}
+        phase = frames.get(category, spec["phase"])  # the key frame it is judged on
         states = spec["choose"] if choose else {"part": "", "good": "yes", "bad": "no"}
         votes, seen = {}, None
         for field, yes_means in ask.items():
@@ -429,12 +436,12 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
                 vote = {"yes": "no", "no": "yes"}.get(vote)
             votes[field], seen = vote or "unclear", seen or result.data["seen"]
         answer = votes["check"] if len(set(votes.values())) == 1 else "unclear"
-        checks[category] = {"seen": seen, "answer": answer, "votes": votes}
+        checks[category] = {"seen": seen, "answer": answer, "votes": votes, "phase": phase}
 
     found = [c for c, check in checks.items() if check["answer"] == "no"]
     if found:
         category = min(found, key=lambda c: stroke.PHASES.index(categories[c]["phase"]))
-        phase = categories[category]["phase"]
+        phase, frame = categories[category]["phase"], checks[category]["phase"]
         user = Template(prompts["observation"]["user"]).substitute(
             phase=phase,
             description=categories[category]["description"],
@@ -447,10 +454,10 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
             "required": ["observation"],
             "additionalProperties": False,
         }
-        result = vlm.generate_json(prompts["observation"]["system"], user, [images[phase]],
+        result = vlm.generate_json(prompts["observation"]["system"], user, [images[frame]],
                                    schema, **generation)  # fmt: skip
         calls.append(result)
-        observation, confidence, evidence = result.data["observation"], "medium", [phase]
+        observation, confidence, evidence = result.data["observation"], "medium", [frame]
     else:
         category, phase = "no_clear_problem", "none"
         observation = prompts["observation"]["no_clear_problem"].strip()
