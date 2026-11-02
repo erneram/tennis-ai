@@ -83,7 +83,7 @@ categories:
       part: the tossing arm (the arm that released the ball, not the racket arm)
       good: still up above the shoulder, pointing at the ball
       bad: already down at shoulder height or below
-    show: [Brazo de lanzamiento en el trofeo, arriba apuntando a la pelota, ya bajó]
+    show: [Brazo de lanzamiento con la raqueta atrás, arriba apuntando a la pelota, ya bajó]
     source: kovacs2011 (premature dropping of the tossing arm)
   insufficient_knee_bend:
     phase: leg_drive
