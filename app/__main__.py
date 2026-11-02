@@ -78,13 +78,34 @@ def feedback_markdown(feedback: dict, seconds: float, cached: bool = False) -> s
         f"**Ejercicio recomendado: {drill['name']}.** {drill['instructions']}",
         f"Confianza: {CONFIDENCE[feedback['confidence']]} · {timing}",
     ]
-    if feedback["confidence"] == "low" or not feedback["consistent"]:
+    if feedback.get("checks"):
+        lines += [certainty_markdown(feedback["checks"]), checklist_markdown(feedback["checks"])]
+    elif feedback["confidence"] == "low" or not feedback["consistent"]:
         lines.append(
             "_La evidencia es débil: toma esta observación con cautela y graba otro intento._"
         )
-    if feedback.get("checks"):
-        lines.append(checklist_markdown(feedback["checks"]))
     return "\n\n".join(lines)
+
+
+def certainty_markdown(checks: dict) -> str:
+    """How far the answer can be trusted: how many checks the model could judge, and which
+    phases it could not see."""
+    answers = [c["answer"] for c in checks.values()]
+    unclear = [p for p in STROKE.PHASES
+               if any(c["answer"] == "unclear" and judged_on(k, c) == p
+                      for k, c in checks.items())]  # fmt: skip
+    text = f"Pudimos revisar {len(answers) - answers.count('unclear')} de {len(answers)} puntos."
+    if unclear:
+        text += f" No se ve con claridad: {', '.join(phase_name(p) for p in unclear)}."
+    if answers.count("unclear") * 2 >= len(answers):
+        text += (" Con tantos puntos sin ver, la respuesta dice poco: tómala con cautela y graba "
+                 "otro intento siguiendo la guía de grabación.")  # fmt: skip
+    return f"_{text}_"
+
+
+def judged_on(category: str, check: dict) -> str:
+    """The phase whose key frame the check looked at (v10 can judge on another phase)."""
+    return check.get("phase") or CATEGORIES[category]["phase"]
 
 
 def checklist_markdown(checks: dict) -> str:
@@ -93,7 +114,7 @@ def checklist_markdown(checks: dict) -> str:
     for category, check in checks.items():
         part, good, bad = CATEGORIES[category]["show"]
         state = {"yes": good, "no": bad}.get(check["answer"], "no se ve claro")
-        phase = phase_name(CATEGORIES[category]["phase"])
+        phase = phase_name(judged_on(category, check))
         lines.append(f"- {MARKS[check['answer']][0]} **{phase}** · {part}: {state}")
     return "\n".join(lines)
 
@@ -101,7 +122,7 @@ def checklist_markdown(checks: dict) -> str:
 def phase_verdict(checks: dict, phase: str) -> str | None:
     """The verdict of one phase: "no" if a check found its problem, "yes" if all looked
     right, "unclear" otherwise; None when the phase has no checks (the stance)."""
-    answers = [c["answer"] for k, c in checks.items() if CATEGORIES[k]["phase"] == phase]
+    answers = [c["answer"] for k, c in checks.items() if judged_on(k, c) == phase]
     if not answers:
         return None
     return "no" if "no" in answers else "yes" if set(answers) == {"yes"} else "unclear"
@@ -125,8 +146,10 @@ def comparison(previous: dict | None, current: dict):
         verdict = (f"Cambió el punto principal: antes {phase_name(old['phase'])}, "
                    f"ahora {phase_name(new['phase'])}.")  # fmt: skip
 
-    # key frame of the main phase now, or of the one flagged before when now there is none
-    phase = next((p for p in (new["phase"], old["phase"]) if p in STROKE.LABELS), None)
+    # frame that shows the main point now, or the one flagged before when now there is none
+    # (the evidence frame: v10 judges some categories on another phase's key frame)
+    shown = (*new["evidence_phases"], new["phase"], *old["evidence_phases"], old["phase"])
+    phase = next((p for p in shown if p in STROKE.LABELS), None)
     if phase is None:
         return f"**{verdict}**", None
     before, after = previous["images"][phase], current["images"][phase]
