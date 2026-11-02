@@ -24,12 +24,13 @@ The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. Af
 uv run python -m app     # web app at http://127.0.0.1:7860
 ```
 
-How one video is analyzed (prompt v6):
+How one video is analyzed (prompt v8):
 
 1. OpenCV checks the video (frame rate, length) and takes 32 evenly spaced frames.
-2. The model decides whether the video can be analyzed and where the serve starts and ends. Players bounce the ball before serving, so most of a video is not the serve.
-3. OpenCV takes 32 frames again, only inside the serve, and the model picks the frame that best shows each of the six phases. Each frame has its number drawn on it.
-4. One yes / no / unclear question per category, each about the key frame of its phase only (`check` in `strokes/serve/criteria.yaml`). The earliest phase with a clear "no" is the point to improve, with its drill; with none, the answer is "no clear problem". One more call writes the observation.
+2. The model draws a box around the player on the first, middle and last frames. The box is joined, grown to the reach of a serve (toss, racket, landing), and every frame is decoded again cropped to it, so a player far from the camera fills the frame. No crop when it would keep most of the frame.
+3. The model decides whether the video can be analyzed and where the serve starts and ends. Players bounce the ball before serving, so most of a video is not the serve.
+4. OpenCV takes 32 frames again, only inside the serve, and the model picks the frame that best shows each of the six phases. Each frame has its number drawn on it.
+5. Two yes / no / unclear questions per category, each about the key frame of its phase only: one about the good position (`check` in `strokes/serve/criteria.yaml`) and one about the problem (`problem`). A check counts only when both agree; otherwise it is "unclear". The earliest phase with an agreed problem is the point to improve, with its drill; with none, the answer is "no clear problem". One more call writes the observation.
 
 Every answer is JSON constrained by a schema, so the model can only choose known frames, phases, categories, and drills. Why each step exists is in the header of each prompt version, `strokes/serve/prompts/v*.yaml`.
 

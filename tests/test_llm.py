@@ -174,16 +174,25 @@ def test_reach_grows_the_player_box_to_the_stroke():
     assert base.reach([0, 0, 10, 10], {"up": 1, "down": 0, "side": 1}, 1920, 1080) is None
 
 
-def test_v8_crops_around_the_player_before_looking_for_phases(tmp_path):
+def test_v8_crops_around_the_player_before_looking_for_the_serve(tmp_path):
     path = tmp_path / "serve.mp4"
     video.write_video(path, [np.full((64, 96, 3), i, np.uint8) for i in range(40)], fps=30)
-    vlm = FakeVLM({"retake": "none", "start": 3, "end": 6}, {"bbox_2d": [400, 500, 600, 1000]},
+    player = {"bbox_2d": [450, 750, 550, 1000]}  # 16 px tall, on the first, middle, last frames
+    vlm = FakeVLM(player, player, player, {"retake": "none", "start": 3, "end": 6},
                   phases(1, 2, 4, 5, 7, 8))  # fmt: skip
     frames, _, calls = base.phase_frames(serve, sample(path, frames=8), vlm, "v8")
-    # 32 px tall: grown 32 px up (to the top) and 32 px to each side: x 6 to 90 of 96
-    assert frames.box == pytest.approx((0.4 - 1 / 3, 0.0, 0.6 + 1 / 3, 1.0))
-    assert frames.images[0].shape[:2] == (64, 84) and len(calls) == 3
+    # grown 16 px up and to each side, 2.4 px down (cut at the bottom): x 27 to 69, y 32 to 64
+    assert frames.box == pytest.approx((0.45 - 1 / 6, 0.5, 0.55 + 1 / 6, 1.0))
+    assert frames.images[0].shape[:2] == (32, 42) and len(calls) == 5
     assert frames.indices[0] == 6 and frames.indices[-1] == 33 and len(frames.images) == 8
+
+
+def test_v8_does_not_crop_when_the_box_keeps_most_of_the_frame():
+    # one wrong box (the whole frame) makes the joined box too large: no crop
+    vlm = FakeVLM({"bbox_2d": [450, 750, 550, 1000]}, {"bbox_2d": [0, 0, 1000, 1000]},
+                  {"bbox_2d": [450, 750, 550, 1000]})  # fmt: skip
+    box, results = base.find_player(serve, frames(32), vlm, "v8")
+    assert box is None and len(results) == 3
 
 
 def test_v8_keeps_a_check_only_when_both_questions_agree():

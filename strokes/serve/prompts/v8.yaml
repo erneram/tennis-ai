@@ -1,11 +1,16 @@
 # Prompt version v8: Project 3, language model only.
 # Changes from v6, both from the runs of 2026-11-01 (experiments/iterations.csv):
-# 1. Call "player" (new), between the window and the phases: the model gives the box of the
-#    player who serves (bbox_2d, Qwen-VL's own format) on the first frame of the serve. The
-#    code grows it by `reach` and decodes every frame again, cropped. With JC far from the
-#    camera, the phase frames were six frames in a row on 8 of 20 videos; cropped by hand, on
-#    1 of 20. The hand crop needed a camera on a tripod (motion against a still background);
-#    the model's box does not.
+# 1. Call "player" (new), before the window: the model gives the box of the player who serves
+#    (bbox_2d, Qwen-VL's own format) on the first, middle and last frames. The code joins the
+#    three, grows the box by `reach` and decodes every frame again, cropped; no crop when it
+#    would keep more than `max_share` of the frame. With JC far from the camera, the phase
+#    frames were six frames in a row on 8 of 20 videos; cropped by hand, on 1 of 20. The hand
+#    crop needed a camera on a tripod (motion against a still background); the model's box
+#    does not.
+#    First draft (commit 2e16ad1): one box on the first frame of the window, after the window.
+#    It failed on 10 of 20 JC videos and 3 of 11 professionals: on the full frame the window
+#    itself was wrong (jc-s9 ran to the end of the video), and a crop keeping 84 % of a
+#    professional's frame was enough to turn its phases into a guess.
 # 2. Checks: every category is asked twice, about the good position (`check`) and about the
 #    problem (`problem`, criteria 0.8). With v6 the answer was always "good", with v7 always
 #    "problem": the wording decided, not the frame. An answer counts only when both agree;
@@ -51,10 +56,12 @@ window:
 
     Reply with the JSON object only.
 
-# Call 1b: where the player is, on the first frame of the serve. reach: how far the box
+# Call 0: where the player is, on the first, middle and last frames. reach: how far the box
 # grows, as shares of the player's height, so the toss, the racket and the landing fit.
+# max_share: no crop when the box keeps more than this share of the frame.
 player:
   reach: {up: 1.0, down: 0.15, side: 1.0}
+  max_share: 0.7
   system: |
     You find the tennis player who is about to serve in ONE frame. Give the box around that
     player's whole body, from the top of the head to the feet, including the racket, as

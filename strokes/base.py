@@ -14,7 +14,7 @@ Only the language model looks at the video:
    From v6 on, one yes / no / unclear question per category, each about one key frame; from v7
    on, a choice between the good and the bad state instead of yes / no; from v8 on, the
    question about the good position and the one about the problem, kept only when they agree.
-phase_frames runs 1 and 2; from v8 on, between them, find_player crops every frame around the
+phase_frames runs 1 and 2; from v8 on, before them, find_player crops every frame around the
 player.
 """
 
@@ -160,18 +160,33 @@ def reach(bbox: list[int], reach: dict, width: int, height: int):
             min(x2 + side, 1.0), min(y2 + reach["down"] * tall / height, 1.0))  # fmt: skip
 
 
-def find_player(stroke: Stroke, image: np.ndarray, vlm, version: str, **generation):
-    """Model call (v8 on), on the first frame of the stroke's window: the box around the player
-    who serves, grown to the stroke's reach. Returns (box or None, Generation).
+def find_player(stroke: Stroke, images: list[np.ndarray], vlm, version: str, **generation):
+    """Model calls (v8 on), on the first, middle and last frames of the video: the box around
+    the player who serves in each, joined and grown to the stroke's reach. Returns (box or None,
+    [Generation]).
 
     With the player far from the camera, the phase frames were six frames in a row on 8 of 20
-    videos; cropped by hand, on 1 of 20.
+    videos; cropped by hand, on 1 of 20. The box is None when it keeps more than `max_share` of
+    the frame: such a crop gains nothing, and even a small change of the frames can turn the
+    phases into a guess. A wrong box on one frame makes the joined box large, so it is dropped.
     """
     prompts = load(stroke, f"prompts/{version}.yaml")["player"]
-    result = vlm.generate_json(prompts["system"], prompts["user"], [image], player_schema(),
-                               **generation)  # fmt: skip
-    height, width = image.shape[:2]
-    return reach(result.data["bbox_2d"], prompts["reach"], width, height), result
+    results = [
+        vlm.generate_json(
+            prompts["system"], prompts["user"], [image], player_schema(), **generation
+        )
+        for image in (images[0], images[len(images) // 2], images[-1])
+    ]
+    boxes = [r.data["bbox_2d"] for r in results]
+    joined = [
+        *(min(b[i] for b in boxes) for i in (0, 1)),
+        *(max(b[i] for b in boxes) for i in (2, 3)),
+    ]
+    height, width = images[0].shape[:2]
+    box = reach(joined, prompts["reach"], width, height)
+    if box is not None and (box[2] - box[0]) * (box[3] - box[1]) > prompts["max_share"]:
+        box = None
+    return box, results
 
 
 def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation):
@@ -184,15 +199,15 @@ def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation
     """
     prompts = load(stroke, f"prompts/{version}.yaml")
     calls = []
-    if "window" in prompts:
+    if "player" in prompts:  # before the window: on the full frame, the window was wrong
+        box, results = find_player(stroke, frames.images, vlm, version, **generation)
+        calls += results
+        if box is not None:
+            frames = zoom(frames, box)
+    if "window" in prompts:  # resample keeps the crop
         first, last, result = find_window(stroke, frames.images, vlm, version, **generation)
         calls.append(result)
         frames = resample(frames, frames.indices[first], frames.indices[last])
-    if "player" in prompts:
-        box, result = find_player(stroke, frames.images[0], vlm, version, **generation)
-        calls.append(result)
-        if box is not None:
-            frames = zoom(frames, box)
     key_frames, result = locate_phases(stroke, frames.images, vlm, version, **generation)
     calls.append(result)
     if "window" in prompts and all(b - a == 1 for a, b in pairwise(key_frames.values())):
