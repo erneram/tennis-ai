@@ -10,6 +10,7 @@ Q1 = v10's two yes/no questions; Q2 = one neutral question: where is the tossing
 saved in data/processed/probe/v10/.
 
     uv run python -m experiments.probe_toss_arm offsets [model] [version] [seconds...]
+    uv run python -m experiments.probe_toss_arm pair first [second]
 
 offsets (v13): the frames a fixed time before the contact frame of the v12 runs, cropped as
 the system crops them, asked the neutral question of `version` (default v12) on the upper
@@ -23,11 +24,17 @@ the drop. One video frame either side of 0.1 s (offsets ... v12 0.117 0.083), th
 changes: at 0.117 s every serve "above the head" (1 unclear); at 0.083 s JC "at shoulder height
 or below" on 8 of 21, but also pro03_s04. A vote of the three frames finds 3 JC serves: the
 detection depends on one frame.
+
+pair: the upper bodies at 0.3 and 0.1 s before contact shown together, "did the tossing hand
+come down": "came down" on 19 of 21 JC serves, but also on 4 of 11 professional ones
+(pro02_s01, pro03_s02, s03, s04), who start tucking the arm in. With 0.2 and 0.1 s: JC 9,
+professionals 4. The model sees the arm move, not whether it moved too early: not adopted.
 """
 
 import collections
 import json
 import sys
+from pathlib import Path
 from string import Template
 
 import cv2
@@ -132,8 +139,47 @@ def offsets(model: str, version: str = "v12", *only: str) -> None:
         print(key, dict(counts))
 
 
+PAIR_SYSTEM = (
+    "You look at TWO frames of ONE tennis serve filmed from the side, in time order: the first is\n"
+    "earlier, the second just before the racket swings up to hit the ball. Answer ONE question\n"
+    "about how a body part changed between them.\n"
+    'First write "seen": one short sentence, in English, describing only what the two frames show\n'
+    "about the body part in the question.\n"
+    'Then "answer": the option that matches, or "unclear" if you cannot tell.'
+)
+PAIR = {"stayed up, above the head": "yes", "came down to shoulder height or below": "no"}
+
+
+def pair(first: str, second: str = "0.1") -> None:
+    """pair: the upper bodies saved by `offsets ... v12` at `first` and `second` seconds before
+    contact, shown together: did the tossing hand come down between them?"""
+    vlm = VLM(CONFIG["llm"]["model"])
+    crops = ROOT / "data" / "processed" / "probe" / "offsets" / "Qwen3-VL-4B-Instruct-4bit-v12"
+    options = [*PAIR, "unclear"]
+    user = ("Question: Between the first and the second frame, what did the tossing hand (the "
+            "empty hand, not the hand holding the racket) do?\n"
+            f"Options: {'; '.join(options)}\n\nReply with the JSON object only.")  # fmt: skip
+    tally = collections.defaultdict(collections.Counter)
+    for run in V12_RUNS:
+        for line in (ROOT / "eval" / "serve" / "runs" / f"{run}.jsonl").open():
+            stem = Path(json.loads(line)["video"]).stem
+            images = [cv2.imread(str(crops / f"{stem}.{s}.jpg")) for s in (first, second)]
+            if any(image is None for image in images):
+                continue
+            hand = vlm.generate_json(PAIR_SYSTEM, user, images, base.check_schema(tuple(options)),
+                                     **GENERATION).data  # fmt: skip
+            answer = PAIR.get(hand["answer"], "unclear")
+            group = "pro" if stem.startswith("pro") else "jc"
+            tally[f"-{first}s/-{second}s {group} {'dev' if stem in DEV else 'test'}"][answer] += 1
+            print(json.dumps({"video": stem, "answer": answer, "seen": hand["seen"]}), flush=True)
+    for key, counts in sorted(tally.items()):
+        print(key, dict(counts))
+
+
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["offsets"]:
+    if sys.argv[1:2] == ["pair"]:
+        pair(*sys.argv[2:])
+    elif sys.argv[1:2] == ["offsets"]:
         offsets(*(sys.argv[2:] or [CONFIG["llm"]["model"]]))
     else:
         main()
