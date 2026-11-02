@@ -8,12 +8,14 @@ Project 3 of CC3092 Deep Learning y Sistemas Inteligentes (UVG). Only a vision-l
 
 - macOS on Apple Silicon (developed on a Mac M5 Pro, 24 GB).
 - [uv](https://docs.astral.sh/uv/). It installs Python 3.12 automatically if needed.
+- [Node.js](https://nodejs.org/) 20 or later, only to build the web page once.
 
 ## Installation
 
 ```bash
 uv sync                  # install
 cp .env.example .env     # optional settings
+cd web && npm install && npm run build && cd ..   # build the web page into web/dist
 ```
 
 The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. After that, everything runs offline on the Mac.
@@ -21,8 +23,10 @@ The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. Af
 ## Usage
 
 ```bash
-uv run python -m app     # web app at http://127.0.0.1:7860
+uv run python -m app.api     # web app at http://127.0.0.1:7860
 ```
+
+The page is a React app in `web/` (components from [The Gridcn](https://thegridcn.com), how to build and change it in [web/README.md](web/README.md)), served with its API by `app/api.py`. `uv run python -m app` starts the earlier Gradio version instead, kept as a fallback: it gives the same answers.
 
 How one video is analyzed (prompt v18):
 
@@ -34,26 +38,30 @@ How one video is analyzed (prompt v18):
 
 Every answer is JSON constrained by a schema, so the model can only choose known frames, phases, categories, and drills. Why each step exists is in the header of each prompt version, `strokes/serve/prompts/v*.yaml`.
 
-In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish). The app shows:
+In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish), or pick a demo video, and press "Analizar saque". Progress is shown in four numbered steps. The app shows:
 
+- the phase with the main opportunity for improvement (and the phase whose frame shows it), the observation and a drill,
+- how far to trust it ("Qué tan seguro está"): the confidence and how many checks the model could judge,
+- the key frame of each of the six phases with its verdict in words and color: se ve bien (green), a mejorar (red), no se ve claro (grey), sin revisar; "★ Aquí" marks the frame the observation talks about. A frame opens large when tapped,
 - the video in slow motion with the current phase,
-- the phase with the main opportunity for improvement, the frames that support it (★), and a drill,
-- the key frame of each phase with a green (looks right), red (to improve) or grey (unclear) border, and the list of every check with what the model saw,
-- a comparison with the previous attempt.
+- every check with what the model saw ("Qué revisamos en cada fase"),
+- from the second attempt on, a comparison with the previous attempt.
 
-"Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`.
+![The app after analyzing a serve](docs/images/app/result.jpg)
 
-If the video cannot be analyzed (wrong angle, player out of frame, too dark, too short), the app asks for a new recording instead of giving feedback. If the model gives no valid answer, the app says so and asks to try again.
+"Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`. "Empezar de nuevo" clears the video, the answers and the session for the next player.
+
+If the video cannot be analyzed (wrong angle, player out of frame, too dark, too short or too long, low frame rate, not a video), the app shows the reason and the recording tips instead of feedback. If the model gives no valid answer, the app says so and asks to try again. The page bundles its fonts and loads nothing from the internet, so it works offline.
 
 ### Demo mode (fair)
 
 One analysis takes 15 to 45 s on the Mac. For the fair, put the demo videos in `data/demo/` (only players with `consent_image` = `yes`; include one bad recording to show the request for a new one) and run:
 
 ```bash
-uv run python -m app --demo
+uv run python -m app.api --demo
 ```
 
-At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear as examples under the upload box. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
+At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
 
 ## Evaluation
 
@@ -100,7 +108,7 @@ Settings that change results (number of frames, language model, prompt version, 
 
 ## Privacy
 
-- Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1` and Gradio analytics are disabled.
+- Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1`, and the Gradio fallback has its analytics disabled.
 
 ## Tests
 
@@ -114,7 +122,8 @@ uv run pytest
 configs/      shared settings (frames, model, generation parameters)
 core/         code shared by all analyses: video, frames, llm, history
 strokes/      one module per stroke; serve/ is the current prototype
-app/          user interface
+app/          API and shared analysis (api.py, service.py), Gradio fallback (__main__.py)
+web/          web page (React), served by app/api.py
 data/         videos (not in Git) and annotations, see data/README.md
 eval/         evaluation sets and metric scripts, per stroke
 experiments/  iteration log (iterations.csv)
