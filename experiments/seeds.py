@@ -16,6 +16,7 @@ Result (2026-11-02), macro-F1 for seeds 0 to 3:
 - v19: 0.366, 0.412, 0.264, 0.233; mean 0.319 ± 0.084; errors 0, 0, 1, 1.
 - v20: 0.801, 0.805, 0.542, 0.459; mean 0.652 ± 0.178; errors 0, 0, 1, 1.
 - v21: 0.930, 0.899, 0.523, 0.502; mean 0.714 ± 0.233; errors 0, 0, 1, 1.
+- v22: 0.930, 0.899, 0.770, 0.770; mean 0.842 ± 0.084; errors 0, 0, 0, 0.
 On seed 1 the contact frame moved 1 to 18 source frames from seed 0, and the tossing-arm answer
 flipped on some identical frames: one seed is not enough to compare two versions.
 """
@@ -37,6 +38,10 @@ SEED_0 = {  # before --seed: the config's seed, 0
     # v18 makes exactly v17's calls
     "v18": ["20261102-023129-full", "20261102-023612-full"],
 }
+REPLACED = {  # v22 only adds a fourth try after three guesses, so it makes v21's calls except on
+    # the videos where v21 guessed three times: v21's runs, with those videos run again
+    "v22": ("v21", {2: ["20261102-145443-full"], 3: ["20261102-145523-full"]}),
+}
 NOTE = re.compile(r"full: (v\d+), seed (\d+), (uncropped JC videos|professionals)$")
 
 
@@ -46,7 +51,12 @@ def runs() -> dict[tuple[str, int], list[str]]:
         match = NOTE.match(row["change"])
         if match and row["vlm_model"].endswith("4B-Instruct-4bit"):
             found.setdefault((match[1], int(match[2])), []).append(row["id"])
-    return {key: names for key, names in found.items() if len(names) == 2}
+    found = {key: names for key, names in found.items() if len(names) == 2}
+    for version, (base, again) in REPLACED.items():
+        for (other, seed), names in list(found.items()):
+            if other == base:
+                found[(version, seed)] = names + again.get(seed, [])
+    return found
 
 
 def main() -> None:
@@ -56,13 +66,14 @@ def main() -> None:
         row["valid"] = row["valid"].strip() == "1"
     scores = {}
     for (version, seed), names in sorted(runs().items()):
-        records = []
+        records = {}  # by video: a later run of the same video replaces it
         for name in names:
             for line in (ROOT / "eval" / "serve" / "runs" / f"{name}.jsonl").open():
                 record = json.loads(line)
                 record["label"] = labels.get(Path(record["video"]).name)
                 if record["label"]:
-                    records.append(record)
+                    records[record["video"]] = record
+        records = list(records.values())
         found = [
             (Path(r["video"]).stem, (r.get("prediction") or {}).get("category")) for r in records
         ]
