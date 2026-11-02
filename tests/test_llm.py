@@ -275,6 +275,14 @@ def test_v13_places_the_leg_drive_a_tenth_of_a_second_before_contact(tmp_path):
     assert frames.indices == sorted(frames.indices) and not vlm.answers
 
 
+def test_v17_places_the_landing_after_contact_or_at_the_end_of_the_video(tmp_path):
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
+                  phases(1, 2, 4, 5, 7, 8), {"frame": 9})  # contact 30  # fmt: skip
+    frames, key_frames, _ = base.phase_frames(serve, serve_video(tmp_path), vlm, "v17")
+    # 0.6 s after contact is frame 48: the video ends at frame 39
+    assert sources(frames, key_frames) == [6, 10, 18, 27, 30, 39]
+
+
 def test_v10_judges_the_tossing_arm_on_the_leg_drive_frame():
     images = {p: np.full((8, 8, 3), i, np.uint8) for i, p in enumerate(serve.PHASES)}
     answers = [("yes", "no"), ("no", "yes")] + [("yes", "no")] * 4  # the tossing arm dropped
