@@ -1,0 +1,181 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* Fonts are bundled (offline): Rajdhani for UI, Orbitron for the wordmark, Geist Mono for data. */
+@import "@fontsource/rajdhani/latin-500.css";
+@import "@fontsource/rajdhani/latin-600.css";
+@import "@fontsource/rajdhani/latin-700.css";
+@import "@fontsource/orbitron/latin-700.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
+/* Hover only where a real pointer can hover. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --font-sans: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", "Rajdhani", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-ink: var(--warning-ink);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* "Tron claro": Tron cyan on a light surface. Contrast (WCAG) checked against white:
+   ink 5.97:1, muted-foreground 7.1:1, destructive 5.2:1, success 5.7:1, warning-ink 6.2:1. */
+:root {
+  --background: oklch(0.985 0.005 200);
+  --foreground: oklch(0.2 0.03 220);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.75 0.18 195);
+  --primary-foreground: oklch(0.15 0.02 220);
+  --ink: oklch(0.48 0.11 205); /* cyan for text, labels, links, focus */
+  --secondary: oklch(0.965 0.01 200);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.965 0.01 200);
+  --muted-foreground: oklch(0.45 0.02 220);
+  --accent: oklch(0.94 0.03 200);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.56 0.21 27);
+  --success: oklch(0.5 0.13 150);
+  --warning: oklch(0.85 0.12 85);
+  --warning-foreground: oklch(0.25 0.05 70);
+  --warning-ink: oklch(0.5 0.11 70);
+  --border: oklch(0.86 0.05 195);
+  --input: oklch(0.72 0.05 205);
+  --ring: var(--ink);
+  --radius: 0.375rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-size: 1.0625rem;
+    font-weight: 500;
+    line-height: 1.5;
+    /* 20px HUD grid, barely there. */
+    background-image:
+      linear-gradient(color-mix(in oklch, var(--ink) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--ink) 5%, transparent) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+  video {
+    background: var(--foreground);
+  }
+}
+
+/* Uppercase tracked micro-label (HUD voice). 12px minimum. */
+@utility label-hud {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+/* Press feedback for every button. */
+@utility press {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out-quint);
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility animate-enter {
+  animation: enter 220ms var(--ease-out-quint) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation-name: fade;
+  }
+  .press:active:not(:disabled) {
+    transform: none;
+  }
+  .animate-ping,
+  .animate-pulse,
+  .motion-loop {
+    animation: none !important;
+  }
+  [data-slot="dialog-content"] {
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+  }
+}
+
+/* Stepper connector pulse (moved here from Gridcn's styled-jsx block). */
+@keyframes stepperPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
