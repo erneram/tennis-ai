@@ -246,10 +246,12 @@ def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation
         frames = resample(frames, frames.indices[first], frames.indices[last])
     key_frames, result = locate_phases(stroke, frames.images, vlm, version, **generation)
     calls.append(result)
-    step = prompts["phases"].get("retry_step")  # v9: a second try on every step-th frame
-    if step and "window" in prompts and _guess(key_frames):
+    steps = prompts["phases"].get("retry_step", [])  # v9: a second try on every step-th frame
+    for step in [steps] if isinstance(steps, int) else steps:  # v18: a list, one try each
+        if "window" not in prompts or not _guess(key_frames):
+            break
         # with the seed fixed, the same frames give the same guess: the player could never
-        # get an answer, so the second try sees other frames
+        # get an answer, so the next try sees other frames
         fewer, result = locate_phases(stroke, frames.images[::step], vlm, version, **generation)
         calls.append(result)
         if not _guess(fewer):

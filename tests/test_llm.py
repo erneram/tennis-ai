@@ -256,6 +256,17 @@ def test_v9_still_fails_after_two_guesses(tmp_path):
     assert not vlm.answers
 
 
+def test_v18_tries_a_third_time_on_every_third_frame(tmp_path):
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 9},
+                  phases(1, 2, 3, 4, 5, 6), phases(1, 2, 3, 4, 5, 6),  # two guesses
+                  phases(1, 1, 2, 3, 5, 6),  # on every 3rd of the 16 frames
+                  {"frame": 1})  # fmt: skip
+    frames, key_frames, calls = base.phase_frames(serve, serve_video(tmp_path, frames=16), vlm,
+                                                  "v18")  # fmt: skip
+    # contact refined to source 11; leg drive 0.1 s before it, landing 0.6 s after
+    assert sources(frames, key_frames) == [3, 3, 7, 8, 11, 29] and len(calls) == 8
+
+
 def test_v10_looks_closer_at_the_contact_then_the_leg_drive(tmp_path):
     vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
                   phases(1, 2, 4, 5, 7, 8),  # trophy 18, leg_drive 21, contact 29
