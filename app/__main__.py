@@ -33,6 +33,13 @@ GENERATION = {k: CONFIG["llm"][k] for k in ("temperature", "top_p", "max_tokens"
 CONFIDENCE = {"high": "alta", "medium": "media", "low": "baja"}
 OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="servelab-"))
 CRITERIA_VERSION = base.load(STROKE, "criteria.yaml")["version"]
+CATEGORIES = base.load(STROKE, "criteria.yaml")["categories"]
+# Answer of a check (v6 on): icon in the checklist and border color (BGR) of the key frame
+MARKS = {
+    "yes": ("✅", (80, 175, 76)),
+    "no": ("❌", (54, 67, 244)),
+    "unclear": ("❔", (158, 158, 158)),
+}
 
 # Demo mode (uv run python -m app --demo): the videos in data/demo/ are analyzed once at start
 # and their answers saved in data/processed/demo_cache/, so at the fair they show at once.
@@ -75,7 +82,36 @@ def feedback_markdown(feedback: dict, seconds: float, cached: bool = False) -> s
         lines.append(
             "_La evidencia es débil: toma esta observación con cautela y graba otro intento._"
         )
+    if feedback.get("checks"):
+        lines.append(checklist_markdown(feedback["checks"]))
     return "\n\n".join(lines)
+
+
+def checklist_markdown(checks: dict) -> str:
+    """One line per check: phase, body part and the state the model saw."""
+    lines = ["#### Qué revisamos en cada fase"]
+    for category, check in checks.items():
+        part, good, bad = CATEGORIES[category]["show"]
+        state = {"yes": good, "no": bad}.get(check["answer"], "no se ve claro")
+        phase = phase_name(CATEGORIES[category]["phase"])
+        lines.append(f"- {MARKS[check['answer']][0]} **{phase}** · {part}: {state}")
+    return "\n".join(lines)
+
+
+def phase_verdict(checks: dict, phase: str) -> str | None:
+    """The verdict of one phase: "no" if a check found its problem, "yes" if all looked
+    right, "unclear" otherwise; None when the phase has no checks (the stance)."""
+    answers = [c["answer"] for k, c in checks.items() if CATEGORIES[k]["phase"] == phase]
+    if not answers:
+        return None
+    return "no" if "no" in answers else "yes" if set(answers) == {"yes"} else "unclear"
+
+
+def framed(image: np.ndarray, verdict: str | None) -> np.ndarray:
+    """Key frame with a border colored by the verdict of its phase."""
+    if verdict is None:
+        return image
+    return cv2.copyMakeBorder(image, *[14] * 4, cv2.BORDER_CONSTANT, value=MARKS[verdict][1])
 
 
 def comparison(previous: dict | None, current: dict):
@@ -179,9 +215,13 @@ def analyze_attempt(video_path, session, progress=gr.Progress()):  # noqa: B008 
 
     feedback, images = result["feedback"], result["images"]
     evidence = set(feedback["evidence_phases"])
+    verdicts = {p: phase_verdict(feedback.get("checks", {}), p) for p in STROKE.PHASES}
     gallery = [
-        (rgb(images[p]), STROKE.LABELS[p] + (" ★" if p in evidence else "")) for p in STROKE.PHASES
-    ]
+        (rgb(framed(images[p], verdicts[p])),
+         " ".join([STROKE.LABELS[p], MARKS[verdicts[p]][0] if verdicts[p] else "",
+                   "★" if p in evidence else ""]).strip())
+        for p in STROKE.PHASES
+    ]  # fmt: skip
     current = {"feedback": feedback, "images": images, "record": history.attempt(feedback)}
     compare_text, compare_image = comparison(session[-1] if session else None, current)
     return (
@@ -245,7 +285,11 @@ with gr.Blocks(title="Serve Lab", analytics_enabled=False, delete_cache=(3600, 3
             status = gr.Markdown()
             feedback_out = gr.Markdown()
             slow_out = gr.Video(label="Cámara lenta con las fases", interactive=False)
-    gallery_out = gr.Gallery(label="Cuadros clave (★ = evidencia de la observación)", columns=6)
+    gallery_out = gr.Gallery(
+        label="Cuadros clave: verde = bien, rojo = a mejorar, gris = no se ve claro "
+        "(★ = evidencia de la observación)",
+        columns=6,
+    )
     comparison_text = gr.Markdown()
     comparison_image = gr.Image(label="Intento anterior y actual", interactive=False)
     summary_out = gr.Markdown()

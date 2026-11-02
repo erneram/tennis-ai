@@ -37,6 +37,7 @@ In the app, upload one serve recorded from the side, following [docs/grabacion.m
 
 - the video in slow motion with the current phase,
 - the phase with the main opportunity for improvement, the frames that support it (★), and a drill,
+- the key frame of each phase with a green (looks right), red (to improve) or grey (unclear) border, and the list of every check with what the model saw,
 - a comparison with the previous attempt.
 
 "Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`.
