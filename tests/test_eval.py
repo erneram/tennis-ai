@@ -47,3 +47,19 @@ def test_kappa():
     assert kappa(["a", "a", "b", "b"], ["a", "b", "a", "b"]) == 0.0  # chance level
     assert kappa(["a", "a", "a", "b"], ["a", "a", "b", "b"]) == pytest.approx(0.5)
     assert kappa(["a"], ["a"]) == 1.0 and math.isnan(kappa([], []))
+
+
+def test_compute_without_labels_keeps_only_operational_metrics():
+    answer = {"category": "no_clear_problem", "consistent": True}
+    flagged = {"category": "toss_arm_bent", "consistent": True}
+    records = [{"label": None, "valid": True, "prediction": p, "seconds": 20.0, "tokens": 9000,
+                "mem_gb": 5.1} for p in (answer, flagged)]  # fmt: skip
+    records.append({"label": None, "valid": True, "error": "guess", "seconds": 9.0})
+    metrics = compute(records)
+    assert (metrics["n"], metrics["answered"], metrics["flagged"]) == (3, 2, 1)
+    assert math.isnan(metrics["phase_acc"]) and math.isnan(metrics["retake_acc"])
+    assert metrics["latency_s"] == 20.0 and metrics["tokens"] == 9000
+    assert metrics["hallucination_rate"] == 0.0
+    for r in records[:2]:  # category chosen by code: consistent by construction, no proxy
+        r["prediction"]["checks"] = {}
+    assert math.isnan(compute(records)["hallucination_rate"])

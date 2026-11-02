@@ -4,9 +4,11 @@
     uv run python -m eval.run_eval --variant simple   # baseline: same frames, simple prompt
     uv run python -m eval.run_eval --model mlx-community/Qwen3-VL-2B-Instruct-4bit  # baseline
     uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
+    uv run python -m eval.run_eval --videos data/raw/jc-s*.mp4 --note "..."  # no labels yet
 
 Reads eval/<stroke>/labels.csv (format and labeling guide in data/README.md) and the videos in
 data/raw/. --agreement compares the two annotators' independent labels before they are merged.
+--videos runs on videos without labels: only the answers and the operational metrics.
 Writes one JSON line per video to eval/<stroke>/runs/<run>.jsonl and appends the metrics
 to experiments/iterations.csv.
 """
@@ -74,13 +76,16 @@ def compute(records: list[dict]) -> dict[str, float]:
     """Quality and operational metrics. A video wrongly rejected counts as a wrong answer.
 
     hallucination_rate is an automatic proxy: answers whose category belongs to another phase.
-    Whether each observation matches its frames is checked by hand in the written report.
+    It is nan when the code chose the category (checks, prompt v6 on): those answers are
+    consistent by construction. Whether each observation matches its frames is checked by hand
+    in the written report.
     """
 
     def predicted(record, key):
         return (record.get("prediction") or {}).get(key, "none")
 
-    valid = [r for r in records if r["label"]["valid"]]
+    labeled = [r for r in records if r["label"]]  # --videos: none, quality metrics are nan
+    valid = [r for r in labeled if r["label"]["valid"]]
     answered = [r for r in records if r.get("prediction")]
     with_drill = [r for r in valid if r["label"]["drill_id"]]
     precision, recall, f1 = macro_prf(
@@ -92,13 +97,17 @@ def compute(records: list[dict]) -> dict[str, float]:
 
     return {
         "n": len(records),
-        "retake_acc": mean([r["valid"] == r["label"]["valid"] for r in records]),
+        "answered": len(answered),
+        "flagged": sum(r["prediction"]["category"] != "no_clear_problem" for r in answered),
+        "retake_acc": mean([r["valid"] == r["label"]["valid"] for r in labeled]),
         "phase_acc": mean([predicted(r, "phase") == r["label"]["phase"] for r in valid]),
         "category_precision": round(precision, 3),
         "category_recall": round(recall, 3),
         "category_f1": round(f1, 3),
         "drill_acc": mean([predicted(r, "drill_id") == r["label"]["drill_id"] for r in with_drill]),
-        "hallucination_rate": mean([not r["prediction"]["consistent"] for r in answered]),
+        "hallucination_rate": mean(
+            [not r["prediction"]["consistent"] for r in answered if "checks" not in r["prediction"]]
+        ),
         "latency_s": mean([r["seconds"] for r in answered]),
         "tokens": mean([r["tokens"] for r in answered]),
         "mem_gb": max((r["mem_gb"] for r in answered), default=float("nan")),
@@ -109,9 +118,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--variant", choices=["full", "simple"], default="full")
     parser.add_argument("--model", help="default: llm.model in configs/default.yaml")
+    parser.add_argument("--prompt", help="default: llm.prompt_version in configs/default.yaml")
     parser.add_argument("--stroke", default="serve")
     parser.add_argument("--labels", type=Path, help="default: eval/<stroke>/labels.csv")
     parser.add_argument("--note", default="", help="what changed in this iteration")
+    parser.add_argument("--videos", nargs="+", type=Path,
+                        help="run on these videos without labels (no quality metrics)")  # fmt: skip
     parser.add_argument("--agreement", nargs=2, type=Path, metavar=("A", "B"),
                         help="compare two annotators' label files and exit")  # fmt: skip
     args = parser.parse_args()
@@ -120,30 +132,38 @@ def main() -> None:
 
     config = load_config()
     stroke = base.get(args.stroke)
-    labels = args.labels or ROOT / "eval" / args.stroke / "labels.csv"
-    with open(labels, newline="") as file:
-        rows = list(csv.DictReader(file))
-    if not rows:
-        raise SystemExit(f"{labels} has no rows yet: add the agreed labels first (data/README.md).")
+    if args.videos:
+        rows = [{"video": str(path), "player": "", "path": path, "label": None}
+                for path in args.videos]  # fmt: skip
+    else:
+        labels = args.labels or ROOT / "eval" / args.stroke / "labels.csv"
+        with open(labels, newline="") as file:
+            rows = list(csv.DictReader(file))
+        if not rows:
+            raise SystemExit(
+                f"{labels} has no rows yet: add the agreed labels first (data/README.md)."
+            )
+        for row in rows:
+            row["path"] = ROOT / "data" / "raw" / row["video"]
+            row["label"] = {**row, "valid": row["valid"].strip() == "1"}
 
-    llm = {**config["llm"], "model": args.model or config["llm"]["model"]}
+    llm = {**config["llm"], "model": args.model or config["llm"]["model"],
+           "prompt_version": args.prompt or config["llm"]["prompt_version"]}  # fmt: skip
     version = llm["prompt_version"]
     generation = {k: llm[k] for k in ("temperature", "top_p", "max_tokens", "seed")}
     vlm = VLM(llm["model"])
 
     records = []
     for row in rows:
-        record = {
-            "video": row["video"],
-            "player": row["player"],
-            "label": {**row, "valid": row["valid"].strip() == "1"},
-        }
+        record = {"video": row["video"], "player": row["player"],
+                  "label": row["label"] and {k: v for k, v in row["label"].items() if k != "path"}}  # fmt: skip
         start = time.perf_counter()
         try:
-            frames = sample(ROOT / "data" / "raw" / row["video"], **config["analysis"])
+            frames = sample(row["path"], **config["analysis"])
             frames, key_frames, calls = base.phase_frames(stroke, frames, vlm, version,
                                                           **generation)  # fmt: skip
-            record["valid"], record["key_frames"] = True, key_frames
+            record["valid"] = True
+            record["key_frames"] = {p: frames.indices[i] for p, i in key_frames.items()}  # source
             images = {phase: frames.images[i] for phase, i in key_frames.items()}
             prediction = base.feedback(stroke, images, vlm, args.variant, version, **generation)
             record["prediction"] = prediction
@@ -175,8 +195,9 @@ def main() -> None:
             config["analysis"]["frames"], llm["model"], version, llm["temperature"],
             metrics["phase_acc"], metrics["category_f1"], metrics["hallucination_rate"],
             metrics["retake_acc"], metrics["latency_s"], metrics["tokens"], metrics["mem_gb"],
-            (f"n={metrics['n']} P={metrics['category_precision']} "
-             f"R={metrics['category_recall']} drill_acc={metrics['drill_acc']}"),
+            (f"n={metrics['n']} answered={metrics['answered']} flagged={metrics['flagged']} "
+             f"P={metrics['category_precision']} R={metrics['category_recall']} "
+             f"drill_acc={metrics['drill_acc']}"),
         ])  # fmt: skip
     print(json.dumps(metrics, indent=1))
     print(f"Predictions: {out.relative_to(ROOT)}; metrics appended to experiments/iterations.csv")
