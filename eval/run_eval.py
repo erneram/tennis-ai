@@ -204,6 +204,7 @@ def main() -> None:
     parser.add_argument("--variant", choices=["full", "simple"], default="full")
     parser.add_argument("--model", help="default: llm.model in configs/default.yaml")
     parser.add_argument("--prompt", help="default: llm.prompt_version in configs/default.yaml")
+    parser.add_argument("--seed", type=int, help="default: llm.seed in configs/default.yaml")
     parser.add_argument("--stroke", default="serve")
     parser.add_argument("--labels", type=Path, help="default: eval/<stroke>/labels.csv")
     parser.add_argument("--note", default="", help="what changed in this iteration")
@@ -241,7 +242,8 @@ def main() -> None:
             row["label"] = {**row, "valid": row["valid"].strip() == "1"}
 
     llm = {**config["llm"], "model": args.model or config["llm"]["model"],
-           "prompt_version": args.prompt or config["llm"]["prompt_version"]}  # fmt: skip
+           "prompt_version": args.prompt or config["llm"]["prompt_version"],
+           "seed": config["llm"]["seed"] if args.seed is None else args.seed}  # fmt: skip
     version = llm["prompt_version"]
     generation = {k: llm[k] for k in ("temperature", "top_p", "max_tokens", "seed")}
     vlm = VLM(llm["model"])
