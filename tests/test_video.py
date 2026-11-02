@@ -42,3 +42,9 @@ def test_slow_motion_labels_each_frame_after_its_phase(tmp_path):
     original = [frame for _, frame in video.iter_frames(path)]
     assert np.abs(written[5].astype(int) - original[5]).max() < 20  # before toss: no label
     assert np.abs(written[20].astype(int) - original[20]).max() > 100  # label drawn
+
+
+def test_crop_keeps_the_part_inside_the_box():
+    image = np.zeros((100, 200, 3), np.uint8)
+    assert analysis.crop(image, (0.25, 0.5, 0.75, 1.0)).shape == (50, 100, 3)
+    assert analysis.crop(image, None) is image

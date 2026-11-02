@@ -164,3 +164,41 @@ def test_v7_maps_the_bad_state_to_a_problem():
     answers = [c["answer"] for c in result["checks"].values()]
     assert answers == ["yes", "unclear", "no", "yes", "yes", "yes"]
     assert result["evidence_phases"] == ["leg_drive"] and not vlm.answers
+
+
+def test_reach_grows_the_player_box_to_the_stroke():
+    # player 30 % of the frame height (324 px): grown 324 px up and to each side, 15 % down
+    box = base.reach([600, 500, 650, 800], {"up": 1.0, "down": 0.15, "side": 1.0}, 1920, 1080)
+    assert box == pytest.approx((0.43125, 0.2, 0.81875, 0.845))
+    assert base.reach([500, 500, 400, 800], {"up": 1, "down": 0, "side": 1}, 1920, 1080) is None
+    assert base.reach([0, 0, 10, 10], {"up": 1, "down": 0, "side": 1}, 1920, 1080) is None
+
+
+def test_v8_crops_around_the_player_before_looking_for_phases(tmp_path):
+    path = tmp_path / "serve.mp4"
+    video.write_video(path, [np.full((64, 96, 3), i, np.uint8) for i in range(40)], fps=30)
+    vlm = FakeVLM({"retake": "none", "start": 3, "end": 6}, {"bbox_2d": [400, 500, 600, 1000]},
+                  phases(1, 2, 4, 5, 7, 8))  # fmt: skip
+    frames, _, calls = base.phase_frames(serve, sample(path, frames=8), vlm, "v8")
+    # 32 px tall: grown 32 px up (to the top) and 32 px to each side: x 6 to 90 of 96
+    assert frames.box == pytest.approx((0.4 - 1 / 3, 0.0, 0.6 + 1 / 3, 1.0))
+    assert frames.images[0].shape[:2] == (64, 84) and len(calls) == 3
+    assert frames.indices[0] == 6 and frames.indices[-1] == 33 and len(frames.images) == 8
+
+
+def test_v8_keeps_a_check_only_when_both_questions_agree():
+    # each category asks check (yes = good) then problem (yes = problem)
+    answers = [("yes", "no"),  # toss: good
+               ("yes", "yes"),  # trophy: the two disagree
+               ("no", "yes"),  # leg_drive: problem
+               ("no", "no"),  # contact, arm: disagree
+               ("yes", "no"),  # contact, height: good
+               ("unclear", "no")]  # follow_through: unclear  # fmt: skip
+    vlm = FakeVLM(*(check(a) for pair in answers for a in pair),
+                  {"observation": "Flexiona más las rodillas."})  # fmt: skip
+    result = base.feedback(serve, dict(zip(serve.PHASES, frames(6))), vlm, "full", "v8")
+    assert result["category"] == "insufficient_knee_bend" and not vlm.answers
+    assert [c["answer"] for c in result["checks"].values()] == [
+        "yes", "unclear", "no", "unclear", "yes", "unclear"]  # fmt: skip
+    assert result["checks"]["insufficient_knee_bend"]["votes"] == {"check": "no", "problem": "no"}
+    assert result["prompt_tokens"] == 13 * 900

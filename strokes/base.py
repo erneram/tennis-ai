@@ -12,8 +12,10 @@ Only the language model looks at the video:
    each phase. Up to v4 it worked on the whole video and also decided whether to record again.
 3. feedback: from those key frames, the main improvement (or no_clear_problem) and a drill.
    From v6 on, one yes / no / unclear question per category, each about one key frame; from v7
-   on, a choice between the good and the bad state instead of yes / no.
-phase_frames runs 1 and 2.
+   on, a choice between the good and the bad state instead of yes / no; from v8 on, the
+   question about the good position and the one about the problem, kept only when they agree.
+phase_frames runs 1 and 2; from v8 on, between them, find_player crops every frame around the
+player.
 """
 
 from importlib import import_module
@@ -25,7 +27,7 @@ from typing import Protocol
 import numpy as np
 import yaml
 
-from core.analysis import Frames, InsufficientEvidence, label, resample, resize
+from core.analysis import Frames, InsufficientEvidence, label, resample, resize, zoom
 
 STROKES_DIR = Path(__file__).resolve().parent
 LOCATE_SIDE = 512  # frames for locate_phases: about 150 tokens each with Qwen3-VL
@@ -133,6 +135,45 @@ def locate_phases(stroke: Stroke, images: list[np.ndarray], vlm, version: str, *
     return key_frames, result
 
 
+def player_schema() -> dict:
+    """JSON schema of find_player: one box in Qwen-VL's own format, 0 to 1000 on each side."""
+    coordinate = {"type": "integer", "minimum": 0, "maximum": 1000}
+    box = {"type": "array", "items": coordinate, "minItems": 4, "maxItems": 4}
+    return {
+        "type": "object",
+        "properties": {"bbox_2d": box},
+        "required": ["bbox_2d"],
+        "additionalProperties": False,
+    }
+
+
+def reach(bbox: list[int], reach: dict, width: int, height: int):
+    """The player's box (0-1000) grown by `reach` (shares of the player's height: up, down, and
+    to each side) so the whole stroke fits, as (x0, y0, x1, y1) shares of the frame. None when
+    the box is empty or too small to be a person."""
+    x1, y1, x2, y2 = (v / 1000 for v in bbox)
+    tall = (y2 - y1) * height  # pixels
+    if x2 <= x1 or tall < 0.05 * height:
+        return None
+    side = reach["side"] * tall / width  # as a share of the width
+    return (max(x1 - side, 0.0), max(y1 - reach["up"] * tall / height, 0.0),
+            min(x2 + side, 1.0), min(y2 + reach["down"] * tall / height, 1.0))  # fmt: skip
+
+
+def find_player(stroke: Stroke, image: np.ndarray, vlm, version: str, **generation):
+    """Model call (v8 on), on the first frame of the stroke's window: the box around the player
+    who serves, grown to the stroke's reach. Returns (box or None, Generation).
+
+    With the player far from the camera, the phase frames were six frames in a row on 8 of 20
+    videos; cropped by hand, on 1 of 20.
+    """
+    prompts = load(stroke, f"prompts/{version}.yaml")["player"]
+    result = vlm.generate_json(prompts["system"], prompts["user"], [image], player_schema(),
+                               **generation)  # fmt: skip
+    height, width = image.shape[:2]
+    return reach(result.data["bbox_2d"], prompts["reach"], width, height), result
+
+
 def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation):
     """Model calls 1 and 2. Returns (frames, phase -> index into frames.images, [Generation]).
 
@@ -141,14 +182,20 @@ def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation
     frames are six frames in a row: the stroke fills the window, so the model counted instead of
     looking.
     """
+    prompts = load(stroke, f"prompts/{version}.yaml")
     calls = []
-    if "window" in load(stroke, f"prompts/{version}.yaml"):
+    if "window" in prompts:
         first, last, result = find_window(stroke, frames.images, vlm, version, **generation)
         calls.append(result)
         frames = resample(frames, frames.indices[first], frames.indices[last])
+    if "player" in prompts:
+        box, result = find_player(stroke, frames.images[0], vlm, version, **generation)
+        calls.append(result)
+        if box is not None:
+            frames = zoom(frames, box)
     key_frames, result = locate_phases(stroke, frames.images, vlm, version, **generation)
     calls.append(result)
-    if len(calls) == 2 and all(b - a == 1 for a, b in pairwise(key_frames.values())):
+    if "window" in prompts and all(b - a == 1 for a, b in pairwise(key_frames.values())):
         raise ValueError(f"Phase frames look like a guess: {list(key_frames.values())}")
     return frames, key_frames, calls
 
@@ -264,25 +311,38 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
     v7 (prompts["checks"]["choose"]): the model picks the good or the bad state of the body
     part (`choose` in criteria.yaml) instead of answering yes / no; the good state is stored as
     "yes" and the bad one as "no".
+
+    v8 (prompts["checks"]["ask"]): several questions per category, each a criteria field and
+    what its "yes" means: `check` (good position) and `problem`. v6 always found the position
+    good and v7 always found the problem, so the wording decided. A check is "yes" or "no" only
+    when every question agrees, otherwise "unclear".
     """
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
     phases, categories = criteria["phases"], criteria["categories"]
     choose = prompts["checks"].get("choose", False)
+    ask = prompts["checks"].get("ask", {"check": "good"})
     calls, checks = [], {}
     for category, spec in categories.items():
         if "check" not in spec:  # no_clear_problem
             continue
         phase = spec["phase"]
         states = spec["choose"] if choose else {"part": "", "good": "yes", "bad": "no"}
-        user = Template(prompts["checks"]["user"]).substitute(
-            phase=phase, looks_like=phases[phase]["looks_like"], question=spec["check"], **states
-        )
-        schema = check_schema((states["good"], states["bad"], "unclear"))
-        result = vlm.generate_json(prompts["checks"]["system"], user, [images[phase]],
-                                   schema, **generation)  # fmt: skip
-        calls.append(result)
-        answer = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"], "unclear")
-        checks[category] = {**result.data, "answer": answer}
+        votes, seen = {}, None
+        for field, yes_means in ask.items():
+            user = Template(prompts["checks"]["user"]).substitute(
+                phase=phase, looks_like=phases[phase]["looks_like"], question=spec[field],
+                **states,
+            )  # fmt: skip
+            schema = check_schema((states["good"], states["bad"], "unclear"))
+            result = vlm.generate_json(prompts["checks"]["system"], user, [images[phase]],
+                                       schema, **generation)  # fmt: skip
+            calls.append(result)
+            vote = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"])
+            if yes_means == "bad":  # a "yes" to the problem question is the problem
+                vote = {"yes": "no", "no": "yes"}.get(vote)
+            votes[field], seen = vote or "unclear", seen or result.data["seen"]
+        answer = votes["check"] if len(set(votes.values())) == 1 else "unclear"
+        checks[category] = {"seen": seen, "answer": answer, "votes": votes}
 
     found = [c for c, check in checks.items() if check["answer"] == "no"]
     if found:

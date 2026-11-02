@@ -4,7 +4,7 @@ There is no pose model. The language model finds the phases in these frames and 
 (strokes/base.py).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import cv2
@@ -28,6 +28,7 @@ class Frames:
     fps: float  # of the source video
     indices: list[int]  # source frame index of each sampled frame
     images: list[np.ndarray]  # sampled frames (BGR), longest side at most FRAME_SIDE
+    box: tuple[float, float, float, float] | None = None  # crop (x0, y0, x1, y1), share of the side
 
 
 def check_video(info: video.VideoInfo, max_seconds: float) -> None:
@@ -62,14 +63,29 @@ def sample(path, frames: int = 32, max_seconds: float = 20) -> Frames:
 
 def resample(frames: Frames, first: int, last: int) -> Frames:
     """As many frames as `frames` has, evenly spaced between source frames `first` and `last`:
-    a closer look at one part of the video."""
+    a closer look at one part of the video, cropped to `frames.box`."""
     pairs = video.sample(frames.video, len(frames.images), first, last)
-    return Frames(
-        video=frames.video,
-        fps=frames.fps,
+    return replace(
+        frames,
         indices=[index for index, _ in pairs],
-        images=[resize(frame, FRAME_SIDE) for _, frame in pairs],
+        images=[resize(crop(frame, frames.box), FRAME_SIDE) for _, frame in pairs],
     )
+
+
+def zoom(frames: Frames, box: tuple[float, float, float, float]) -> Frames:
+    """The same frames, decoded again from the video and cropped to `box`, so the cropped part
+    keeps the source resolution."""
+    return resample(replace(frames, box=box), frames.indices[0], frames.indices[-1])
+
+
+def crop(image: np.ndarray, box: tuple[float, float, float, float] | None) -> np.ndarray:
+    """The part of `image` inside `box` (x0, y0, x1, y1, as shares of the width and height);
+    the whole image without a box."""
+    if box is None:
+        return image
+    height, width = image.shape[:2]
+    x0, y0, x1, y1 = box
+    return image[round(y0 * height) : round(y1 * height), round(x0 * width) : round(x1 * width)]
 
 
 def resize(image: np.ndarray, longest: int) -> np.ndarray:
@@ -102,6 +118,7 @@ def write_slow_motion(frames: Frames, key_frames: dict[str, int], labels: dict[s
     def labeled():
         for index, frame in video.iter_frames(frames.video):
             current = [phase for start, phase in starts if start <= index]
+            frame = crop(frame, frames.box)
             yield label(frame, labels.get(current[-1], current[-1])) if current else frame
 
     video.write_video(out, labeled(), frames.fps / slowdown)

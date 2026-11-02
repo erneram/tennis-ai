@@ -7,6 +7,7 @@
 # check: the yes/no question asked about the key frame of the category's phase (prompt v6).
 #        "yes" means the phase looks right; a clear "no" is the problem. Small models lean to
 #        "yes", so a doubtful frame is not turned into a correction.
+# problem: the same question asked about the problem: "yes" is the problem (prompt v8 on).
 # choose: the body part and its good and bad state; the model picks the state the key frame
 #         shows (prompt v7 on). show: the same in Spanish for the app checklist.
 # Project 3 uses only the language model: there are no measurements, so every category is judged
@@ -37,7 +38,9 @@
 #      the frame shows, so neither answer agrees with the question. check stays for v6.
 #      v7 flagged every professional too (results in the header of prompts/v7.yaml), so the
 #      app stays on v6; show is used by the app checklist with either version.
-version: "0.7"
+# 0.8: added problem to every category: the same check asked about the problem, so "yes" is
+#      the problem. Prompt v8 asks check and problem and keeps an answer only when both agree.
+version: "0.8"
 
 phases:
   stance:
@@ -64,6 +67,7 @@ categories:
     phase: toss
     description: El brazo de lanzamiento se dobla al soltar la pelota en lugar de subir recto desde el hombro.
     check: Is the tossing arm (the arm that releases the ball, not the racket arm) straight or almost straight?
+    problem: Is the tossing arm (the arm that releases the ball, not the racket arm) clearly bent at the elbow?
     choose:
       part: the tossing arm (the arm that releases the ball, not the racket arm)
       good: straight or almost straight
@@ -74,6 +78,7 @@ categories:
     phase: trophy
     description: El brazo de lanzamiento baja antes de tiempo y deja de apuntar a la pelota mientras la raqueta baja por detrás.
     check: Is the tossing arm still up, above the shoulder, pointing at the ball?
+    problem: Has the tossing arm (the arm that released the ball, not the racket arm) already dropped to shoulder height or below?
     choose:
       part: the tossing arm (the arm that released the ball, not the racket arm)
       good: still up above the shoulder, pointing at the ball
@@ -84,6 +89,7 @@ categories:
     phase: leg_drive
     description: La rodilla delantera casi no se flexiona, así que las piernas aportan poco impulso.
     check: Is at least one knee clearly bent?
+    problem: Are both legs almost straight, with no clear bend at the knees?
     choose:
       part: the knees
       good: at least one knee clearly bent
@@ -94,6 +100,7 @@ categories:
     phase: contact
     description: El brazo de la raqueta está claramente doblado en el impacto; lo normal es casi recto.
     check: Is the racket arm straight or almost straight when the racket meets the ball?
+    problem: Is the racket arm clearly bent at the elbow when the racket meets the ball?
     choose:
       part: the racket arm when the racket meets the ball
       good: straight or almost straight
@@ -104,6 +111,7 @@ categories:
     phase: contact
     description: El impacto ocurre bajo; el brazo no llega bien arriba por encima del hombro.
     check: Is the racket hand above the top of the player's head when the racket meets the ball?
+    problem: Is the racket hand at or below the top of the player's head when the racket meets the ball?
     choose:
       part: the racket hand when the racket meets the ball
       good: above the top of the player's head
@@ -114,6 +122,7 @@ categories:
     phase: follow_through
     description: El jugador no aterriza sobre el pie delantero o pierde el equilibrio al aterrizar.
     check: Is the player balanced, landing on the front foot without stumbling?
+    problem: Is the player stumbling, leaning over, or landing on the back foot?
     choose:
       part: the player's balance after the hit
       good: balanced, landing on the front foot
