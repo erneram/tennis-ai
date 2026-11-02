@@ -17,7 +17,8 @@ Only the language model looks at the video:
    from v11 on, some categories one neutral question with options instead, some on the upper
    body only (upper_body).
 phase_frames runs 1 and 2; from v8 on, before them, find_player crops every frame around the
-player; from v9 on, after them, refine_phases takes a closer look at the fastest phases.
+player; from v9 on, after them, refine_phases takes a closer look at the fastest phases; from
+v13 on, offset_phases places some key frames by code, a fixed time from another one.
 """
 
 from dataclasses import replace
@@ -258,6 +259,8 @@ def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation
         frames, key_frames, results = refine_phases(stroke, frames, key_frames, vlm, version,
                                                     **generation)  # fmt: skip
         calls += results
+    if "offsets" in prompts:
+        frames, key_frames = offset_phases(stroke, frames, key_frames, prompts["offsets"])
     return frames, key_frames, calls
 
 
@@ -306,6 +309,29 @@ def refine_phases(stroke: Stroke, frames: Frames, key_frames: dict[str, int], vl
         frames, key_frames = _add_frame(frames, key_frames, phase, close.indices[pick],
                                         close.images[pick])  # fmt: skip
     return frames, key_frames, calls
+
+
+def offset_phases(stroke: Stroke, frames: Frames, key_frames: dict[str, int],
+                  offsets: dict) -> tuple[Frames, dict[str, int]]:  # fmt: skip
+    """v13: each phase in `offsets` is the source frame `seconds` from the key frame of `from`,
+    kept between the key frames of the phases before and after it. Returns (frames with it
+    added, phase -> index into them), as refine_phases.
+
+    Among 12 close frames the model put the leg-drive frame within 0.1 s of contact on 7 of 21
+    JC serves (v10, v12) and 0.4 to 1.2 s before it on 18 with another description (v11); the
+    contact frame it finds well (16 of 18, v9).
+    """
+    for phase, spec in offsets.items():
+        position = stroke.PHASES.index(phase)
+        before = frames.indices[key_frames[stroke.PHASES[position - 1]]]
+        after = frames.indices[key_frames[stroke.PHASES[position + 1]]]
+        if after - before < 2:  # no frame between them
+            continue
+        index = frames.indices[key_frames[spec["from"]]] + round(spec["seconds"] * frames.fps)
+        index = min(max(index, before + 1), after - 1)
+        [image] = resample(frames, index, index, 1).images
+        frames, key_frames = _add_frame(frames, key_frames, phase, index, image)
+    return frames, key_frames
 
 
 def _add_frame(frames: Frames, key_frames: dict[str, int], phase: str, index: int,
