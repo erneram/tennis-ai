@@ -5,8 +5,9 @@ probe numbers in the result of strokes/serve/prompts/v10.yaml.
     uv run python -m experiments.probe_toss_arm
 
 A = the frame as v10 saw it (cropped to the player's reach); B = the upper body only, from a
-box the model draws on that frame, enlarged to the same size. Q1 = v10's two yes/no questions;
-Q2 = one neutral question: where is the tossing hand. Frames saved in data/processed/probe/v10/.
+box the model draws on that frame, enlarged to the same size (strokes/base.py, upper_body).
+Q1 = v10's two yes/no questions; Q2 = one neutral question: where is the tossing hand. Frames
+saved in data/processed/probe/v10/.
 """
 
 import collections
@@ -38,20 +39,6 @@ HAND_USER = ("Question: Where is the tossing hand (the hand that released the ba
              f"holding the racket)?\nOptions: {'; '.join(HAND)}\n\nReply with the JSON object only.")  # fmt: skip
 
 
-def upper_body(vlm: VLM, frame):
-    """The player's box on this frame (v10's player prompt), cut to the head, shoulders and
-    arms, and enlarged to FRAME_SIDE."""
-    player = PROMPTS["player"]
-    data = vlm.generate_json(player["system"], player["user"], [frame], base.player_schema(),
-                             **GENERATION).data  # fmt: skip
-    x0, y0, x1, y1 = (v / 1000 for v in data["bbox_2d"])
-    w, h = x1 - x0, y1 - y0
-    part = crop(frame, (max(0, x0 - 0.15 * w), max(0, y0 - 0.15 * h), min(1, x1 + 0.15 * w),
-                        min(1, y0 + 0.6 * h)))  # fmt: skip
-    scale = FRAME_SIDE / max(part.shape[:2])
-    return cv2.resize(part, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-
-
 def ask(vlm: VLM, image) -> dict:
     checks = PROMPTS["checks"]
     questions, votes = checks["questions"]["toss_arm_drops_early"], []
@@ -78,8 +65,8 @@ def main() -> None:
             [(_, frame)] = video.sample(path, 1, index, index)
             fps, contact = video.probe(path).fps, record["key_frames"]["contact"]
             group = "pro" if path.stem.startswith("pro") else "jc"
-            images = {"A": resize(crop(frame, record.get("box")), FRAME_SIDE),
-                      "B": upper_body(vlm, frame)}  # fmt: skip
+            upper, _ = base.upper_body(frame, vlm, PROMPTS["player"], **GENERATION)
+            images = {"A": resize(crop(frame, record.get("box")), FRAME_SIDE), "B": upper}
             row = {"video": path.stem, "before_contact_s": round((contact - index) / fps, 2)}
             for variant, image in images.items():
                 cv2.imwrite(str(OUT / f"{path.stem}.{variant}.jpg"), image)

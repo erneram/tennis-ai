@@ -276,3 +276,34 @@ def test_v10_judges_the_tossing_arm_on_the_leg_drive_frame():
     assert (result["phase"], result["category"]) == ("trophy", "toss_arm_drops_early")
     assert result["checks"]["toss_arm_drops_early"]["phase"] == "leg_drive"
     assert result["evidence_phases"] == ["leg_drive"] and vlm.images[0].max() == 3
+
+
+def test_v11_asks_where_the_tossing_hand_is_on_the_upper_body():
+    images = {p: np.full((80, 60, 3), i, np.uint8) for i, p in enumerate(serve.PHASES)}
+    hand = {
+        "seen": "The left hand is level with the shoulder.",
+        "answer": "at shoulder height or below",
+    }
+    vlm = FakeVLM(
+        check("yes"), check("no"),  # toss_arm_bent on the trophy frame: looks right
+        {"bbox_2d": [250, 100, 750, 900]}, hand,  # toss_arm_drops_early: box, then the question
+        *(check(a) for _ in range(4) for a in ("yes", "no")),
+        {"observation": "Sostén el brazo arriba hasta que baje la raqueta."},
+    )  # fmt: skip
+    result = base.feedback(serve, images, vlm, "full", "v11")
+    assert (result["phase"], result["category"]) == ("trophy", "toss_arm_drops_early")
+    assert result["checks"]["toss_arm_drops_early"]["votes"] == {"question": "no"}
+    assert result["evidence_phases"] == ["leg_drive"]
+    # the observation sees what the question saw: the upper body of the leg-drive frame, enlarged
+    assert vlm.images[0].shape[0] == base.FRAME_SIDE and vlm.images[0].max() == 3
+
+
+def test_v11_counts_a_hand_between_shoulder_and_head_as_unclear():
+    images = {p: np.zeros((80, 60, 3), np.uint8) for p in serve.PHASES}
+    hand = {"seen": "The hand is at the height of the ear.",
+            "answer": "between the shoulder and the top of the head"}  # fmt: skip
+    vlm = FakeVLM(check("yes"), check("no"), {"bbox_2d": [0, 0, 1000, 1000]}, hand,
+                  *(check(a) for _ in range(4) for a in ("yes", "no")))  # fmt: skip
+    result = base.feedback(serve, images, vlm, "full", "v11")
+    assert result["category"] == "no_clear_problem" and result["confidence"] == "low"
+    assert result["checks"]["toss_arm_drops_early"]["answer"] == "unclear"

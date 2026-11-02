@@ -13,7 +13,9 @@ Only the language model looks at the video:
 3. feedback: from those key frames, the main improvement (or no_clear_problem) and a drill.
    From v6 on, one yes / no / unclear question per category, each about one key frame; from v7
    on, a choice between the good and the bad state instead of yes / no; from v8 on, the
-   question about the good position and the one about the problem, kept only when they agree.
+   question about the good position and the one about the problem, kept only when they agree;
+   from v11 on, some categories one neutral question with options instead, some on the upper
+   body only (upper_body).
 phase_frames runs 1 and 2; from v8 on, before them, find_player crops every frame around the
 player; from v9 on, after them, refine_phases takes a closer look at the fastest phases.
 """
@@ -25,10 +27,20 @@ from pathlib import Path
 from string import Template
 from typing import Protocol
 
+import cv2
 import numpy as np
 import yaml
 
-from core.analysis import Frames, InsufficientEvidence, label, resample, resize, zoom
+from core.analysis import (
+    FRAME_SIDE,
+    Frames,
+    InsufficientEvidence,
+    crop,
+    label,
+    resample,
+    resize,
+    zoom,
+)
 
 STROKES_DIR = Path(__file__).resolve().parent
 LOCATE_SIDE = 512  # frames for locate_phases: about 150 tokens each with Qwen3-VL
@@ -146,6 +158,27 @@ def player_schema() -> dict:
         "required": ["bbox_2d"],
         "additionalProperties": False,
     }
+
+
+def upper_body(image: np.ndarray, vlm, prompts: dict, **generation):
+    """Model call (v11): the player's box on `image` (the `player` prompt), cut to the head,
+    shoulders and arms and enlarged to FRAME_SIDE. Returns (image, Generation); the image
+    unchanged when the box is empty.
+
+    On v10's leg-drive frames, cropped to the player's reach, the model answered "above the
+    head" about the tossing hand on all 32 videos; on the upper body only, it saw the arm at
+    shoulder height on 3 of the 7 JC frames that show it (experiments/probe_toss_arm.py).
+    """
+    result = vlm.generate_json(prompts["system"], prompts["user"], [image], player_schema(),
+                               **generation)  # fmt: skip
+    x0, y0, x1, y1 = (v / 1000 for v in result.data["bbox_2d"])
+    w, h = x1 - x0, y1 - y0
+    if w <= 0 or h <= 0:
+        return image, result
+    part = crop(image, (max(0, x0 - 0.15 * w), max(0, y0 - 0.15 * h), min(1, x1 + 0.15 * w),
+                        min(1, y0 + 0.6 * h)))  # fmt: skip
+    scale = FRAME_SIDE / max(part.shape[:2])
+    return cv2.resize(part, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC), result
 
 
 def reach(bbox: list[int], reach: dict, width: int, height: int):
@@ -407,6 +440,10 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
     v10 (prompts["checks"]["questions"]): the version's own wording of some categories' fields,
     over criteria.yaml, so the earlier versions still ask what they asked. checks.frames: the
     phase whose key frame a category is judged on, when not its own (stored in each check).
+
+    v11: a category with `options` (answer -> yes / no / unclear) is asked one neutral question
+    instead (prompts["checks"]["options"]): with yes / no the model agreed with what the
+    question described. `upper_body`: judged on the upper body only (upper_body()).
     """
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
     phases, categories = criteria["phases"], criteria["categories"]
@@ -414,28 +451,44 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
     ask = prompts["checks"].get("ask", {"check": "good"})
     questions = prompts["checks"].get("questions", {})
     frames = prompts["checks"].get("frames", {})
-    calls, checks = [], {}
+    calls, checks, seen_on = [], {}, {}
     for category, spec in categories.items():
         if "check" not in spec:  # no_clear_problem
             continue
         spec = {**spec, **questions.get(category, {})}
         phase = frames.get(category, spec["phase"])  # the key frame it is judged on
+        image = images[phase]
+        if spec.get("upper_body"):
+            image, result = upper_body(image, vlm, prompts["player"], **generation)
+            calls.append(result)
+        seen_on[category] = image
         states = spec["choose"] if choose else {"part": "", "good": "yes", "bad": "no"}
         votes, seen = {}, None
-        for field, yes_means in ask.items():
-            user = Template(prompts["checks"]["user"]).substitute(
-                phase=phase, looks_like=phases[phase]["looks_like"], question=spec[field],
-                **states,
-            )  # fmt: skip
-            schema = check_schema((states["good"], states["bad"], "unclear"))
-            result = vlm.generate_json(prompts["checks"]["system"], user, [images[phase]],
-                                       schema, **generation)  # fmt: skip
+        if "options" in spec:
+            options = [*spec["options"], "unclear"]
+            user = Template(prompts["checks"]["options"]["user"]).substitute(
+                question=spec["question"], options="; ".join(options)
+            )
+            result = vlm.generate_json(prompts["checks"]["options"]["system"], user, [image],
+                                       check_schema(tuple(options)), **generation)  # fmt: skip
             calls.append(result)
-            vote = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"])
-            if yes_means == "bad":  # a "yes" to the problem question is the problem
-                vote = {"yes": "no", "no": "yes"}.get(vote)
-            votes[field], seen = vote or "unclear", seen or result.data["seen"]
-        answer = votes["check"] if len(set(votes.values())) == 1 else "unclear"
+            votes["question"] = spec["options"].get(result.data["answer"], "unclear")
+            seen = result.data["seen"]
+        else:
+            for field, yes_means in ask.items():
+                user = Template(prompts["checks"]["user"]).substitute(
+                    phase=phase, looks_like=phases[phase]["looks_like"], question=spec[field],
+                    **states,
+                )  # fmt: skip
+                schema = check_schema((states["good"], states["bad"], "unclear"))
+                result = vlm.generate_json(prompts["checks"]["system"], user, [image],
+                                           schema, **generation)  # fmt: skip
+                calls.append(result)
+                vote = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"])
+                if yes_means == "bad":  # a "yes" to the problem question is the problem
+                    vote = {"yes": "no", "no": "yes"}.get(vote)
+                votes[field], seen = vote or "unclear", seen or result.data["seen"]
+        answer = next(iter(votes.values())) if len(set(votes.values())) == 1 else "unclear"
         checks[category] = {"seen": seen, "answer": answer, "votes": votes, "phase": phase}
 
     found = [c for c, check in checks.items() if check["answer"] == "no"]
@@ -454,7 +507,7 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
             "required": ["observation"],
             "additionalProperties": False,
         }
-        result = vlm.generate_json(prompts["observation"]["system"], user, [images[frame]],
+        result = vlm.generate_json(prompts["observation"]["system"], user, [seen_on[category]],
                                    schema, **generation)  # fmt: skip
         calls.append(result)
         observation, confidence, evidence = result.data["observation"], "medium", [frame]
