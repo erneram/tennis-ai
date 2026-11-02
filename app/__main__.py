@@ -7,54 +7,37 @@ import os
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leaves the machine
 
-import hashlib
 import html
-import json
-import shutil
-import sys
-import tempfile
-import time
-from pathlib import Path
 
 import cv2
 import gradio as gr
 import numpy as np
 
-from core import ROOT, history, load_config
-from core.analysis import InsufficientEvidence, sample, write_slow_motion
-from core.llm import VLM
-from strokes import base
+from app.service import (
+    CONFIDENCE,
+    DEMO_VIDEOS,
+    DRILLS,
+    GENERATION,
+    PROMPTS,
+    RECORDING_TIPS,
+    STROKE,
+    VLM_MODEL,
+    analysis,
+    certainty,
+    check_text,
+    judged_on,
+    phase_name,
+    phase_verdict,
+    prepare_demo,
+)
+from core import history
 
-CONFIG = load_config()
-STROKE = base.get("serve")
-DRILLS = {d["id"]: d for d in base.load(STROKE, "drills.yaml")["drills"]}
-VERSION = CONFIG["llm"]["prompt_version"]
-PROMPTS = base.load(STROKE, f"prompts/{VERSION}.yaml")
-GENERATION = {k: CONFIG["llm"][k] for k in ("temperature", "top_p", "max_tokens", "seed")}
-CONFIDENCE = {"high": "alta", "medium": "media", "low": "baja"}
-OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="servelab-"))
-CRITERIA_VERSION = base.load(STROKE, "criteria.yaml")["version"]
-CATEGORIES = base.load(STROKE, "criteria.yaml")["categories"]
 # Answer of a check (v6 on): icon in the checklist and border color (BGR) of the key frame
 MARKS = {
     "yes": ("✅", (80, 175, 76)),
     "no": ("❌", (54, 67, 244)),
     "unclear": ("❔", (158, 158, 158)),
 }
-
-# Demo mode (uv run python -m app --demo): the videos in data/demo/ are analyzed once at start
-# and their answers saved in data/processed/demo_cache/, so at the fair they show at once.
-DEMO = "--demo" in sys.argv
-DEMO_DIR = ROOT / "data" / "demo"
-CACHE_DIR = ROOT / "data" / "processed" / "demo_cache"
-DEMO_VIDEOS = sorted(p for p in DEMO_DIR.glob("*") if DEMO and p.suffix.lower() in (".mp4", ".mov"))
-DEMO_FOLDERS: set[Path] = set()  # cache folders of the demo videos; visitors' videos are not saved
-
-RECORDING_TIPS = """**Cómo grabar el saque** (guía completa: docs/grabacion.md)
-- Teléfono horizontal, a la altura del pecho y recto, a unos 6 m, lente 1x sin zoom.
-- De lado: la cámara mira tu pecho, sobre la prolongación de la línea de fondo.
-- Todo el cuerpo y la raqueta arriba dentro del cuadro, sin el sol detrás de ti.
-- Un solo saque por video, de 4 a 8 segundos, a 1080p y 60 fps."""
 
 # Look of the poster: its blue, ink and paper. System fonts only: the app must work offline.
 THEME = gr.themes.Base(
@@ -138,16 +121,8 @@ def notice_html(title: str, text: str) -> str:
             f"<p>{html.escape(text)}</p></div>")  # fmt: skip
 
 
-print(f"Cargando {CONFIG['llm']['model']}…")
-VLM_MODEL = VLM(CONFIG["llm"]["model"])
-
-
 def rgb(image: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-
-def phase_name(phase: str) -> str:
-    return STROKE.LABELS.get(phase, "sin problema claro")  # phase "none": no_clear_problem
 
 
 def result_html(feedback: dict, seconds: float, attempt: int, cached: bool = False) -> str:
@@ -163,12 +138,6 @@ def result_html(feedback: dict, seconds: float, attempt: int, cached: bool = Fal
     # a check judged on another phase's frame (v10 on): say where the ❌ is
     seen_in = [p for p in feedback["evidence_phases"] if p != feedback["phase"]]
     where = f'<p class="sl-where">Se ve en {e(phase_name(seen_in[0]))}</p>' if seen_in else ""
-    if checks:
-        certainty = certainty_text(checks)
-    elif feedback["confidence"] == "low" or not feedback["consistent"]:
-        certainty = "La evidencia es débil: toma esta observación con cautela y graba otro intento."
-    else:
-        certainty = ""
     timing = f"{seconds:.0f} s" + (" · respuesta guardada" if cached else "")
     confidence = feedback["confidence"]
     strip = phase_strip(checks, set(feedback["evidence_phases"])) if checks else ""
@@ -178,7 +147,7 @@ def result_html(feedback: dict, seconds: float, attempt: int, cached: bool = Fal
 <p class="sl-obs">{e(feedback["observation"])}</p>
 <div class="sl-drill"><b>Ejercicio: {e(drill["name"])}.</b> {e(drill["instructions"])}</div>
 <div class="sl-meta"><span class="sl-badge sl-conf-{confidence}">Confianza
-{CONFIDENCE[confidence]}</span><span class="sl-cert">{e(certainty)}</span></div>{strip}</div>"""
+{CONFIDENCE[confidence]}</span><span class="sl-cert">{e(certainty(feedback))}</span></div>{strip}</div>"""
 
 
 def phase_strip(checks: dict, evidence: set[str]) -> str:
@@ -195,45 +164,14 @@ def phase_strip(checks: dict, evidence: set[str]) -> str:
             " · ❌ a mejorar · ? no se ve claro · — sin revisar · ★ lo muestra la observación</div>")  # fmt: skip
 
 
-def certainty_text(checks: dict) -> str:
-    """How far the answer can be trusted: how many checks the model could judge, and which
-    phases it could not see."""
-    answers = [c["answer"] for c in checks.values()]
-    unclear = [p for p in STROKE.PHASES
-               if any(c["answer"] == "unclear" and judged_on(k, c) == p
-                      for k, c in checks.items())]  # fmt: skip
-    text = f"Pudimos revisar {len(answers) - answers.count('unclear')} de {len(answers)} puntos."
-    if unclear:
-        text += f" No se ve con claridad: {', '.join(phase_name(p) for p in unclear)}."
-    if answers.count("unclear") * 2 >= len(answers):
-        text += (" Con tantos puntos sin ver, la respuesta dice poco: tómala con cautela y graba "
-                 "otro intento siguiendo la guía de grabación.")  # fmt: skip
-    return text
-
-
-def judged_on(category: str, check: dict) -> str:
-    """The phase whose key frame the check looked at (v10 can judge on another phase)."""
-    return check.get("phase") or CATEGORIES[category]["phase"]
-
-
 def checklist_markdown(checks: dict) -> str:
     """One line per check: phase, body part and the state the model saw."""
     lines = []
     for category, check in checks.items():
-        part, good, bad = CATEGORIES[category]["show"]
-        state = {"yes": good, "no": bad}.get(check["answer"], "no se ve claro")
+        part, state = check_text(category, check)
         phase = phase_name(judged_on(category, check))
         lines.append(f"- {MARKS[check['answer']][0]} **{phase}** · {part}: {state}")
     return "\n".join(lines)
-
-
-def phase_verdict(checks: dict, phase: str) -> str | None:
-    """The verdict of one phase: "no" if a check found its problem, "yes" if all looked
-    right, "unclear" otherwise; None when the phase has no checks (the stance)."""
-    answers = [c["answer"] for k, c in checks.items() if judged_on(k, c) == phase]
-    if not answers:
-        return None
-    return "no" if "no" in answers else "yes" if set(answers) == {"yes"} else "unclear"
 
 
 def framed(image: np.ndarray, verdict: str | None) -> np.ndarray:
@@ -267,70 +205,6 @@ def comparison(previous: dict | None, current: dict):
     ]
     image = rgb(cv2.hconcat(pair))
     return f"**{verdict}** Izquierda: intento anterior; derecha: intento actual.", image
-
-
-def run_analysis(video_path, progress) -> dict:
-    """Everything that takes time. Returns {"retake": reason}, {"error": message} or the result."""
-    start = time.perf_counter()
-    try:
-        progress(0.1, desc="Paso 1 de 4: revisando el video… (unos 30 s en total)")
-        frames = sample(video_path, **CONFIG["analysis"])
-    except InsufficientEvidence as reason:
-        return {"retake": str(reason)}
-    except (ValueError, FileNotFoundError):
-        return {"error": "No se pudo leer el video. Sube un archivo .mp4 o .mov de un solo saque."}
-
-    try:
-        progress(0.3, desc="Paso 2 de 4: buscando las fases del saque…")
-        frames, key_frames, _ = base.phase_frames(STROKE, frames, VLM_MODEL, VERSION, **GENERATION)
-        images = {phase: frames.images[i] for phase, i in key_frames.items()}
-        progress(0.6, desc="Paso 3 de 4: revisando cada fase…")
-        feedback = base.feedback(STROKE, images, VLM_MODEL, "full", VERSION, **GENERATION)
-    except InsufficientEvidence as reason:
-        return {"retake": str(reason)}
-    except Exception:  # noqa: BLE001 - any model failure: ask to try again, never crash
-        return {
-            "error": "El modelo no respondió correctamente. Intenta analizar el video otra vez."
-        }
-    seconds = time.perf_counter() - start
-
-    progress(0.85, desc="Paso 4 de 4: preparando la cámara lenta…")
-    slow = write_slow_motion(frames, key_frames, STROKE.LABELS,
-                             OUTPUT_DIR / f"slow-{time.time_ns()}.mp4",
-                             CONFIG["app"]["slowdown"])  # fmt: skip
-    return {"feedback": feedback, "images": images, "slow": str(slow), "seconds": seconds}
-
-
-def cache_folder(video_path) -> Path:
-    """One folder per video content, model, prompt version and criteria version."""
-    digest = hashlib.sha256(Path(video_path).read_bytes())
-    digest.update(f"{CONFIG['llm']['model']}|{VERSION}|{CRITERIA_VERSION}".encode())
-    return CACHE_DIR / digest.hexdigest()[:16]
-
-
-def analysis(video_path, progress) -> dict:
-    """run_analysis; for a demo video the answer is saved once and then shown at once."""
-    folder = cache_folder(video_path) if DEMO_FOLDERS else None
-    if folder not in DEMO_FOLDERS:
-        return run_analysis(video_path, progress)
-    if (folder / "result.json").exists():
-        result = json.loads((folder / "result.json").read_text())
-        if "feedback" in result:
-            result["images"] = {p: cv2.imread(str(folder / f"{p}.jpg")) for p in STROKE.PHASES}
-            result["slow"] = str(folder / "slow.mp4")
-        return {**result, "cached": True}
-
-    result = run_analysis(video_path, progress)
-    if "error" in result:  # model failures are not saved: the next try may work
-        return result
-    folder.mkdir(parents=True, exist_ok=True)
-    if "feedback" in result:
-        for phase, image in result["images"].items():
-            cv2.imwrite(str(folder / f"{phase}.jpg"), image, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        shutil.copy(result["slow"], folder / "slow.mp4")
-    saved = {k: v for k, v in result.items() if k not in ("images", "slow")}
-    (folder / "result.json").write_text(json.dumps(saved, ensure_ascii=False))  # written last
-    return result
 
 
 def analyze_attempt(video_path, session, progress=gr.Progress()):  # noqa: B008 - Gradio pattern
@@ -459,12 +333,6 @@ with gr.Blocks(title="Serve Lab", analytics_enabled=False, delete_cache=(3600, 3
 
 
 if __name__ == "__main__":
-    for n, path in enumerate(DEMO_VIDEOS, 1):
-        DEMO_FOLDERS.add(cache_folder(path))
-        result = analysis(path, lambda *args, **kwargs: None)
-        answer = (
-            result.get("feedback", {}).get("category") or result.get("retake") or result["error"]
-        )
-        print(f"Demo {n}/{len(DEMO_VIDEOS)}: {path.name}: {answer}", flush=True)
+    prepare_demo()
     demo.queue(default_concurrency_limit=1)  # one model on one GPU: analyze one video at a time
     demo.launch(server_name="127.0.0.1", max_file_size="200mb", theme=THEME, css=CSS)
