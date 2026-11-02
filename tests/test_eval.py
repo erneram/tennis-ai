@@ -1,3 +1,4 @@
+import json
 import math
 
 import pytest
@@ -80,3 +81,24 @@ def test_review_fills_hallucination_rate(tmp_path, monkeypatch):
     assert rows[1].split(",")[10] == "0.5"  # 1 of the 2 judged sentences is wrong
     assert rows[1].endswith('"n=2 reviewed: 2 sentences, answers_right=0.667"')
     assert rows[2].split(",")[10] == "nan"  # other runs untouched
+
+
+def test_score_labels_a_saved_run(tmp_path, monkeypatch):
+    log = tmp_path / "iterations.csv"
+    log.write_text("id,a,b,c,d,e,f,g,phase_acc,category_f1,k,retake_acc,l,m,n,notes\n"
+                   "run1,,,,,,,,nan,nan,,nan,,,,n=3\n")  # fmt: skip
+    monkeypatch.setattr(run_eval, "ITERATIONS", log)
+    labels = tmp_path / "labels.csv"
+    labels.write_text("video,player,valid,phase,category,drill_id,notes\n"
+                      "a.mp4,x,1,none,no_clear_problem,,\nb.mp4,x,0,,,,\n")  # fmt: skip
+    prediction = {"phase": "none", "category": "no_clear_problem", "drill_id": "", "checks": {}}
+    run = tmp_path / "run1.jsonl"
+    run.write_text("\n".join(json.dumps(r) for r in [
+        {"video": "data/raw/a.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+        {"video": "data/raw/b.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+        {"video": "data/raw/c.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+    ]))  # fmt: skip
+    run_eval.score([run], labels)
+    row = log.read_text().splitlines()[1].split(",")
+    assert row[8:12] == ["1.0", "1.0", "", "0.5"]  # b should have been a retake; c has no label
+    assert "scored against labels.csv: n=2" in row[15]

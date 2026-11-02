@@ -80,6 +80,12 @@ Each run saves its predictions in `eval/serve/runs/` and appends a row to `exper
 uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv
 ```
 
+Runs made before the labels existed (`--videos`) are scored afterwards against any label file, one system's runs together (JC and professionals):
+
+```bash
+uv run python -m eval.run_eval --score eval/serve/runs/<jc run>.jsonl eval/serve/runs/<pro run>.jsonl --labels eval/serve/labels.csv
+```
+
 Cost per analysis: the model runs on the Mac, so there is no API cost. Energy is not measured; as an estimate, about 30 s at an assumed 40 to 60 W is 0.3 to 0.5 Wh, a small fraction of a cent.
 
 Settings that change results (number of frames, language model, prompt version, temperature) are in `configs/default.yaml`. Change one at a time and run the evaluation again.

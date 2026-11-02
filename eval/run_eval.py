@@ -6,12 +6,14 @@
     uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
     uv run python -m eval.run_eval --videos data/raw/jc-s*.mp4 --note "..."  # no labels yet
     uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv
+    uv run python -m eval.run_eval --score eval/serve/runs/<run>.jsonl --labels eval/serve/claude_labels.csv
 
 Reads eval/<stroke>/labels.csv (format and labeling guide in data/README.md) and the videos in
 data/raw/. --agreement compares the two annotators' independent labels before they are merged.
 --videos runs on videos without labels: only the answers and the operational metrics.
 --review reads the members' review of a run (made with `python -m eval.label`) and fills its
-hallucination rate in experiments/iterations.csv.
+hallucination rate in experiments/iterations.csv. --score computes the quality metrics of saved
+runs against a label file.
 Writes one JSON line per video to eval/<stroke>/runs/<run>.jsonl and appends the metrics
 to experiments/iterations.csv.
 """
@@ -100,12 +102,58 @@ def review(run_file: Path, review_files: list[Path]) -> None:
         print(f"- {category}: hallucination {share([r['seen_ok'] for r in mine], 'no')[0]}, "
               f"right {share([r['answer_ok'] for r in mine], 'yes')[0]}")  # fmt: skip
 
+    def fill(row):
+        row[10] = str(rate)
+        row[15] = f"{row[15]} reviewed: {judged} sentences, answers_right={right}".strip()
+
+    edit_iterations({run: fill})
+
+
+def score(run_files: list[Path], labels: Path) -> None:
+    """Quality metrics of saved runs against a label file, without running the model again:
+    for runs made with --videos before the labels existed. Fills them in each run's row of
+    experiments/iterations.csv."""
+    with open(labels, newline="") as file:
+        truth = {r["video"]: r for r in csv.DictReader(file)}
+    for label in truth.values():
+        label["valid"] = label["valid"].strip() == "1"
+    edits, everything = {}, []
+
+    def show(name, m):
+        print(f"{name}: n={m['n']} retake_acc={m['retake_acc']} phase_acc={m['phase_acc']} "
+              f"P={m['category_precision']} R={m['category_recall']} F1={m['category_f1']} "
+              f"drill_acc={m['drill_acc']}")  # fmt: skip
+
+    for run_file in run_files:
+        records = [json.loads(line) for line in run_file.open()]
+        for record in records:
+            record["label"] = truth.get(Path(record["video"]).name)
+        records = [r for r in records if r["label"]]
+        everything += records
+        m = compute(records)
+        show(run_file.stem, m)
+
+        def fill(row, m=m):
+            row[8], row[9], row[11] = (
+                str(m[k]) for k in ("phase_acc", "category_f1", "retake_acc")
+            )
+            row[15] = (f"{row[15]} scored against {labels.name}: n={m['n']} "
+                       f"P={m['category_precision']} R={m['category_recall']} "
+                       f"drill_acc={m['drill_acc']}")  # fmt: skip
+
+        edits[run_file.stem] = fill
+    if len(run_files) > 1:  # one system's runs, e.g. JC and professionals
+        show("together", compute(everything))
+    edit_iterations(edits)
+
+
+def edit_iterations(edits: dict) -> None:
+    """Apply edits[run](row) to the rows of experiments/iterations.csv, in place."""
     with open(ITERATIONS, newline="") as file:
         log = list(csv.reader(file))
     for row in log:
-        if row[0] == run:
-            row[10] = str(rate)
-            row[15] = f"{row[15]} reviewed: {judged} sentences, answers_right={right}".strip()
+        if row[0] in edits:
+            edits[row[0]](row)
     with open(ITERATIONS, "w", newline="") as file:
         csv.writer(file, lineterminator="\n").writerows(log)
 
@@ -165,11 +213,15 @@ def main() -> None:
                         help="compare two annotators' label files and exit")  # fmt: skip
     parser.add_argument("--review", nargs="+", type=Path, metavar=("RUN", "REVIEW"),
                         help="hallucination rate of a run from review files, and exit")  # fmt: skip
+    parser.add_argument("--score", nargs="+", type=Path, metavar="RUN",
+                        help="metrics of saved runs against --labels, and exit")  # fmt: skip
     args = parser.parse_args()
     if args.agreement:
         return agreement(*args.agreement)
     if args.review:
         return review(args.review[0], args.review[1:])
+    if args.score:
+        return score(args.score, args.labels or ROOT / "eval" / args.stroke / "labels.csv")
 
     config = load_config()
     stroke = base.get(args.stroke)
