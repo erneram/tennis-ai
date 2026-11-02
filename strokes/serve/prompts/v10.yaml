@@ -23,6 +23,19 @@
 #    unbalanced_finish keeps its wording: one frame cannot show balance. A wording about
 #    falling or being off balance was decided on 3 of 18 JC and 3 of 11 professionals (the
 #    current one: 4 and 1), so it was not adopted.
+# Result (2026-11-01, eval/run_eval.py --videos, same conditions as v9, jc-s27 split in two):
+# - analyzed: JC 21 of 21, professionals 11 of 11. Flagged: JC 1 (jc-s25, unbalanced_finish, as
+#   in v8 and v9), professionals 0. No gain in what the system finds.
+# - leg-drive frame: now 0.08 to 0.60 s before contact on JC (v9: 0.6 to 1.2 s), where by eye
+#   the tossing arm has dropped on most serves. Still toss_arm_drops_early "looks right" on all
+#   32 videos, both questions agreeing. The model's own sentence says the arm is "extended
+#   upward above the shoulder, holding the ball", long after the ball left the hand: it
+#   describes a typical serve, not the frame. JC's crop covers a third to half of the video
+#   (the player's reach), so the arm stays small in the frame the model sees.
+# - toss_arm_bent on the trophy frame: decided on 14 of 21 JC and 7 of 11 professionals (v9: 4
+#   of 31 videos), all "looks right".
+# - cost: 38 s per JC video (v9: 31 s; part of it from other jobs on the same machine during
+#   the run), 30 200 tokens; professionals 33 s, 25 400 tokens.
 # Never edit a version once it has results: copy it to a new version instead.
 # Placeholders ($name) are filled by strokes/base.py and core/history.
 
