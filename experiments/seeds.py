@@ -15,6 +15,7 @@ Result (2026-11-02), macro-F1 for seeds 0 to 3:
 - v18: 0.574, 0.343, 0.337, 0.233; mean 0.372 ± 0.144; errors 0, 0, 1, 1.
 - v19: 0.366, 0.412, 0.264, 0.233; mean 0.319 ± 0.084; errors 0, 0, 1, 1.
 - v20: 0.801, 0.805, 0.542, 0.459; mean 0.652 ± 0.178; errors 0, 0, 1, 1.
+- v21: 0.930, 0.899, 0.523, 0.502; mean 0.714 ± 0.233; errors 0, 0, 1, 1.
 On seed 1 the contact frame moved 1 to 18 source frames from seed 0, and the tossing-arm answer
 flipped on some identical frames: one seed is not enough to compare two versions.
 """
