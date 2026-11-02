@@ -5,6 +5,17 @@
 #    128 videos (seed 1: jc-s14, s26; seed 2: jc-s26, s27a, pro01_s01; seed 3: jc-s14). In the
 #    app the seed is fixed, so "try again" gives the same error every time.
 #    Videos without a guess get exactly the same calls as in v17.
+# Result (2026-11-02, eval/run_eval.py --videos --seed 1, 2, 3; seed 0 is v17's run, where no
+# video was guessed twice):
+# - every video v17 answered got the same key frames and checks. Of the 6 v17 failures, 4 are
+#   answered now (seed 1 jc-s14: tossing arm, jc-s26: no clear problem; seed 2 jc-s26 and
+#   pro01_s01: no clear problem); seed 2 jc-s27a and seed 3 jc-s14 still fail. Errors 6 -> 2
+#   of 128.
+# - macro-F1 against eval/serve/claude_labels.csv (experiments/seeds.py), seeds 0 to 3: 0.574,
+#   0.343, 0.337, 0.233; mean 0.372 ± 0.144 (v17 0.336 ± 0.168, v12 0.210 ± 0.052). Test half
+#   mean 0.440 (v17 0.416). Professional false alarms as in v17: 0 with seed 0 (the app's), 1
+#   with seeds 1 and 3.
+# - cost: 30 s per JC video, 28 300 tokens; professionals 25 s, 23 800 tokens (as v17).
 # Never edit a version once it has results: copy it to a new version instead.
 # Placeholders ($name) are filled by strokes/base.py and core/history.
 

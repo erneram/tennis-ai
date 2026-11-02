@@ -8,6 +8,13 @@ and "vNN, seed N, professionals", from eval/run_eval.py --seed); seed 0 runs are
 Per seed: macro-F1 in total and per half (dev and test as in experiments/probe_toss_arm.py), JC
 serves flagged for the tossing arm, professionals flagged for anything (false alarms), and
 valid videos with no answer (errors).
+
+Result (2026-11-02), macro-F1 for seeds 0 to 3:
+- v12: 0.280, 0.220, 0.175, 0.165; mean 0.210 ± 0.052.
+- v17: 0.574, 0.206, 0.329, 0.233; mean 0.336 ± 0.168; errors 0, 2, 3, 1.
+- v18: 0.574, 0.343, 0.337, 0.233; mean 0.372 ± 0.144; errors 0, 0, 1, 1.
+On seed 1 the contact frame moved 1 to 18 source frames from seed 0, and the tossing-arm answer
+flipped on some identical frames: one seed is not enough to compare two versions.
 """
 
 import csv
