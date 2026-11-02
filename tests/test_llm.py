@@ -211,3 +211,46 @@ def test_v8_keeps_a_check_only_when_both_questions_agree():
         "yes", "unclear", "no", "unclear", "yes", "unclear"]  # fmt: skip
     assert result["checks"]["insufficient_knee_bend"]["votes"] == {"check": "no", "problem": "no"}
     assert result["prompt_tokens"] == 13 * 900
+
+
+WHOLE_FRAME = {"bbox_2d": [0, 0, 1000, 1000]}  # keeps the whole frame: no crop
+
+
+def serve_video(tmp_path, frames=8):
+    path = tmp_path / "serve.mp4"
+    video.write_video(path, [np.full((64, 96, 3), i, np.uint8) for i in range(40)], fps=30)
+    return sample(path, frames=frames)
+
+
+def sources(frames, key_frames) -> list[int]:
+    return [frames.indices[i] for i in key_frames.values()]
+
+
+def test_v9_looks_closer_at_the_contact_and_the_landing(tmp_path):
+    # window frames 2 to 7 with one frame of margin: source frames 6, 10, 14, 18, 21, 25, 29, 33
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
+                  phases(1, 2, 4, 5, 7, 8),  # contact 29, follow_through 33
+                  {"frame": 9},  # contact among 21, 22, 23, 24, 25, 26, 28, 29, 30, ...: 30
+                  {"frame": 2})  # follow_through among 30, 31, 32, 33: 31  # fmt: skip
+    frames, key_frames, calls = base.phase_frames(serve, serve_video(tmp_path), vlm, "v9")
+    assert sources(frames, key_frames) == [6, 10, 18, 21, 30, 31] and len(calls) == 7
+    assert frames.indices == sorted(frames.indices) and len(frames.images) == 10
+    assert "Frames: 1 to 4." in vlm.user and "back on the ground" in vlm.user
+
+
+def test_v9_tries_again_on_other_frames_after_a_guess(tmp_path):
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
+                  phases(1, 2, 3, 4, 5, 6),  # a guess
+                  phases(1, 1, 2, 3, 4, 4),  # on source frames 6, 14, 21, 29
+                  {"frame": 5}, {"frame": 3})  # contact 25 (of 21 to 29), landing 27 (of 25 to 33)  # fmt: skip
+    frames, key_frames, calls = base.phase_frames(serve, serve_video(tmp_path), vlm, "v9")
+    assert sources(frames, key_frames) == [6, 6, 14, 21, 25, 27] and len(calls) == 8
+
+
+def test_v9_still_fails_after_two_guesses(tmp_path):
+    # 16 frames: the second try sees 8, enough for another six in a row
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 9},
+                  phases(1, 2, 3, 4, 5, 6), phases(1, 2, 3, 4, 5, 6))  # fmt: skip
+    with pytest.raises(ValueError, match="guess"):
+        base.phase_frames(serve, serve_video(tmp_path, frames=16), vlm, "v9")
+    assert not vlm.answers

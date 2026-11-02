@@ -61,10 +61,10 @@ def sample(path, frames: int = 32, max_seconds: float = 20) -> Frames:
     )
 
 
-def resample(frames: Frames, first: int, last: int) -> Frames:
-    """As many frames as `frames` has, evenly spaced between source frames `first` and `last`:
-    a closer look at one part of the video, cropped to `frames.box`."""
-    pairs = video.sample(frames.video, len(frames.images), first, last)
+def resample(frames: Frames, first: int, last: int, count: int | None = None) -> Frames:
+    """`count` frames (default: as many as `frames` has), evenly spaced between source frames
+    `first` and `last`: a closer look at one part of the video, cropped to `frames.box`."""
+    pairs = video.sample(frames.video, count or len(frames.images), first, last)
     return replace(
         frames,
         indices=[index for index, _ in pairs],

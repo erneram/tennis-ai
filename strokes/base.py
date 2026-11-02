@@ -15,9 +15,10 @@ Only the language model looks at the video:
    on, a choice between the good and the bad state instead of yes / no; from v8 on, the
    question about the good position and the one about the problem, kept only when they agree.
 phase_frames runs 1 and 2; from v8 on, before them, find_player crops every frame around the
-player.
+player; from v9 on, after them, refine_phases takes a closer look at the fastest phases.
 """
 
+from dataclasses import replace
 from importlib import import_module
 from itertools import pairwise
 from pathlib import Path
@@ -210,9 +211,80 @@ def phase_frames(stroke: Stroke, frames: Frames, vlm, version: str, **generation
         frames = resample(frames, frames.indices[first], frames.indices[last])
     key_frames, result = locate_phases(stroke, frames.images, vlm, version, **generation)
     calls.append(result)
-    if "window" in prompts and all(b - a == 1 for a, b in pairwise(key_frames.values())):
+    step = prompts["phases"].get("retry_step")  # v9: a second try on every step-th frame
+    if step and "window" in prompts and _guess(key_frames):
+        # with the seed fixed, the same frames give the same guess: the player could never
+        # get an answer, so the second try sees other frames
+        fewer, result = locate_phases(stroke, frames.images[::step], vlm, version, **generation)
+        calls.append(result)
+        if not _guess(fewer):
+            key_frames = {phase: i * step for phase, i in fewer.items()}
+    if "window" in prompts and _guess(key_frames):
         raise ValueError(f"Phase frames look like a guess: {list(key_frames.values())}")
+    if "refine" in prompts:
+        frames, key_frames, results = refine_phases(stroke, frames, key_frames, vlm, version,
+                                                    **generation)  # fmt: skip
+        calls += results
     return frames, key_frames, calls
+
+
+def _guess(key_frames: dict[str, int]) -> bool:
+    """Six frames in a row: the model counted instead of looking."""
+    return all(b - a == 1 for a, b in pairwise(key_frames.values()))
+
+
+def frame_schema(n_frames: int) -> dict:
+    """JSON schema of refine_phases: the number of one frame."""
+    frame = {"type": "integer", "enum": list(range(1, n_frames + 1))}
+    return {
+        "type": "object",
+        "properties": {"frame": frame},
+        "required": ["frame"],
+        "additionalProperties": False,
+    }
+
+
+def refine_phases(stroke: Stroke, frames: Frames, key_frames: dict[str, int], vlm,
+                  version: str, **generation):  # fmt: skip
+    """Model calls 2b (v9 on): for each phase in `refine`, frames sampled closely between the
+    key frames of `from` and `to` (null: the end of the window), and the frame that best
+    matches its description. Returns (frames with the chosen frames added in time order,
+    phase -> index into them, [Generation]).
+
+    The contact and the landing last a few hundredths of a second: among 32 frames over the
+    whole serve, the model took the racket behind the head for the contact (6 of 18 JC
+    videos) and a frame still in the air for the follow-through (5 of 18).
+    """
+    prompts = load(stroke, f"prompts/{version}.yaml")["refine"]
+    calls = []
+    for phase, spec in prompts["phases"].items():
+        first = frames.indices[key_frames[spec["from"]]]
+        last = frames.indices[key_frames[spec["to"]] if spec["to"] else -1]
+        if last - first < 2:  # nothing closer to look at
+            continue
+        close = resample(frames, first, last, prompts["frames"])
+        user = Template(prompts["user"]).substitute(
+            n_frames=len(close.images), looks_like=spec["looks_like"]
+        )
+        result = vlm.generate_json(prompts["system"], user, _numbered(close.images),
+                                   frame_schema(len(close.images)), **generation)  # fmt: skip
+        calls.append(result)
+        pick = result.data["frame"] - 1
+        frames, key_frames = _add_frame(frames, key_frames, phase, close.indices[pick],
+                                        close.images[pick])  # fmt: skip
+    return frames, key_frames, calls
+
+
+def _add_frame(frames: Frames, key_frames: dict[str, int], phase: str, index: int,
+               image: np.ndarray) -> tuple[Frames, dict[str, int]]:  # fmt: skip
+    """`frames` with source frame `index` added in time order as the key frame of `phase`."""
+    sources = {p: frames.indices[i] for p, i in key_frames.items()}
+    sources[phase] = index
+    images = dict(zip(frames.indices, frames.images, strict=True))
+    images[index] = image
+    order = sorted(images)
+    frames = replace(frames, indices=order, images=[images[i] for i in order])
+    return frames, {p: order.index(i) for p, i in sources.items()}
 
 
 def feedback_schema(stroke: Stroke) -> dict:
