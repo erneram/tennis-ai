@@ -5,6 +5,15 @@
 #    unclear. Over seeds 0 to 3, v18's macro-F1 went from 0.233 to 0.574. On JC, between two
 #    seeds the arm answer changed on 11 of 36 pairs with the same leg-drive frame and on 29 of
 #    84 with a different one: the answer is as noisy as the frame, so the answer gets the vote.
+# Result (2026-11-02, eval/run_eval.py --videos --seed 0 to 3; experiments/seeds.py): not adopted.
+# - macro-F1 0.366, 0.412, 0.264, 0.233; mean 0.319 ± 0.084 (v18 0.372 ± 0.144). Less spread,
+#   but fewer tossing-arm drops found: JC flagged 2, 3, 3, 2 (v18 7, 2, 5, 2), because the hand
+#   must be seen at shoulder height on 2 of 3 tries. Professional false alarms 0, 0, 1, 1.
+# - other ways to join the 3 stored answers, recomputed from these runs (the first try is v18's
+#   call, and gives v18's numbers exactly): "problem if any try sees it" mean 0.420 ± 0.112, but
+#   2 false alarms on professionals with seed 0; "problem if any, none above the head" 0.291.
+#   None passes the adoption rule, so v18 stays.
+# - cost: 34 s per JC video (v18 30 s), 31 700 tokens; professionals 30 s.
 # Never edit a version once it has results: copy it to a new version instead.
 # Placeholders ($name) are filled by strokes/base.py and core/history.
 
