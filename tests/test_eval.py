@@ -2,6 +2,7 @@ import math
 
 import pytest
 
+from eval import run_eval
 from eval.run_eval import compute, kappa, macro_prf
 
 
@@ -63,3 +64,19 @@ def test_compute_without_labels_keeps_only_operational_metrics():
     for r in records[:2]:  # category chosen by code: consistent by construction, no proxy
         r["prediction"]["checks"] = {}
     assert math.isnan(compute(records)["hallucination_rate"])
+
+
+def test_review_fills_hallucination_rate(tmp_path, monkeypatch):
+    log = tmp_path / "iterations.csv"
+    log.write_text("id,a,b,c,d,e,f,g,h,i,hallucination_rate,k,l,m,n,notes\n"
+                   "run1,,,,,,,,,,nan,,,,,n=2\nrun2,,,,,,,,,,nan,,,,,\n")  # fmt: skip
+    monkeypatch.setattr(run_eval, "ITERATIONS", log)
+    review = tmp_path / "review_x.csv"
+    review.write_text("run,video,category,seen_ok,answer_ok,notes\n"
+                      "run1,a.mp4,c1,yes,yes,\nrun1,a.mp4,c2,no,no,\n"
+                      "run1,b.mp4,c1,unclear,yes,\nrun2,a.mp4,c1,no,no,\n")  # fmt: skip
+    run_eval.review(tmp_path / "run1.jsonl", [review])
+    rows = log.read_text().splitlines()
+    assert rows[1].split(",")[10] == "0.5"  # 1 of the 2 judged sentences is wrong
+    assert rows[1].endswith('"n=2 reviewed: 2 sentences, answers_right=0.667"')
+    assert rows[2].split(",")[10] == "nan"  # other runs untouched

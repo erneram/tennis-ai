@@ -5,10 +5,13 @@
     uv run python -m eval.run_eval --model mlx-community/Qwen3-VL-2B-Instruct-4bit  # baseline
     uv run python -m eval.run_eval --agreement eval/serve/labels_ernesto.csv eval/serve/labels_hugo.csv
     uv run python -m eval.run_eval --videos data/raw/jc-s*.mp4 --note "..."  # no labels yet
+    uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv
 
 Reads eval/<stroke>/labels.csv (format and labeling guide in data/README.md) and the videos in
 data/raw/. --agreement compares the two annotators' independent labels before they are merged.
 --videos runs on videos without labels: only the answers and the operational metrics.
+--review reads the members' review of a run (made with `python -m eval.label`) and fills its
+hallucination rate in experiments/iterations.csv.
 Writes one JSON line per video to eval/<stroke>/runs/<run>.jsonl and appends the metrics
 to experiments/iterations.csv.
 """
@@ -72,13 +75,47 @@ def agreement(path_a: Path, path_b: Path) -> None:
             print(f"- {v}: {x['phase']}/{x['category']} vs {y['phase']}/{y['category']}")
 
 
+def review(run_file: Path, review_files: list[Path]) -> None:
+    """Hallucination rate of a run from the members' review: the share of checks whose "seen"
+    sentence describes something the frame does not show. Also prints how many answers were
+    right, per category. Writes the rate in the run's row of experiments/iterations.csv."""
+    run = run_file.stem
+    rows = [r for p in review_files for r in csv.DictReader(p.read_text().splitlines())
+            if r["run"] == run]  # fmt: skip
+    if not rows:
+        raise SystemExit(f"No review of {run} in the given files.")
+
+    def share(values, wanted, among=("yes", "no")):
+        values = [v for v in values if v in among]
+        return (round(values.count(wanted) / len(values), 3) if values else float("nan")), len(
+            values
+        )
+
+    rate, judged = share([r["seen_ok"] for r in rows], "no")
+    right, answers = share([r["answer_ok"] for r in rows], "yes")
+    print(f"{run}: hallucination rate {rate} ({judged} sentences judged), "
+          f"answers right {right} ({answers} judged)")  # fmt: skip
+    for category in sorted({r["category"] for r in rows}):
+        mine = [r for r in rows if r["category"] == category]
+        print(f"- {category}: hallucination {share([r['seen_ok'] for r in mine], 'no')[0]}, "
+              f"right {share([r['answer_ok'] for r in mine], 'yes')[0]}")  # fmt: skip
+
+    with open(ITERATIONS, newline="") as file:
+        log = list(csv.reader(file))
+    for row in log:
+        if row[0] == run:
+            row[10] = str(rate)
+            row[15] = f"{row[15]} reviewed: {judged} sentences, answers_right={right}".strip()
+    with open(ITERATIONS, "w", newline="") as file:
+        csv.writer(file, lineterminator="\n").writerows(log)
+
+
 def compute(records: list[dict]) -> dict[str, float]:
     """Quality and operational metrics. A video wrongly rejected counts as a wrong answer.
 
     hallucination_rate is an automatic proxy: answers whose category belongs to another phase.
     It is nan when the code chose the category (checks, prompt v6 on): those answers are
-    consistent by construction. Whether each observation matches its frames is checked by hand
-    in the written report.
+    consistent by construction; --review then fills it from the members' review.
     """
 
     def predicted(record, key):
@@ -126,9 +163,13 @@ def main() -> None:
                         help="run on these videos without labels (no quality metrics)")  # fmt: skip
     parser.add_argument("--agreement", nargs=2, type=Path, metavar=("A", "B"),
                         help="compare two annotators' label files and exit")  # fmt: skip
+    parser.add_argument("--review", nargs="+", type=Path, metavar=("RUN", "REVIEW"),
+                        help="hallucination rate of a run from review files, and exit")  # fmt: skip
     args = parser.parse_args()
     if args.agreement:
         return agreement(*args.agreement)
+    if args.review:
+        return review(args.review[0], args.review[1:])
 
     config = load_config()
     stroke = base.get(args.stroke)
@@ -162,7 +203,7 @@ def main() -> None:
             frames = sample(row["path"], **config["analysis"])
             frames, key_frames, calls = base.phase_frames(stroke, frames, vlm, version,
                                                           **generation)  # fmt: skip
-            record["valid"] = True
+            record["valid"], record["box"] = True, frames.box  # the crop, for eval.label
             record["key_frames"] = {p: frames.indices[i] for p, i in key_frames.items()}  # source
             images = {phase: frames.images[i] for phase, i in key_frames.items()}
             prediction = base.feedback(stroke, images, vlm, args.variant, version, **generation)
@@ -190,7 +231,7 @@ def main() -> None:
     out.write_text("".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in records))
 
     with open(ITERATIONS, "a", newline="") as file:
-        csv.writer(file).writerow([
+        csv.writer(file, lineterminator="\n").writerow([
             run, f"{datetime.now():%Y-%m-%d}", args.stroke, f"{args.variant}: {args.note}".strip(": "),
             config["analysis"]["frames"], llm["model"], version, llm["temperature"],
             metrics["phase_acc"], metrics["category_f1"], metrics["hallucination_rate"],
