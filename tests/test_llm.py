@@ -266,6 +266,15 @@ def test_v10_looks_closer_at_the_contact_then_the_leg_drive(tmp_path):
     assert "pushes up" in vlm.user
 
 
+def test_v13_places_the_leg_drive_a_tenth_of_a_second_before_contact(tmp_path):
+    vlm = FakeVLM(WHOLE_FRAME, WHOLE_FRAME, WHOLE_FRAME, {"retake": "none", "start": 3, "end": 6},
+                  phases(1, 2, 4, 5, 7, 8),  # trophy 18, leg_drive 21, contact 29
+                  {"frame": 9})  # contact among 21 to 33: 30; leg_drive 30 - 3 frames at 30 fps  # fmt: skip
+    frames, key_frames, calls = base.phase_frames(serve, serve_video(tmp_path), vlm, "v13")
+    assert sources(frames, key_frames) == [6, 10, 18, 27, 30, 33] and len(calls) == 6
+    assert frames.indices == sorted(frames.indices) and not vlm.answers
+
+
 def test_v10_judges_the_tossing_arm_on_the_leg_drive_frame():
     images = {p: np.full((8, 8, 3), i, np.uint8) for i, p in enumerate(serve.PHASES)}
     answers = [("yes", "no"), ("no", "yes")] + [("yes", "no")] * 4  # the tossing arm dropped
