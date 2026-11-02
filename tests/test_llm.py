@@ -335,3 +335,41 @@ def test_v11_counts_a_hand_between_shoulder_and_head_as_unclear():
     result = base.feedback(serve, images, vlm, "full", "v11")
     assert result["category"] == "no_clear_problem" and result["confidence"] == "low"
     assert result["checks"]["toss_arm_drops_early"]["answer"] == "unclear"
+
+
+class SeedVLM(FakeVLM):
+    """FakeVLM that also records the seed of each call."""
+
+    def generate_json(self, system, user, images, schema, **generation):
+        self.seeds = [*getattr(self, "seeds", []), generation.get("seed")]
+        return super().generate_json(system, user, images, schema, **generation)
+
+
+def hand_tries(*answers):
+    """Box and answer of each try of the tossing-hand question."""
+    box = {"bbox_2d": [0, 0, 1000, 1000]}
+    return [x for a in answers for x in (box, {"seen": "The hand.", "answer": a})]
+
+
+def test_v19_asks_the_tossing_hand_three_times_and_keeps_the_majority():
+    images = {p: np.zeros((80, 60, 3), np.uint8) for p in serve.PHASES}
+    tries = hand_tries("at shoulder height or below", "above the head",
+                       "at shoulder height or below")  # fmt: skip
+    vlm = SeedVLM(check("yes"), check("no"), *tries,
+                  *(check(a) for _ in range(4) for a in ("yes", "no")),
+                  {"observation": "Sostén el brazo."})  # fmt: skip
+    result = base.feedback(serve, images, vlm, "full", "v19", seed=5)
+    check_ = result["checks"]["toss_arm_drops_early"]
+    assert (result["category"], check_["answer"]) == ("toss_arm_drops_early", "no")
+    assert check_["votes"] == {"question 1": "no", "question 2": "yes", "question 3": "no"}
+    assert vlm.seeds[2:8] == [5, 5, 6, 6, 7, 7]  # box and question of each try
+
+
+def test_v19_answers_unclear_without_a_majority():
+    images = {p: np.zeros((80, 60, 3), np.uint8) for p in serve.PHASES}
+    tries = hand_tries("at shoulder height or below", "above the head", "unclear")
+    vlm = FakeVLM(check("yes"), check("no"), *tries,
+                  *(check(a) for _ in range(4) for a in ("yes", "no")))  # fmt: skip
+    result = base.feedback(serve, images, vlm, "full", "v19")
+    assert result["checks"]["toss_arm_drops_early"]["answer"] == "unclear"
+    assert result["category"] == "no_clear_problem" and not vlm.answers

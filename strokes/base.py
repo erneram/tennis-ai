@@ -451,6 +451,42 @@ def feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, variant: str, v
     }
 
 
+def ask_options(image: np.ndarray, vlm, prompts: dict, spec: dict, **generation):
+    """Model calls (v11): one neutral question with options, mapped to yes / no / unclear,
+    about `image` or (`upper_body`) its upper body. Returns ({"seen", "answer", "votes"}, the
+    image the answer was given on, [Generation]).
+
+    v19 (`votes`: n): n tries, each with its own seed (seed, seed + 1, ...) for the box and the
+    question; the answer is the one more than half the tries gave, else "unclear". With the
+    same seed the answer is fixed, but on v18 it changed with the seed on 31 % of pairs of runs
+    with the same leg-drive frame (experiments/seeds.py).
+    """
+    options = [*spec["options"], "unclear"]
+    user = Template(prompts["checks"]["options"]["user"]).substitute(
+        question=spec["question"], options="; ".join(options)
+    )
+    n, calls, tries = spec.get("votes", 1), [], []
+    for k in range(n):
+        seeded = {**generation, "seed": generation.get("seed", 0) + k}
+        shown = image
+        if spec.get("upper_body"):
+            shown, result = upper_body(image, vlm, prompts["player"], **seeded)
+            calls.append(result)
+        result = vlm.generate_json(prompts["checks"]["options"]["system"], user, [shown],
+                                   check_schema(tuple(options)), **seeded)  # fmt: skip
+        calls.append(result)
+        tries.append((spec["options"].get(result.data["answer"], "unclear"),
+                      result.data["seen"], shown))  # fmt: skip
+    answers = [a for a, _, _ in tries]
+    answer = next((a for a in ("yes", "no") if answers.count(a) * 2 > n), "unclear")
+    votes = (
+        {"question": answer} if n == 1 else {f"question {k + 1}": a for k, a in enumerate(answers)}
+    )
+    # the observation sees what a try that gave the answer saw
+    _, seen, shown = next((t for t in tries if t[0] == answer), tries[0])
+    return {"seen": seen, "answer": answer, "votes": votes}, shown, calls
+
+
 def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts: dict,
                      version: str, **generation) -> dict:  # fmt: skip
     """v6: one yes / no / unclear question per category (its `check` in criteria.yaml), each
@@ -493,36 +529,30 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
         spec = {**spec, **questions.get(category, {})}
         phase = frames.get(category, spec["phase"])  # the key frame it is judged on
         image = images[phase]
+        if "options" in spec:
+            check, image, results = ask_options(image, vlm, prompts, spec, **generation)
+            calls += results
+            seen_on[category], checks[category] = image, {**check, "phase": phase}
+            continue
         if spec.get("upper_body"):
             image, result = upper_body(image, vlm, prompts["player"], **generation)
             calls.append(result)
         seen_on[category] = image
         states = spec["choose"] if choose else {"part": "", "good": "yes", "bad": "no"}
         votes, seen = {}, None
-        if "options" in spec:
-            options = [*spec["options"], "unclear"]
-            user = Template(prompts["checks"]["options"]["user"]).substitute(
-                question=spec["question"], options="; ".join(options)
-            )
-            result = vlm.generate_json(prompts["checks"]["options"]["system"], user, [image],
-                                       check_schema(tuple(options)), **generation)  # fmt: skip
+        for field, yes_means in ask.items():
+            user = Template(prompts["checks"]["user"]).substitute(
+                phase=phase, looks_like=phases[phase]["looks_like"], question=spec[field],
+                **states,
+            )  # fmt: skip
+            schema = check_schema((states["good"], states["bad"], "unclear"))
+            result = vlm.generate_json(prompts["checks"]["system"], user, [image],
+                                       schema, **generation)  # fmt: skip
             calls.append(result)
-            votes["question"] = spec["options"].get(result.data["answer"], "unclear")
-            seen = result.data["seen"]
-        else:
-            for field, yes_means in ask.items():
-                user = Template(prompts["checks"]["user"]).substitute(
-                    phase=phase, looks_like=phases[phase]["looks_like"], question=spec[field],
-                    **states,
-                )  # fmt: skip
-                schema = check_schema((states["good"], states["bad"], "unclear"))
-                result = vlm.generate_json(prompts["checks"]["system"], user, [image],
-                                           schema, **generation)  # fmt: skip
-                calls.append(result)
-                vote = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"])
-                if yes_means == "bad":  # a "yes" to the problem question is the problem
-                    vote = {"yes": "no", "no": "yes"}.get(vote)
-                votes[field], seen = vote or "unclear", seen or result.data["seen"]
+            vote = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"])
+            if yes_means == "bad":  # a "yes" to the problem question is the problem
+                vote = {"yes": "no", "no": "yes"}.get(vote)
+            votes[field], seen = vote or "unclear", seen or result.data["seen"]
         answer = next(iter(votes.values())) if len(set(votes.values())) == 1 else "unclear"
         checks[category] = {"seen": seen, "answer": answer, "votes": votes, "phase": phase}
 
