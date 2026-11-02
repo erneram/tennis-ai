@@ -11,7 +11,8 @@ Only the language model looks at the video:
 2. locate_phases: in frames sampled again inside that window, it picks the frame that best shows
    each phase. Up to v4 it worked on the whole video and also decided whether to record again.
 3. feedback: from those key frames, the main improvement (or no_clear_problem) and a drill.
-   From v6 on, one yes / no / unclear question per category, each about one key frame.
+   From v6 on, one yes / no / unclear question per category, each about one key frame; from v7
+   on, a choice between the good and the bad state instead of yes / no.
 phase_frames runs 1 and 2.
 """
 
@@ -187,13 +188,14 @@ def feedback_schema(stroke: Stroke) -> dict:
     }
 
 
-def check_schema() -> dict:
-    """JSON schema of one check (v6): what the frame shows, then yes / no / unclear."""
+def check_schema(answers: tuple[str, ...] = ("yes", "no", "unclear")) -> dict:
+    """JSON schema of one check: what the frame shows, then yes / no / unclear (v6) or the
+    good state / the bad state / unclear (v7)."""
     return {
         "type": "object",
         "properties": {
             "seen": {"type": "string", "maxLength": 200},
-            "answer": {"type": "string", "enum": ["yes", "no", "unclear"]},
+            "answer": {"type": "string", "enum": list(answers)},
         },
         "required": ["seen", "answer"],
         "additionalProperties": False,
@@ -258,21 +260,29 @@ def checked_feedback(stroke: Stroke, images: dict[str, np.ndarray], vlm, prompts
     observation for it. With no "no" the answer is no_clear_problem, with confidence "low" if
     any check was unclear. Phase, category and drill are chosen by code, so the answer is
     always consistent.
+
+    v7 (prompts["checks"]["choose"]): the model picks the good or the bad state of the body
+    part (`choose` in criteria.yaml) instead of answering yes / no; the good state is stored as
+    "yes" and the bad one as "no".
     """
     criteria, drills = load(stroke, "criteria.yaml"), load(stroke, "drills.yaml")["drills"]
     phases, categories = criteria["phases"], criteria["categories"]
+    choose = prompts["checks"].get("choose", False)
     calls, checks = [], {}
     for category, spec in categories.items():
         if "check" not in spec:  # no_clear_problem
             continue
         phase = spec["phase"]
+        states = spec["choose"] if choose else {"part": "", "good": "yes", "bad": "no"}
         user = Template(prompts["checks"]["user"]).substitute(
-            phase=phase, looks_like=phases[phase]["looks_like"], question=spec["check"]
+            phase=phase, looks_like=phases[phase]["looks_like"], question=spec["check"], **states
         )
+        schema = check_schema((states["good"], states["bad"], "unclear"))
         result = vlm.generate_json(prompts["checks"]["system"], user, [images[phase]],
-                                   check_schema(), **generation)  # fmt: skip
+                                   schema, **generation)  # fmt: skip
         calls.append(result)
-        checks[category] = result.data
+        answer = {states["good"]: "yes", states["bad"]: "no"}.get(result.data["answer"], "unclear")
+        checks[category] = {**result.data, "answer": answer}
 
     found = [c for c, check in checks.items() if check["answer"] == "no"]
     if found:

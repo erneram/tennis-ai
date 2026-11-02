@@ -151,3 +151,16 @@ def test_v6_without_a_clear_no_has_no_clear_problem():
         "none", "no_clear_problem", "steady_serves")  # fmt: skip
     assert result["confidence"] == "low" and result["consistent"] and not vlm.answers
     assert "Question: Is the player balanced" in vlm.user and "$" not in vlm.user
+
+
+def test_v7_maps_the_bad_state_to_a_problem():
+    # toss good, trophy unclear, knees bad (problem), contact x2 good, follow_through good
+    states = [c["choose"] for c in base.load(serve, "criteria.yaml")["categories"].values()
+              if "choose" in c]  # fmt: skip
+    picks = [states[0]["good"], "unclear", states[2]["bad"], *(s["good"] for s in states[3:])]
+    vlm = FakeVLM(*map(check, picks), {"observation": "Flexiona más las rodillas."})
+    result = base.feedback(serve, dict(zip(serve.PHASES, frames(6))), vlm, "full", "v7")
+    assert result["category"] == "insufficient_knee_bend"
+    answers = [c["answer"] for c in result["checks"].values()]
+    assert answers == ["yes", "unclear", "no", "yes", "yes", "yes"]
+    assert result["evidence_phases"] == ["leg_drive"] and not vlm.answers
