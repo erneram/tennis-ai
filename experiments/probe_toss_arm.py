@@ -29,6 +29,12 @@ pair: the upper bodies at 0.3 and 0.1 s before contact shown together, "did the 
 come down": "came down" on 19 of 21 JC serves, but also on 4 of 11 professional ones
 (pro02_s01, pro03_s02, s03, s04), who start tucking the arm in. With 0.2 and 0.1 s: JC 9,
 professionals 4. The model sees the arm move, not whether it moved too early: not adopted.
+
+    uv run python -m experiments.probe_toss_arm cached version [seed ...]
+
+cached (v20): the upper bodies saved by `offsets ... v12` at 0.1 s before contact, asked the
+tossing-arm question of `version` with each seed; counts of each option per group and half.
+Result in the header of strokes/serve/prompts/v20.yaml.
 """
 
 import collections
@@ -176,8 +182,33 @@ def pair(first: str, second: str = "0.1") -> None:
         print(key, dict(counts))
 
 
+def cached(version: str, *seeds: str) -> None:
+    vlm, prompts = (
+        VLM(CONFIG["llm"]["model"]),
+        base.load(base.get("serve"), f"prompts/{version}.yaml"),
+    )
+    spec, ask = prompts["checks"]["questions"]["toss_arm_drops_early"], prompts["checks"]["options"]
+    options = [*spec["options"], "unclear"]
+    user = Template(ask["user"]).substitute(question=spec["question"], options="; ".join(options))
+    crops = ROOT / "data" / "processed" / "probe" / "offsets" / "Qwen3-VL-4B-Instruct-4bit-v12"
+    tally = collections.defaultdict(collections.Counter)
+    for seed in map(int, seeds or ["0"]):
+        for path in sorted(crops.glob("*.0.1.jpg")):
+            stem = path.name.split(".")[0]
+            hand = vlm.generate_json(ask["system"], user, [cv2.imread(str(path))],
+                                     base.check_schema(tuple(options)),
+                                     **{**GENERATION, "seed": seed}).data  # fmt: skip
+            group = "pro" if stem.startswith("pro") else "jc"
+            tally[f"{group} {'dev' if stem in DEV else 'test'}"][hand["answer"]] += 1
+            print(json.dumps({"seed": seed, "video": stem, **hand}), flush=True)
+    for key, counts in sorted(tally.items()):
+        print(key, dict(counts))
+
+
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["pair"]:
+    if sys.argv[1:2] == ["cached"]:
+        cached(*sys.argv[2:])
+    elif sys.argv[1:2] == ["pair"]:
         pair(*sys.argv[2:])
     elif sys.argv[1:2] == ["offsets"]:
         offsets(*(sys.argv[2:] or [CONFIG["llm"]["model"]]))
