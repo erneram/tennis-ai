@@ -53,9 +53,12 @@ A label is the main error of the serve, chosen from the categories in `strokes/s
 
 There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is a tennis expert; the written report says so.
 
-1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos.
+1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos. `uv run python -m eval.label` (http://127.0.0.1:7861) shows each video at normal speed and in slow motion and writes the file; the phase and the drill follow from the category.
 2. Watch each video at normal speed and in slow motion. Judge it only with the category descriptions and the `observe` notes in `strokes/serve/criteria.yaml`.
 3. Set `valid` to `0` when a person could not judge the serve either: player out of frame, serve cut off, too dark, or not a serve.
 4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose category `no_clear_problem` with phase `none`.
 5. Compare the two files with `uv run python -m eval.run_eval --agreement <file A> <file B>`. It prints Cohen's kappa per column and the videos you disagree on.
 6. Settle each disagreement together, write the agreed row in `eval/serve/labels.csv`, and report the kappa values.
+7. Only then, in the tab "Revisar respuestas" of the same tool, judge the checks of a run: for each key frame, whether what the model says it sees is in the frame, and whether its answer is right. Only videos you already labeled are shown. `uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv` prints the hallucination rate (sentences that describe something the frame does not show) and writes it in the run's row of `experiments/iterations.csv`.
+
+`eval/serve/claude_labels.csv` holds a third opinion on the JC videos: Claude (a different LLM from the one in the app) judged each serve by eye from 20 frames around contact (`uv run python -m eval.contact_sheet <videos>`). It is not a reference answer and must not be read before labeling. After the agreed labels exist, `--agreement eval/serve/labels.csv eval/serve/claude_labels.csv` measures how far an LLM judge agrees with the team, as the brief asks for LLM-as-a-judge (section 2.4).
