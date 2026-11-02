@@ -19,7 +19,10 @@ saved in data/processed/probe/offsets/<model>-<version>/. Results in the headers
 strokes/serve/prompts/v13.yaml (why 0.1 s), v14.yaml and v15.yaml. With
 mlx-community/Qwen3-VL-8B-Instruct-4bit and v12's question, no frame from 0.4 to 0.05 s got
 "at shoulder height or below" (JC unclear on 8 of 21 at 0.1 s): the larger model does not see
-the drop.
+the drop. One video frame either side of 0.1 s (offsets ... v12 0.117 0.083), the answer
+changes: at 0.117 s every serve "above the head" (1 unclear); at 0.083 s JC "at shoulder height
+or below" on 8 of 21, but also pro03_s04. A vote of the three frames finds 3 JC serves: the
+detection depends on one frame.
 """
 
 import collections
