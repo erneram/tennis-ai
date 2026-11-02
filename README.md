@@ -37,6 +37,25 @@ Over sampling seeds 0 to 3, 4 runs per version (from `uv run python -m experimen
   - 13 of JC's 80 drops are still missed.
 - **Speed:** one analysis takes about 36 s on the Mac.
 
+### What the numbers mean
+
+- **Precision**: when the app says "this is a problem", how often it is right. Low precision means false alarms: telling a player to fix something that was fine.
+- **Recall**: of the real problems, how many the app finds. Low recall means missed problems: the player hears "no clear problem" while the arm drops.
+- **F1**: one number that combines both, from 0 (useless) to 1 (always right). It is high only when both are high: flagging everyone finds every problem, and flagging no one gives no false alarm, but both get a low F1.
+- **Macro-F1**: the F1 of each answer ("tossing arm drops early", "no clear problem") averaged with the same weight, so the rarer answer counts as much as the common one.
+  - A system that always says "the arm drops" scores 0.39 here, and one that always says "no clear problem" scores 0.26. v22 scores 0.93 with seed 0.
+  - A video with no answer counts as one more answer that is always wrong, so a single error costs about a third of macro-F1.
+  - As a rough guide for this project: below 0.4 is no better than always giving the same answer, around 0.7 is useful but makes visible mistakes, and above 0.8 is good.
+- **± (over 4 seeds)**: how much the score changes when the model samples differently. A large ± means a lucky or unlucky run could change the conclusion. v22's ± 0.084 is half of v20's 0.178.
+- **Dev and test halves**: the videos are split in two, and a change that helps only on one half is suspect. Both halves were seen while choosing versions, so the scores are optimistic.
+- **Professional false alarms and JC drops found**: the two kinds of mistake, counted directly. The first is precision on good serves, the second is recall on JC's problem. For a player, a wrong correction is worse than a missed one, so false alarms weigh more in the adoption rule.
+- **Latency**: seconds per analysis, which is what a player waits.
+- **Tokens**: how much the model reads and writes, which is the compute per analysis. It costs no money because it runs on the Mac.
+- **Memory**: the RAM the model needs; it must fit on the Mac.
+- **κ (kappa)**: agreement between two labelers beyond chance, from 0 (chance) to 1 (full agreement). Once the team writes its labels, κ will say how far Claude's labels can be trusted.
+
+The model is never trained, so these numbers do not change it. They decide which prompt version the app uses. A version that finds more problems but gives more false alarms, like v20, is a trade-off the team has to choose.
+
 ### How decisions were made
 
 - **Versions are files.** A version is never edited once it has results. Its header (`strokes/serve/prompts/v*.yaml`) says what changed, why, and what came out. Every run is a row of `experiments/iterations.csv`.
@@ -112,7 +131,7 @@ One analysis takes 15 to 45 s on the Mac. For the fair, put the demo videos in `
 uv run python -m app.api --demo
 ```
 
-At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
+At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". The poster for the stand is in `docs/poster/`: `poster.pdf` to print at 24 × 36 in, `poster.html` to show on a screen (it needs no internet), and `poster.png`. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
 
 ## Evaluation
 
@@ -178,7 +197,7 @@ web/          web page (React), served by app/api.py
 data/         videos (not in Git) and annotations, see data/README.md
 eval/         evaluation sets and metric scripts, per stroke
 experiments/  iteration log (iterations.csv)
-docs/         proposal, licenses, images
+docs/         proposal, licenses, images, fair poster
 tests/        automated checks
 ```
 
