@@ -1,0 +1,211 @@
+# Prompt version v14: Project 3, language model only.
+# Changes from v13 (results of v13 in its header):
+# 1. checks.questions.toss_arm_drops_early: the tossing hand compared with the head (higher,
+#    level, lower) instead of placed among heights. By eye, JC's tossing arm is level with the
+#    shoulder at 0.1 s before contact, so the hand is lower than the head, while v13's question
+#    got "above the head" on 14 of 21 JC serves.
+# Result (2026-11-02, probe only: experiments/probe_toss_arm.py offsets <model> v14 0.15 0.1,
+# not run on the whole system):
+# - at 0.1 s before contact: JC "lower than the head" on 2 of 10 in the dev half (jc-s13, s15)
+#   and 6 of 11 in the test half (jc-s19, s22, s23, s24, s26, s27a); professionals none. v13's
+#   question on the same frames: 3 and 4, none. Not adopted: worse on the dev half, where the
+#   choice is made; asking both questions ties v13 on the dev half for one more call.
+# - at 0.15 s: "higher than the top of the head" on every serve but jc-s26.
+# - an earlier wording, "where does the tossing arm point" (up toward the ball / sideways level
+#   with the shoulder / down or folded against the chest), got "up" on every frame of every
+#   video from 0.4 to 0.05 s before contact.
+# Never edit a version once it has results: copy it to a new version instead.
+# Placeholders ($name) are filled by strokes/base.py and core/history.
+
+# Call 1: can the video be analyzed, and where does the serve start and end.
+window:
+  retake:  # reason: when the model chooses it, and the message shown to the player (Spanish)
+    not_a_serve:
+      when: The video does not show a tennis serve.
+      message: El video no muestra un saque. Graba un solo saque completo.
+    player_cut_off:
+      when: The player's body or the racket leaves the frame during the serve.
+      message: Parte del cuerpo o la raqueta queda fuera del encuadre; aleja la cámara o ponla más recta.
+    too_dark:
+      when: The player is too dark, backlit or blurry to see the arms and legs.
+      message: El cuerpo se ve poco. Revisa la luz y que el sol no quede detrás de ti.
+    serve_incomplete:
+      when: The video starts after the toss or ends before the player lands after the hit.
+      message: El video no muestra el saque completo. Graba desde la posición inicial hasta la terminación.
+    not_from_the_side:
+      when: The camera films the player from behind or from the front, not from the side.
+      message: La cámara no está de lado. Ponla sobre la prolongación de la línea de fondo, mirando tu pecho.
+  system: |
+    You check ONE tennis serve video. You receive evenly spaced frames in time order. Each frame
+    has its number written in the top-left corner.
+    First decide whether the video can be analyzed. "retake" is "none" when a person could judge
+    the serve from these frames; otherwise it is the reason to record again.
+    Then find the serve itself. Players often bounce the ball on the ground several times
+    before serving; the bouncing is not part of the serve.
+    - start: the last frame before the tossing arm starts going up to release the ball.
+    - end: the first frame where the player has landed after hitting the ball.
+  user: |
+    Frames: 1 to $n_frames.
+
+    Reasons to record again:
+    $reasons
+
+    Reply with the JSON object only.
+
+# Call 0: where the player is, on the first, middle and last frames. reach: how far the box
+# grows, as shares of the player's height, so the toss, the racket and the landing fit.
+# max_share: no crop when the box keeps more than this share of the frame.
+player:
+  reach: {up: 1.0, down: 0.15, side: 1.0}
+  max_share: 0.7
+  system: |
+    You find the tennis player who is about to serve in ONE frame. Give the box around that
+    player's whole body, from the top of the head to the feet, including the racket, as
+    "bbox_2d": [x1, y1, x2, y2] in coordinates from 0 to 1000. Ignore other people.
+  user: |
+    Reply with the JSON object only.
+
+# Call 2: which frame best shows each phase, in frames sampled inside the serve.
+# retry_step: after a guess, one more try on every retry_step-th frame.
+phases:
+  retry_step: 2
+  system: |
+    You receive evenly spaced frames of ONE tennis serve, in time order, from just before the
+    toss to the landing. Each frame has its number written in the top-left corner.
+    For each phase, give the number of the frame that best shows it. Phases happen in order, so
+    the numbers never go back in time. The serve fills the whole sequence: the toss is near the
+    beginning and the follow-through near the end.
+  user: |
+    Frames: 1 to $n_frames.
+
+    Phases, in order, and how to find each one:
+    $phase_guide
+
+    Reply with the JSON object only.
+
+# Call 2b: a closer look at the fastest phases. For each phase, in this order, `frames` frames
+# sampled closely between the key frames of `from` and `to` (null: the end of the serve).
+refine:
+  frames: 12
+  phases:
+    contact:
+      from: leg_drive
+      to: follow_through
+      looks_like: The racket meets the ball. The racket arm is stretched up above the head and the racket is at its highest point, touching the ball or right next to it. Not the moment the racket is still behind the head or the back.
+  system: |
+    You receive frames of ONE tennis serve, in time order, sampled close together. Each frame
+    has its number written in the top-left corner. Give the number of the ONE frame that
+    matches the description best.
+  user: |
+    Frames: 1 to $n_frames.
+
+    Description: $looks_like
+
+    Reply with the JSON object only.
+
+# After refine: key frames placed by code, `seconds` from the key frame of `from` (negative:
+# before), kept between the key frames of the phases before and after.
+offsets:
+  leg_drive: {from: contact, seconds: -0.1}
+
+# Call 3, full system: two questions per category, about one key frame.
+# frames: the phase whose key frame a category is judged on, when not its own.
+# questions: this version's wording of a category's fields, over criteria.yaml.
+checks:
+  ask:  # criteria field -> what a "yes" means; a check counts only when both agree
+    check: good
+    problem: bad
+  frames:
+    toss_arm_bent: trophy
+    toss_arm_drops_early: leg_drive
+  questions:
+    toss_arm_bent:
+      check: Is the tossing arm (the arm that released the ball, not the racket arm) straight or almost straight, reaching up toward the ball?
+      problem: Is the tossing arm (the arm that released the ball, not the racket arm) folded at the elbow, with the hand close to the head?
+    toss_arm_drops_early:  # one neutral question on the upper body; answer -> looks right / to improve
+      question: Compare the tossing hand (the empty hand, not the hand holding the racket) with the player's head. Where is the tossing hand?
+      options:
+        higher than the top of the head: "yes"
+        level with the head: unclear
+        lower than the head: "no"
+      upper_body: true
+  options:  # categories with `options`: one question, the model picks the option the frame shows
+    system: |
+      You look at ONE frame of a tennis serve filmed from the side, and answer ONE question about it.
+      First write "seen": one short sentence, in English, describing only what the frame shows
+      about the body part in the question.
+      Then "answer": the option that matches the frame, or "unclear" if you cannot tell: the player
+      is small, blurry or hidden.
+    user: |
+      Question: $question
+      Options: $options
+
+      Reply with the JSON object only.
+  system: |
+    You check ONE frame of a tennis serve filmed from the side, and answer ONE question about it.
+    First write "seen": one short sentence, in English, describing only what the frame shows
+    about the body part in the question.
+    Then "answer":
+    - "yes" if the frame shows it.
+    - "no" if the frame shows it is not the case.
+    - "unclear" if you cannot tell: the player is small, blurry or hidden, or the frame is
+      not the right moment.
+  user: |
+    Question: $question
+
+    Reply with the JSON object only.
+
+# Call 4, only when a check said "no": the observation for the player.
+observation:
+  system: |
+    You are the serve coach of a player who practices alone. You review ONE frame of their
+    tennis serve, filmed from the side. The main point to improve is already chosen.
+    Write "observation" in Spanish, in at most 3 short sentences, speaking directly to the
+    player (tú): what this frame shows and why it matters. Never state numbers (angles,
+    heights, speeds): you only have a frame. Do not copy the description word for word and do
+    not use variable names.
+  user: |
+    Phase: $phase
+    Point to improve: $description
+    What a good serve shows in this phase: $observe
+    What was seen in this frame: $seen
+
+    Reply with the JSON object only.
+  no_clear_problem: >
+    No vemos con claridad ninguno de los errores que revisamos en el lanzamiento, el trofeo, las
+    piernas, el impacto y la terminación. Sigue repitiendo el mismo movimiento.
+
+# Baseline: the same key frames, without criteria.
+simple:
+  system: |
+    You are the serve coach of a player who practices alone. You review ONE tennis serve
+    from key frames.
+    First write "seen": one short line per frame, in English, describing what is visible.
+    Then choose the main opportunity for improvement: one phase, one category, and one drill.
+    Use category no_clear_problem with phase "none" if there is no clear problem.
+    Write "observation" in Spanish, in at most 3 short sentences, speaking to the player (tú).
+  user: |
+    Frames, in order: $frame_list.
+
+    Categories: $category_names
+
+    Drills (id: category): $drill_names
+
+    Reply with the JSON object only.
+
+# Progress summary across sessions (text only, no images).
+summary:
+  system: |
+    You are the serve coach of a player who practices alone. You summarize their serve
+    practice.
+    Use only the attempts given; never invent results or numeric targets.
+    Write in Spanish, speaking directly to the player (tú). Call each phase by its Spanish name
+    and do not use variable names. Phase "none" means no clear problem was seen.
+  user: |
+    Serve phases, in order: $phases
+
+    Attempts, oldest first (session date, phase and category to improve):
+    $history
+
+    Return summary (2 or 3 sentences about progress across attempts and sessions),
+    next_focus (one concrete focus for the next practice) and focus_phase.

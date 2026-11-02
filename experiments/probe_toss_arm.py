@@ -9,12 +9,17 @@ box the model draws on that frame, enlarged to the same size (strokes/base.py, u
 Q1 = v10's two yes/no questions; Q2 = one neutral question: where is the tossing hand. Frames
 saved in data/processed/probe/v10/.
 
-    uv run python -m experiments.probe_toss_arm offsets [model]
+    uv run python -m experiments.probe_toss_arm offsets [model] [version] [seconds...]
 
 offsets (v13): the frames a fixed time before the contact frame of the v12 runs, cropped as
-the system crops them, asked v12's neutral question on the upper body. Counts per offset,
+the system crops them, asked the neutral question of `version` (default v12) on the upper
+body. Counts per offset,
 group and half (dev: JC s8-s17 and the first 6 professional serves; test: the rest). Frames
-saved in data/processed/probe/offsets/.
+saved in data/processed/probe/offsets/<model>-<version>/. Results in the headers of
+strokes/serve/prompts/v13.yaml (why 0.1 s), v14.yaml and v15.yaml. With
+mlx-community/Qwen3-VL-8B-Instruct-4bit and v12's question, no frame from 0.4 to 0.05 s got
+"at shoulder height or below" (JC unclear on 8 of 21 at 0.1 s): the larger model does not see
+the drop.
 """
 
 import collections
@@ -32,7 +37,7 @@ from strokes import base
 OUT = ROOT / "data" / "processed" / "probe" / "v10"  # crops of players' videos: not in Git
 RUNS = ["20261101-231243-full", "20261101-231849-full"]
 V12_RUNS = ["20261102-002057-full", "20261102-002636-full"]
-OFFSETS = (0.1, 0.15, 0.2, 0.25, 0.3, 0.4)  # seconds before contact
+OFFSETS = (0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4)  # seconds before contact
 DEV = {f"jc-s{n}" for n in range(8, 18)} | {"pro01_s01", "pro01_s02", "pro02_s01", "pro03_s01",
                                             "pro03_s02", "pro03_s03"}  # fmt: skip
 CONFIG = load_config()
@@ -90,12 +95,12 @@ def main() -> None:
         print(key, dict(counts))
 
 
-def offsets(model: str) -> None:
-    vlm, prompts = VLM(model), base.load(base.get("serve"), "prompts/v12.yaml")
+def offsets(model: str, version: str = "v12", *only: str) -> None:
+    vlm, prompts = VLM(model), base.load(base.get("serve"), f"prompts/{version}.yaml")
     spec, ask = prompts["checks"]["questions"]["toss_arm_drops_early"], prompts["checks"]["options"]
     options = [*spec["options"], "unclear"]
     user = Template(ask["user"]).substitute(question=spec["question"], options="; ".join(options))
-    out = ROOT / "data" / "processed" / "probe" / "offsets"
+    out = ROOT / "data" / "processed" / "probe" / "offsets" / f"{model.split('/')[-1]}-{version}"
     out.mkdir(parents=True, exist_ok=True)
     tally = collections.defaultdict(collections.Counter)
     for run in V12_RUNS:
@@ -105,7 +110,7 @@ def offsets(model: str) -> None:
                 continue
             path, contact = ROOT / record["video"], record["key_frames"]["contact"]
             fps = video.probe(path).fps
-            wanted = {max(0, contact - round(s * fps)): s for s in OFFSETS}
+            wanted = {max(0, contact - round(s * fps)): s for s in map(float, only or OFFSETS)}
             frames = {i: f for i, f in video.iter_frames(path) if i in wanted}
             group = "pro" if path.stem.startswith("pro") else "jc"
             half = "dev" if path.stem in DEV else "test"
@@ -126,6 +131,6 @@ def offsets(model: str) -> None:
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["offsets"]:
-        offsets(sys.argv[2] if len(sys.argv) > 2 else CONFIG["llm"]["model"])
+        offsets(*(sys.argv[2:] or [CONFIG["llm"]["model"]]))
     else:
         main()
