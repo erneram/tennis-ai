@@ -32,6 +32,7 @@ import cv2
 import numpy as np
 import yaml
 
+from core import video
 from core.analysis import (
     FRAME_SIDE,
     Frames,
@@ -314,23 +315,29 @@ def refine_phases(stroke: Stroke, frames: Frames, key_frames: dict[str, int], vl
 def offset_phases(stroke: Stroke, frames: Frames, key_frames: dict[str, int],
                   offsets: dict) -> tuple[Frames, dict[str, int]]:  # fmt: skip
     """v13: each phase in `offsets` is the source frame `seconds` from the key frame of `from`,
-    kept between the key frames of the phases before and after it. Returns (frames with it
-    added, phase -> index into them), as refine_phases.
+    kept between the key frames of the phases before and after it (the last phase: before the
+    end of the video). Returns (frames with it added, phase -> index into them), as
+    refine_phases.
 
     Among 12 close frames the model put the leg-drive frame within 0.1 s of contact on 7 of 21
     JC serves (v10, v12) and 0.4 to 1.2 s before it on 18 with another description (v11); the
-    contact frame it finds well (16 of 18, v9).
+    contact frame it finds well (16 of 18, v9). The landing it put 2 to 20 frames after contact,
+    still in the air, on most serves (v16).
     """
     for phase, spec in offsets.items():
         position = stroke.PHASES.index(phase)
         before = frames.indices[key_frames[stroke.PHASES[position - 1]]]
-        after = frames.indices[key_frames[stroke.PHASES[position + 1]]]
+        after = (frames.indices[key_frames[stroke.PHASES[position + 1]]]
+                 if position + 1 < len(stroke.PHASES)
+                 else video.probe(frames.video).frame_count)  # fmt: skip
         if after - before < 2:  # no frame between them
             continue
         index = frames.indices[key_frames[spec["from"]]] + round(spec["seconds"] * frames.fps)
         index = min(max(index, before + 1), after - 1)
-        [image] = resample(frames, index, index, 1).images
-        frames, key_frames = _add_frame(frames, key_frames, phase, index, image)
+        images = resample(frames, index, index, 1).images
+        if not images:  # the video has fewer frames than it reports: keep the model's
+            continue
+        frames, key_frames = _add_frame(frames, key_frames, phase, index, images[0])
     return frames, key_frames
 
 
