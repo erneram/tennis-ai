@@ -70,10 +70,13 @@ def phase_name(phase: str) -> str:
 def feedback_markdown(feedback: dict, seconds: float, cached: bool = False) -> str:
     timing = f"Tiempo de análisis: {seconds:.0f} s" + (" (respuesta guardada)" if cached else "")
     drill = DRILLS[feedback["drill_id"]]
+    seen_in = [p for p in feedback["evidence_phases"] if p != feedback["phase"]]
     lines = [
         "### No vemos un problema claro"
         if feedback["phase"] == "none"
-        else f"### Fase a mejorar: {phase_name(feedback['phase'])}",
+        else f"### Fase a mejorar: {phase_name(feedback['phase'])}"
+        # a check judged on another phase's frame (v10 on): say where the ❌ is
+        + "".join(f" (se ve en {phase_name(p)})" for p in seen_in[:1]),
         feedback["observation"],
         f"**Ejercicio recomendado: {drill['name']}.** {drill['instructions']}",
         f"Confianza: {CONFIDENCE[feedback['confidence']]} · {timing}",
