@@ -35,7 +35,7 @@ Over sampling seeds 0 to 3, 4 runs per version (from `uv run python -m experimen
 - **What v22 still gets wrong:**
   - its 3 false alarms all come from one serve, pro03_s03, whose contact frame is placed late;
   - 13 of JC's 80 drops are still missed.
-- **Speed:** one analysis takes about 36 s on the Mac.
+- **Speed:** one analysis takes about 44 s for a JC video and 29 s for a professional one on the Mac (mean over 4 seeds).
 
 ### Why Qwen3-VL-4B
 
