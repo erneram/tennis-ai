@@ -61,7 +61,8 @@ def runs() -> dict[tuple[str, int], list[str]]:
 
 def main() -> None:
     with (ROOT / "eval" / "serve" / "claude_labels.csv").open() as file:
-        labels = {row["video"]: row for row in csv.DictReader(file)}
+        # by stem: runs of the old .MOV files match the renamed .mp4 labels
+        labels = {Path(row["video"]).stem: row for row in csv.DictReader(file)}
     for row in labels.values():
         row["valid"] = row["valid"].strip() == "1"
     scores = {}
@@ -70,7 +71,7 @@ def main() -> None:
         for name in names:
             for line in (ROOT / "eval" / "serve" / "runs" / f"{name}.jsonl").open():
                 record = json.loads(line)
-                record["label"] = labels.get(Path(record["video"]).name)
+                record["label"] = labels.get(Path(record["video"]).stem)
                 if record["label"]:
                     records[record["video"]] = record
         records = list(records.values())

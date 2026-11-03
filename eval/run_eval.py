@@ -114,7 +114,8 @@ def score(run_files: list[Path], labels: Path) -> None:
     for runs made with --videos before the labels existed. Fills them in each run's row of
     experiments/iterations.csv."""
     with open(labels, newline="") as file:
-        truth = {r["video"]: r for r in csv.DictReader(file)}
+        # by stem: runs of the old .MOV files match the renamed .mp4 labels
+        truth = {Path(r["video"]).stem: r for r in csv.DictReader(file)}
     for label in truth.values():
         label["valid"] = label["valid"].strip() == "1"
     edits, everything = {}, []
@@ -127,7 +128,7 @@ def score(run_files: list[Path], labels: Path) -> None:
     for run_file in run_files:
         records = [json.loads(line) for line in run_file.open()]
         for record in records:
-            record["label"] = truth.get(Path(record["video"]).name)
+            record["label"] = truth.get(Path(record["video"]).stem)
         records = [r for r in records if r["label"]]
         everything += records
         m = compute(records)
