@@ -14,3 +14,6 @@ llm:
 
 app:
   slowdown: 4                 # slow-motion factor of the labeled video
+
+pose:
+  model: heavy                # MediaPipe Pose Landmarker: lite | full | heavy (offline, so the most accurate)

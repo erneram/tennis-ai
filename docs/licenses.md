@@ -8,6 +8,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 
 | Resource | License | Status |
 | --- | --- | --- |
+| [MediaPipe](https://github.com/google-ai-edge/mediapipe) Pose Landmarker (heavy) | Apache-2.0 | OK. Final Project: 33 landmarks per frame, the input of the trained model. Weights downloaded to `models/`, not committed. |
 | [MLX](https://github.com/ml-explore/mlx) / [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) | MIT | OK. |
 | [OpenCV](https://github.com/opencv/opencv-python) | Apache-2.0 | OK. Video reading, frame sampling, and the slow-motion video. |
 | [Gradio](https://github.com/gradio-app/gradio) | Apache-2.0 | OK. Web interface; analytics disabled in `app/`. |

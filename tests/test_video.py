@@ -27,6 +27,21 @@ def test_sample_spreads_frames_over_the_whole_video(tmp_path):
     assert [i for i, _ in video.sample(path, 4, first=10, last=19)] == [10, 13, 16, 19]
 
 
+def test_motion_finds_the_moving_part(tmp_path):
+    frames = []
+    for i in range(60):  # a white square that moves only in frames 30 to 36
+        frame = np.zeros((240, 320, 3), np.uint8)
+        x = 200 + 8 * min(max(i - 30, 0), 6)
+        frame[100:140, x : x + 40] = 255
+        frames.append(frame)
+    path = tmp_path / "moving.mp4"
+    video.write_video(path, frames, fps=30)
+    m = video.motion(path, before=0.5, after=0.5)
+    assert 30 <= m.peak <= 36 and (m.first, m.last) == (m.peak - 15, m.peak + 15)
+    x0, y0, x1, y1 = m.box
+    assert x0 <= 210 and x1 >= 280 and y0 <= 100 and y1 >= 140 and x1 - x0 < 200
+
+
 def test_check_video_rejects_short_low_fps_video():
     with pytest.raises(InsufficientEvidence) as error:
         check_video(VideoInfo(fps=15, frame_count=10, width=64, height=64), 20)
