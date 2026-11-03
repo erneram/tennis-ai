@@ -148,7 +148,7 @@ One analysis takes 15 to 45 s on the Mac. For the fair, put the demo videos in `
 uv run python -m app.api --demo
 ```
 
-At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". The poster for the stand is in `docs/poster/`: `poster.pdf` to print at 24 × 36 in, `poster.html` to show on a screen (it needs no internet), and `poster.png`. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
+At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". The poster for the stand is in `docs/poster/`: `poster.html` to show on a screen (it needs no internet) and `poster.png`. The PDF to print at 24 × 36 in is built locally and not kept in Git. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
 
 ## Evaluation
 
