@@ -5,7 +5,8 @@ Videos of players are personal data. They are never committed to Git.
 | Folder | Content | In Git |
 | --- | --- | --- |
 | `raw/` | Original serve videos, recorded as described in [docs/grabacion.md](../docs/grabacion.md). | No |
-| `processed/` | Derived files: extracted frames, keypoints, overlays. Can be regenerated from `raw/`. | No |
+| `processed/` | Derived files, such as the demo answers in `demo_cache/`. Can be regenerated. | No |
+| `demo/` | Videos shown at the fair (`python -m app --demo`). Only players with `consent_image` = `yes`. | No |
 | `annotations/` | Small annotation files (players, development labels). | Yes |
 
 ## Rules
@@ -35,29 +36,29 @@ Videos of players are personal data. They are never committed to Git.
 | `video` | File name inside `raw/`, for example `p03_s02.mp4`. |
 | `player` | Player ID from `players.csv`. |
 | `valid` | `1` if the video can be analyzed; `0` if the system should ask for a new recording (wrong angle, out of frame, too dark, not a serve). |
-| `phase` | Phase with the main opportunity for improvement: `stance`, `toss`, `trophy`, `leg_drive`, `contact`, `follow_through`. Empty when `valid` is `0`. |
+| `phase` | Phase with the main opportunity for improvement: `stance`, `toss`, `trophy`, `leg_drive`, `contact`, `follow_through`, or `none` with `no_clear_problem`. Empty when `valid` is `0`. |
 | `category` | A category from `strokes/serve/criteria.yaml`. Empty when `valid` is `0`. |
 | `drill_id` | The drill for the chosen category, from `strokes/serve/drills.yaml`. Optional. |
 | `notes` | Free text from the annotator. |
 
 ## What the labels are for
 
-In Spanish, "entrenar" means two different things. In this repository, *training* always means adjusting the model's weights. The player *practices*, and a *coach* teaches the player. The app gives its feedback on new videos that nobody labeled.
+In Spanish, "entrenar" means two different things. In this repository, *training* always means adjusting the model's weights. The player *practices*, and a *coach* teaches the player.
 
-The labels are written once, before any player uses the system:
-
-- **Project 3** (branch `proyecto-3`): the model is not trained. It is used as downloaded, with a prompt. The labels are only the answer key: the model answers without seeing them, and `eval/run_eval.py` compares its answers with them.
-- **Final Project** (this branch): the labels are also worked examples. The labeled serves are split by player. The model learns from the training players with a LoRA adapter, and the test players are the exam: they are never used for training. The goal is not to get the labeled serves right, since they already have an answer, but to diagnose new serves from players nobody labeled.
+In Project 3 the model is not trained: it is used as downloaded, with a prompt. The labels are only the answer key. They are written once, before looking at the system's answers; the model answers without seeing them, and `eval/run_eval.py` compares its answers with them. The app then gives feedback on new videos that nobody labeled.
 
 A label is the main error of the serve, chosen from the categories in `strokes/serve/criteria.yaml` (for example `toss_arm_bent`). Style is not an error: a personal start position, for example, is never labeled as one.
 
 ## Labeling guide
 
-There is no coach, so Ernesto and Hugo label every serve, for training and for testing. Neither is a tennis expert; the written report says so.
+There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is a tennis expert; the written report says so.
 
-1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos.
+1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos. `uv run python -m eval.label` (http://127.0.0.1:7861) shows each video at normal speed and in slow motion and writes the file; the phase and the drill follow from the category.
 2. Watch each video at normal speed and in slow motion. Judge it only with the category descriptions and the `observe` notes in `strokes/serve/criteria.yaml`.
 3. Set `valid` to `0` when a person could not judge the serve either: player out of frame, serve cut off, too dark, or not a serve.
-4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose the closest category and write `sin problema claro` in `notes`.
+4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose category `no_clear_problem` with phase `none`.
 5. Compare the two files with `uv run python -m eval.run_eval --agreement <file A> <file B>`. It prints Cohen's kappa per column and the videos you disagree on.
 6. Settle each disagreement together, write the agreed row in `eval/serve/labels.csv`, and report the kappa values.
+7. Only then, in the tab "Revisar respuestas" of the same tool, judge the checks of a run: for each key frame, whether what the model says it sees is in the frame, and whether its answer is right. Only videos you already labeled are shown. `uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv` prints the hallucination rate (sentences that describe something the frame does not show) and writes it in the run's row of `experiments/iterations.csv`.
+
+`eval/serve/claude_labels.csv` holds a third opinion on every video: Claude (a different LLM from the one in the app) judged each JC serve by eye from 20 frames around contact (`uv run python -m eval.contact_sheet <videos>`); the professional serves are marked no clear problem without a frame-by-frame check. It is not a reference answer and must not be read before labeling. After the agreed labels exist, `--agreement eval/serve/labels.csv eval/serve/claude_labels.csv` measures how far an LLM judge agrees with the team, as the brief asks for LLM-as-a-judge (section 2.4).

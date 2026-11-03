@@ -1,6 +1,6 @@
 # Cómo grabar los saques
 
-Serve Lab mide tu saque a partir del video: encuentra tus articulaciones en cada cuadro, divide el saque en fases y compara lo que ve con los criterios. Si la grabación es mala, mide mal o te pide repetir. Esta guía fija una sola forma de grabar para que todos los videos se puedan comparar entre sí.
+Serve Lab analiza tu saque a partir del video: un modelo de lenguaje con visión mira cuadros del video, encuentra las fases del saque y compara lo que ve con los criterios. Si la grabación es mala, se equivoca o te pide repetir. Esta guía fija una sola forma de grabar para que todos los videos se puedan comparar entre sí.
 
 **Regla principal:** graba todos los videos con la misma configuración. Un video bien grabado pero distinto a los demás también arruina la comparación.
 
@@ -25,7 +25,7 @@ Revísala cada vez, antes de empezar a grabar.
 - **Zurdo:** todo en espejo. Saca desde la izquierda de la marca central y pon la cámara a tu izquierda.
 - Al empezar el saque estás de perfil a la red, así que tu pecho mira hacia la cámara. Durante el saque giras y terminas mirando a la red.
 
-**Por qué de lado.** Desde aquí la cámara ve los dos brazos, el lanzamiento, la flexión de rodillas y la extensión del brazo en el impacto. Los primeros 7 videos se grabaron desde atrás en diagonal. En ese ángulo las rodillas y el brazo se mueven hacia la red, lejos del lente, y se ven más cortos de lo que son. Por eso hubo que quitar esas mediciones.
+**Por qué de lado.** Desde aquí la cámara ve los dos brazos, el lanzamiento, la flexión de rodillas y la extensión del brazo en el impacto. Los primeros 7 videos se grabaron desde atrás en diagonal. En ese ángulo las rodillas y el brazo se mueven hacia la red, lejos del lente, y se ven más cortos de lo que son. Así es difícil juzgar la flexión de rodillas y la extensión del brazo.
 
 **Comprobación de alineación.** Mira la pantalla: la línea de fondo debe verse como una línea casi vertical cerca del centro (imagen de la sección 2). Si se ve inclinada o cruzando la pantalla de lado a lado, mueve la cámara hasta que quede sobre la línea.
 
@@ -78,7 +78,7 @@ Así debe verse la pantalla:
 
 - **Luz:** de día o en cancha bien iluminada. Evita el atardecer, cuando la imagen se oscurece y aparece ruido.
 - **Sol:** que no quede detrás de ti, frente al lente. Lo mejor es tener el sol detrás o al lado de la cámara.
-- **Fondo:** nadie más dentro del cuadro. Si en la cancha de atrás hay gente jugando, cambia de cancha o de horario. Con dos personas en la imagen, el sistema puede seguir a la equivocada.
+- **Fondo:** nadie más dentro del cuadro. Si en la cancha de atrás hay gente jugando, cambia de cancha o de horario. Con dos personas en la imagen, el modelo puede mirar a la equivocada.
 
 ## 6. Errores comunes
 
@@ -86,23 +86,23 @@ Así debe verse la pantalla:
 
 | Error | Qué pasa | Qué dice la app |
 | --- | --- | --- |
-| La raqueta o los pies se salen del cuadro | Faltan articulaciones; el impacto no se encuentra | "El cuerpo se ve poco…" o "No se detecta el impacto por encima de la cabeza." |
-| Grabado desde atrás o de frente | Rodillas y brazo se ven más cortos de lo que son | Ninguno: el sistema no detecta el ángulo y mide mal. Por eso esta regla es tan importante. |
-| Contraluz o poca luz | La pose se detecta con poca confianza | "El cuerpo se ve poco: revisa la luz, la distancia y el ángulo de la cámara." |
-| Muy lejos | Pocas imágenes del jugador; la pose tiembla | Puede pedir repetir o medir con más error |
-| Otra persona en el cuadro | El sistema puede seguir a la otra persona | Resultados sin sentido |
-| El video se corta en el impacto | Falta la terminación | "El video termina en el impacto; graba hasta la terminación." |
-| El video empieza tarde | Falta el lanzamiento | "El video empieza en el impacto; graba desde la posición inicial." |
-| Teléfono vertical o inclinado | Poco espacio para aterrizar; las medidas cambian | Ninguno |
+| La raqueta o los pies se salen del cuadro | El modelo no ve el impacto o el aterrizaje | "Parte del cuerpo o la raqueta queda fuera del encuadre…" |
+| Grabado desde atrás o de frente | Rodillas y brazo se ven más cortos de lo que son | "La cámara no está de lado…", pero el modelo no siempre lo nota y juzga mal. Por eso esta regla es tan importante. |
+| Contraluz o poca luz | El cuerpo se ve oscuro y sin detalle | "El cuerpo se ve poco. Revisa la luz y que el sol no quede detrás de ti." |
+| Muy lejos | El jugador se ve pequeño en los cuadros | Puede pedir repetir o equivocarse más |
+| Otra persona en el cuadro | El modelo puede mirar a la otra persona | Resultados sin sentido |
+| El video se corta en el impacto | Falta la terminación | "El video no muestra el saque completo…" |
+| El video empieza tarde | Falta el lanzamiento | "El video no muestra el saque completo…" |
+| Teléfono vertical o inclinado | Poco espacio para aterrizar; el jugador se ve más pequeño | Ninguno |
 
 ## 7. Cuántos videos y de quién
 
-El Proyecto Final necesita de **40 a 60 saques etiquetados**: con una parte se entrena el modelo y con otra se examina.
+El proyecto necesita un conjunto de evaluación de **30 a 50 saques**.
 
 - **Jugadores:** idealmente de 3 a 5 jugadores distintos, de 6 a 10 saques cada uno. Al menos uno no debe aparecer en los videos de desarrollo.
 - **Consentimiento:** cada jugador firma su consentimiento antes de grabarlo. Anótalo en `data/annotations/players.csv` con un ID anónimo (`p01`, `p02`…), su mano dominante y su nivel. Las reglas están en [data/README.md](../data/README.md).
 - **Videos inválidos a propósito:** agrega de 4 a 6 videos mal grabados (cortado, desde atrás, oscuro, sin saque). Sirven para medir si el sistema pide repetir cuando debe. En las etiquetas van con `valid = 0`.
-- **Entrenamiento y prueba separados por jugador:** aquí "entrenar" se refiere al modelo, no al jugador. Los saques de unos jugadores son ejemplos resueltos con los que el modelo aprende (LoRA). Los de otros jugadores son el examen: el modelo nunca los ve al entrenarse. Los primeros 7 videos y los de prueba son de desarrollo. Todos se etiquetan antes de ver lo que responde el sistema ([para qué sirven las etiquetas](../data/README.md#what-the-labels-are-for) y [guía de etiquetado](../data/README.md#labeling-guide)).
+- **Desarrollo y evaluación separados:** los primeros 7 videos y los de prueba son de desarrollo: con ellos se ajustan los prompts. Los de evaluación no se usan para ajustar nada: se etiquetan antes de ver lo que responde el sistema y solo sirven para revisar sus respuestas. En el Proyecto 3 el modelo no se entrena; se usa tal como se descarga ([para qué sirven las etiquetas](../data/README.md#what-the-labels-are-for) y [guía de etiquetado](../data/README.md#labeling-guide)).
 
 ## 8. Nombres y envío
 
@@ -112,8 +112,8 @@ El Proyecto Final necesita de **40 a 60 saques etiquetados**: con una parte se e
 
 ## 9. Prueba antes de grabar todo
 
-Antes de grabar todos los saques:
+Antes de grabar los 30 a 50 saques:
 
 1. Graba 3 saques con esta configuración.
-2. Envíalos y revisamos que las fases y las mediciones salgan bien.
+2. Envíalos y revisamos que el modelo encuentre bien las fases.
 3. Si algo falla, se ajusta esta guía y luego se graba el resto, todo igual.

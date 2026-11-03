@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Serve Lab: propuesta de proyecto</title>
+<style>
+  @page {
+    size: letter;
+    margin: 1.8cm 2cm;
+    @bottom-right { content: counter(page) " / " counter(pages); font: 8pt Arial, sans-serif; color: #777; }
+  }
+  body { font: 10pt/1.4 Arial, Helvetica, sans-serif; color: #222; }
+  h1 { font-size: 20pt; margin: 0 0 2pt; }
+  .subtitle { color: #666; margin: 0 0 14pt; }
+  h2 { font-size: 13pt; color: #2b5a8c; margin: 16pt 0 5pt; }
+  p { margin: 0 0 7pt; }
+  code { white-space: nowrap; }
+  ul, ol { margin: 0 0 7pt; padding-left: 16pt; }
+  li { margin-bottom: 4pt; }
+  .figure { display: flex; gap: 14pt; align-items: flex-start; margin: 8pt 0; break-inside: avoid; }
+  .figure img { width: 52%; }
+  .figure .side { width: 48%; }
+  .caption { font-size: 8.5pt; color: #666; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 0 0 7pt; }
+  th, td { border: 1px solid #ccc; padding: 3pt 5pt; text-align: left; vertical-align: top; }
+  th { background: #eef2f6; }
+  td:first-child { white-space: nowrap; }
+  .refs { font-size: 8.5pt; color: #444; }
+  .refs li { margin-bottom: 2pt; }
+</style>
+</head>
+<body>
+
+<h1>Serve Lab</h1>
+<p class="subtitle">Asistente para analizar el saque de tenis · Propuesta de proyecto · CC3092 Proyecto 3 ·
+Ernesto y Hugo · 27 de octubre de 2026</p>
+
+<h2>1. Qué vamos a hacer</h2>
+<p>Serve Lab analiza el saque de tenis a partir de un video corto grabado con el teléfono. Divide el
+movimiento en seis fases, señala la fase con la principal oportunidad de mejora, muestra los cuadros que
+respaldan la observación y recomienda un ejercicio. Guarda el historial de cada sesión para mostrar el
+progreso y proponer el foco de la siguiente práctica.</p>
+<p>Elegimos el saque porque es el único golpe que el jugador controla por completo: no depende de la
+pelota del rival, empieza desde una posición estática y se ejecuta igual en cualquier situación de
+partido. Lo que se corrige en la práctica se traslada directo al juego.</p>
+
+<h2>2. Sin entrenador: criterios publicados</h2>
+<p>No tenemos entrenador. El jugador graba sus propios saques y Serve Lab funciona como su entrenador.
+Esto cambia dos cosas:</p>
+<ul>
+  <li><b>Criterios:</b> las categorías de error salen de estudios publicados de biomecánica del saque
+  (Kovacs y Ellenbecker, 2011; Jacquier-Bret y Gorce, 2024). No hay mediciones: el modelo juzga todo en
+  los cuadros y nunca da números.</li>
+  <li><b>Respuestas de referencia:</b> Ernesto y Hugo etiquetan cada saque por separado, sin ver la
+  respuesta del sistema. Reportamos su acuerdo con el kappa de Cohen y resolvemos juntos los
+  desacuerdos. Las etiquetas son de no expertos, y lo reportamos como limitación. El modelo no se
+  entrena: las etiquetas son solo la hoja de respuestas de la evaluación.</li>
+</ul>
+
+<h2>3. Cómo funciona</h2>
+<p>Solo el modelo de visión y lenguaje mira el video; no usamos modelos de pose.</p>
+<ol>
+  <li><b>Cuadros:</b> OpenCV revisa los cuadros por segundo y la duración, y toma 32 cuadros repartidos
+  en todo el video. A cada uno le dibuja su número.</li>
+  <li><b>Fases (primera llamada al modelo):</b> Qwen3-VL-4B-Instruct (4 bits, Apache-2.0), ejecutado
+  localmente con MLX-VLM, decide si el video sirve. Si no sirve, da el motivo para grabar de nuevo: no es
+  un saque, el cuerpo queda cortado, está muy oscuro, el saque está incompleto o la cámara no está de
+  lado. Si sirve, elige el cuadro que mejor muestra cada fase: posición inicial, lanzamiento, trofeo,
+  impulso de piernas, impacto y terminación.</li>
+  <li><b>Retroalimentación (segunda llamada):</b> con los seis cuadros clave, lo que se observa en cada
+  fase, las categorías y los ejercicios, el modelo elige la fase a mejorar, la categoría, los cuadros
+  que la respaldan y un ejercicio. Las dos respuestas son JSON con un esquema fijo, así que el modelo
+  solo puede elegir fases, categorías, ejercicios y cuadros que existen.</li>
+  <li><b>App:</b> el jugador sube el video y ve el saque en cámara lenta con la fase actual, la
+  observación con sus cuadros, el ejercicio y la comparación con su intento anterior. Al terminar la
+  sesión, el modelo resume el progreso y propone el foco de la siguiente práctica.</li>
+</ol>
+<p>No usamos claves de API ni servicios externos: los videos no salen de la computadora.</p>
+
+<h2>4. Evaluación</h2>
+<ul>
+  <li><b>Conjunto:</b> 30 a 50 saques de 3 a 5 jugadores, con jugadores que no se usan en desarrollo y
+  4 a 6 videos inválidos a propósito. Cada jugador firma su consentimiento y los videos no se suben al
+  repositorio.</li>
+  <li><b>Calidad:</b> exactitud en la fase; precisión, recall y F1 en la categoría; tasa de alucinación
+  (observaciones que los cuadros no respaldan, revisadas por los dos integrantes); exactitud al pedir
+  grabar de nuevo; utilidad de la recomendación según una rúbrica para los jugadores.</li>
+  <li><b>Operación:</b> latencia por saque, tokens de las dos llamadas y memoria en la Mac M5.</li>
+  <li><b>Líneas base:</b> el mismo modelo con un prompt simple, sin criterios; y un modelo más pequeño
+  (Qwen3-VL-2B) con los mismos prompts.</li>
+  <li><b>Iteraciones:</b> cada cambio de modelo, prompt, número de cuadros o parámetro se registra con
+  sus métricas. Los prompts están versionados; v4 es el primero sin pose.</li>
+</ul>
+
+<h2>5. Cómo se graban los videos</h2>
+<p>Escribimos una guía de grabación en español (<code>docs/grabacion.md</code>) que fija una sola forma
+de grabar, para que todos los videos se puedan comparar.</p>
+<div class="figure">
+  <img src="images/grabacion/vista-superior.svg" alt="Vista desde arriba de la cancha con la posición de la cámara">
+  <div class="side">
+    <ul>
+      <li>Cámara de lado, mirando el pecho del jugador, sobre la prolongación de la línea de fondo, a
+      unos 6 m.</li>
+      <li>Teléfono horizontal y recto, a 1.2–1.5 m de altura, lente 1x sin zoom.</li>
+      <li>Video normal a 1080p y 60 fps.</li>
+      <li>Un saque por video, de 4 a 8 segundos.</li>
+      <li>Se envía el archivo original, no por WhatsApp.</li>
+    </ul>
+    <p class="caption">Figura 1. Vista desde arriba: dónde va la cámara y dos posiciones incorrectas.</p>
+  </div>
+</div>
+<div class="figure">
+  <img src="images/grabacion/encuadre.svg" alt="Encuadre correcto del jugador en el impacto">
+  <div class="side">
+    <p>Los primeros 7 videos se grabaron desde atrás en diagonal, con el jugador pequeño en la imagen.
+    En ese ángulo las rodillas y el brazo se ven más cortos de lo que son. Desde un lado se ven
+    completos.</p>
+    <p>Antes de grabar el conjunto completo grabamos 3 saques de prueba para verificar que el modelo
+    encuentre bien las fases.</p>
+    <p class="caption">Figura 2. Encuadre correcto en el impacto: espacio arriba, abajo y para
+    aterrizar.</p>
+  </div>
+</div>
+
+<h2>6. Avance al 27 de octubre</h2>
+<ul>
+  <li><b>Listo:</b> carga de video, muestreo de cuadros, ubicación de fases y retroalimentación con el
+  modelo local en JSON (unos 15 s por saque y 4.8 GB de memoria en la Mac M5 Pro), criterios con sus
+  fuentes, ejercicios, script de evaluación con kappa y las dos líneas base, y app con cámara lenta,
+  historial y comparación entre intentos.</li>
+  <li><b>Cambio:</b> quitamos el modelo de pose y las mediciones, para que el Proyecto 3
+  sea solo un producto de modelo de lenguaje. La pose pasa al Proyecto Final.</li>
+  <li><b>Primer hallazgo:</b> en 4 de los videos iniciales, el modelo dio siempre la misma categoría
+  (brazo de lanzamiento doblado, con confianza alta), y en uno eligió como trofeo e impacto cuadros que
+  no muestran esas fases. La exactitud en la fase y la tasa de alucinación miden exactamente esto, y son
+  el punto de partida de las siguientes iteraciones.</li>
+  <li><b>Pendiente:</b> saques de prueba con la nueva guía, conjunto de evaluación, comparación contra
+  las líneas base, iteraciones, póster y video.</li>
+</ul>
+
+<h2>7. Calendario</h2>
+<table>
+  <tr><th>Fecha</th><th>Actividad</th></tr>
+  <tr><td>23 al 25 oct</td><td>Saques de prueba con la guía; ajuste de las fases desde el ángulo lateral.</td></tr>
+  <tr><td>25 al 28 oct</td><td>Grabación de 30 a 50 saques, etiquetado independiente con kappa, evaluación contra las dos líneas base.</td></tr>
+  <tr><td>28 al 31 oct</td><td>Iteraciones de prompt, número de cuadros y modelo; latencia y memoria; manejo de errores en la app.</td></tr>
+  <tr><td>1 nov</td><td>Evaluación final con jugadores no vistos, póster, video de 1 a 3 minutos y respuestas guardadas como respaldo para la demo.</td></tr>
+  <tr><td>2 nov</td><td>Feria.</td></tr>
+  <tr><td>6 nov</td><td>Entrega del informe escrito, el repositorio y el video.</td></tr>
+</table>
+
+<h2>8. Alcance y límites</h2>
+<p>Solo el saque, en videos cortos desde un ángulo lateral fijo, con una recomendación principal por
+intento. Quedan fuera los partidos completos, otros golpes, la velocidad o dirección de la pelota y
+cualquier diagnóstico médico. Un video de un solo ángulo no reconstruye toda la biomecánica, y Serve Lab
+no reemplaza a un entrenador. El repositorio separa un núcleo compartido de un módulo por golpe, para
+agregar otros golpes después.</p>
+<p>Todo lo que usamos es de código abierto: OpenCV (Apache-2.0), MLX-VLM (MIT), Qwen3-VL-4B y
+Qwen3-VL-2B (Apache-2.0) y Gradio (Apache-2.0). El detalle está en <code>docs/licenses.md</code>.</p>
+
+<h2>Referencias</h2>
+<ul class="refs">
+  <li>Kovacs, M. y Ellenbecker, T. (2011). An 8-stage model for evaluating the tennis serve: implications
+  for performance enhancement and injury prevention. <i>Sports Health</i>, 3(6), 504-513.
+  doi:10.1177/1941738111414175</li>
+  <li>Jacquier-Bret, J. y Gorce, P. (2024). Kinematics characteristics of key point of interest during
+  tennis serve among tennis players: a systematic review and meta-analysis. <i>Frontiers in Sports and
+  Active Living</i>. doi:10.3389/fspor.2024.1432030</li>
+  <li>Tubez, F. et al. (2021). Evolution of the trophy position along the tennis serve player's
+  development. <i>Sports Biomechanics</i>. Valores citados en Gorce, P. y Jacquier-Bret, J. (2024),
+  doi:10.3389/fspor.2024.1451174</li>
+  <li>MLX-VLM: github.com/Blaizzy/mlx-vlm · Qwen3-VL-4B-Instruct:
+  huggingface.co/Qwen/Qwen3-VL-4B-Instruct</li>
+</ul>
+
+</body>
+</html>

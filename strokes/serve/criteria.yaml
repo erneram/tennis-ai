@@ -1,12 +1,19 @@
 # Serve criteria per phase.
-# Version 0.3. There is no coach: every category points to published research (`sources` at the
+# Version 0.4. There is no coach: every category points to published research (`sources` at the
 # end). Every change is a new version, logged in experiments/iterations.csv.
 #
-# checks: measurable from one camera (see strokes/serve/metrics.py). A value outside [min, max]
-#         points to the check's category. Phases without checks are judged from the frames.
-# The studies measure 3D angles with lab cameras; ours are 2D from one phone. Their numbers decide
-# what to look at, but are not copied as limits. Limits are loose on purpose: for a player who
-# practices alone, a wrong correction is worse than a missed one.
+# looks_like: how the language model finds the phase in the frames (strokes/base.py, locate_phases).
+# observe: what it judges in the key frame of the phase (strokes/base.py, feedback).
+# check: the yes/no question asked about the key frame of the category's phase (prompt v6).
+#        "yes" means the phase looks right; a clear "no" is the problem. Small models lean to
+#        "yes", so a doubtful frame is not turned into a correction.
+# problem: the same question asked about the problem: "yes" is the problem (prompt v8 on).
+# choose: the body part and its good and bad state; the model picks the state the key frame
+#         shows (prompt v7 on). show: the same in Spanish for the app checklist.
+# Project 3 uses only the language model: there are no measurements, so every category is judged
+# from the frames. The studies measure 3D angles with lab cameras; their numbers decide what to
+# look at, but the model never states numbers. For a player who practices alone, a wrong
+# correction is worse than a missed one.
 #
 # 0.2: removed knee_bend_deg, contact_arm_extension_deg and contact_height (with the camera
 #      behind the player they read far too low).
@@ -15,57 +22,117 @@
 #      flagged 4 of 7 serves. Removed toss_arm_elevation_deg: measured at the top of the toss, it
 #      cannot show the arm dropping early (now judged from the frames). Removed
 #      stance_orientation: the start position is personal style (kovacs2011).
-version: "0.3"
+# 0.4: Project 3 without pose estimation. Removed the last measured check
+#      (toss_arm_extension_deg, min 150°) and added looks_like to every phase.
+# 0.5: added no_clear_problem (phase "none"). Without it the model had to find a problem in every
+#      serve: all 11 professional serves came back as toss_arm_bent with high confidence.
+#      looks_like of toss, trophy, contact and follow_through rewritten: the model took the ball
+#      bouncing for the toss and marked phases one or two frames early.
+# 0.6: added check to every category. With one choice among all categories, the answer followed
+#      the order of the list: reversing it changed every answer. Questions first asked about
+#      the problem ("is the hand at or below the head?"): on 4 of 11 professionals the model
+#      said "yes" while its own note said the hand was above the head. They now ask about the
+#      good position.
+# 0.7: added choose and show to every category. With v6 the model never answered "no": 0 of
+#      114 checks on 19 cropped amateur serves. In v7 it picks which of two described states
+#      the frame shows, so neither answer agrees with the question. check stays for v6.
+#      v7 flagged every professional too (results in the header of prompts/v7.yaml), so the
+#      app stays on v6; show is used by the app checklist with either version.
+# 0.8: added problem to every category: the same check asked about the problem, so "yes" is
+#      the problem. Prompt v8 asks check and problem and keeps an answer only when both agree.
+version: "0.8"
 
 phases:
   stance:
+    looks_like: Standing still before the toss, side-on to the net, ball and racket held in front of the body.
     observe: Starting position. Personal style, not corrected.
-    checks: []
   toss:
+    looks_like: The ball has just left the tossing hand, which is moving up; the racket is still low. Bouncing the ball on the ground before the serve is not the toss.
     observe: Tossing arm straight, moving up from the shoulder; ball released slightly to the side of the head, not straight above it.
-    checks:
-      # No published value: our limit. A straight arm is 180°.
-      - metric: toss_arm_extension_deg
-        min: 150
-        category: toss_arm_bent
   trophy:
+    looks_like: The ball is high in the air; the tossing arm is fully up pointing at it and the racket arm is bent with the racket behind the head or shoulder.
     observe: Tossing arm still up, pointing at the ball, while the racket drops behind the back.
-    checks: []
   leg_drive:
+    looks_like: Knees at their deepest bend, just before the player pushes up toward the ball.
     observe: Front knee clearly bent before pushing up toward the ball.
-    checks: []
   contact:
+    looks_like: Racket arm stretched up above the head, racket meeting the ball at the highest point; the feet are often off the ground.
     observe: Contact high, with the arm well above the shoulder and the elbow only slightly bent.
-    checks: []
   follow_through:
+    looks_like: After the hit, the racket has come down across the body and the player is landing or has landed inside the court.
     observe: Landing on the front foot and keeping balance.
-    checks: []
 
 categories:
   toss_arm_bent:
     phase: toss
     description: El brazo de lanzamiento se dobla al soltar la pelota en lugar de subir recto desde el hombro.
+    check: Is the tossing arm (the arm that releases the ball, not the racket arm) straight or almost straight?
+    problem: Is the tossing arm (the arm that releases the ball, not the racket arm) clearly bent at the elbow?
+    choose:
+      part: the tossing arm (the arm that releases the ball, not the racket arm)
+      good: straight or almost straight
+      bad: clearly bent at the elbow
+    show: [Brazo de lanzamiento, recto, doblado]
     source: no published value; straight tossing arm is common coaching advice
   toss_arm_drops_early:
     phase: trophy
     description: El brazo de lanzamiento baja antes de tiempo y deja de apuntar a la pelota mientras la raqueta baja por detrás.
+    check: Is the tossing arm still up, above the shoulder, pointing at the ball?
+    problem: Has the tossing arm (the arm that released the ball, not the racket arm) already dropped to shoulder height or below?
+    choose:
+      part: the tossing arm (the arm that released the ball, not the racket arm)
+      good: still up above the shoulder, pointing at the ball
+      bad: already down at shoulder height or below
+    show: [Brazo de lanzamiento con la raqueta atrás, arriba apuntando a la pelota, ya bajó]
     source: kovacs2011 (premature dropping of the tossing arm)
   insufficient_knee_bend:
     phase: leg_drive
     description: La rodilla delantera casi no se flexiona, así que las piernas aportan poco impulso.
+    check: Is at least one knee clearly bent?
+    problem: Are both legs almost straight, with no clear bend at the knees?
+    choose:
+      part: the knees
+      good: at least one knee clearly bent
+      bad: both legs almost straight
+    show: [Rodillas, flexionadas, casi rectas]
     source: kovacs2011 (front knee flexion above 15° recommended); jacquier2024 (about 65° at the trophy position)
   bent_arm_at_contact:
     phase: contact
     description: El brazo de la raqueta está claramente doblado en el impacto; lo normal es casi recto.
+    check: Is the racket arm straight or almost straight when the racket meets the ball?
+    problem: Is the racket arm clearly bent at the elbow when the racket meets the ball?
+    choose:
+      part: the racket arm when the racket meets the ball
+      good: straight or almost straight
+      bad: clearly bent at the elbow
+    show: [Brazo de la raqueta en el impacto, casi recto, doblado]
     source: kovacs2011 (elbow flexed about 20° at contact); jacquier2024 (about 30°)
   low_contact_point:
     phase: contact
     description: El impacto ocurre bajo; el brazo no llega bien arriba por encima del hombro.
+    check: Is the racket hand above the top of the player's head when the racket meets the ball?
+    problem: Is the racket hand at or below the top of the player's head when the racket meets the ball?
+    choose:
+      part: the racket hand when the racket meets the ball
+      good: above the top of the player's head
+      bad: at or below the top of the player's head
+    show: [Altura del impacto, sobre la cabeza, a la altura de la cabeza o más bajo]
     source: kovacs2011 (contact at about 100° of shoulder abduction); jacquier2024 (shoulder elevation about 105-111°)
   unbalanced_finish:
     phase: follow_through
     description: El jugador no aterriza sobre el pie delantero o pierde el equilibrio al aterrizar.
+    check: Is the player balanced, landing on the front foot without stumbling?
+    problem: Is the player stumbling, leaning over, or landing on the back foot?
+    choose:
+      part: the player's balance after the hit
+      good: balanced, landing on the front foot
+      bad: stumbling, leaning over or landing on the back foot
+    show: [Equilibrio al terminar, estable, se desequilibra]
     source: kovacs2011 (landing on the front foot, stage 8); balance has no published value
+  no_clear_problem:
+    phase: none
+    description: Los cuadros no muestran con claridad ninguno de los problemas anteriores.
+    source: none; for a player who practices alone, a wrong correction is worse than a missed one
 
 sources:
   kovacs2011: "Kovacs M, Ellenbecker T. An 8-stage model for evaluating the tennis serve: implications for performance enhancement and injury prevention. Sports Health. 2011;3(6):504-513. doi:10.1177/1941738111414175"

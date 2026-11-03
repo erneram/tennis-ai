@@ -12,7 +12,7 @@ from core import ROOT
 
 HISTORY_DIR = ROOT / "data" / "history"
 PLAYER_ID = re.compile(r"[A-Za-z0-9_-]{1,40}")
-MAX_ATTEMPTS_IN_PROMPT = 30  # bounds the summary prompt to about 2k tokens
+MAX_ATTEMPTS_IN_PROMPT = 30  # bounds the summary prompt to about 1k tokens
 
 
 def _file(player: str):
@@ -37,13 +37,12 @@ def save_session(player: str, attempts: list[dict]) -> list[dict]:
     return sessions
 
 
-def attempt(feedback: dict, measurements: dict[str, float]) -> dict:
+def attempt(feedback: dict) -> dict:
     return {
         "time": f"{datetime.now():%H:%M}",
         "phase": feedback["phase"],
         "category": feedback["category"],
         "drill_id": feedback["drill_id"],
-        "measurements": measurements,
     }
 
 
@@ -54,8 +53,7 @@ def summarize(vlm, prompts: dict, labels: dict[str, str], sessions: list[dict],
     `prompts` holds the stroke's summary prompt; `labels` maps each phase, in order, to its name.
     """
     lines = [
-        f"- {session['date']}: {a['phase']} / {a['category']}; "
-        + ", ".join(f"{name}={value}" for name, value in a["measurements"].items())
+        f"- {session['date']}: {a['phase']} / {a['category']}"
         for session in sessions
         for a in session["attempts"]
     ][-MAX_ATTEMPTS_IN_PROMPT:]

@@ -17,6 +17,7 @@ __pycache__/
 data/raw/
 data/processed/
 data/history/
+data/demo/
 *.mp4
 *.mov
 
@@ -27,3 +28,7 @@ docs/Proyecto_3_Casos_de_Uso_LLM-1.pdf
 models/
 *.pt
 *.onnx
+
+# Web frontend build output and deps
+web/node_modules/
+web/dist/

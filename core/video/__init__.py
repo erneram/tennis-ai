@@ -58,6 +58,32 @@ def iter_frames(path: str | Path, step: int = 1) -> Iterator[tuple[int, np.ndarr
         cap.release()
 
 
+def sample(path: str | Path, count: int, first: int = 0,
+           last: int | None = None) -> list[tuple[int, np.ndarray]]:  # fmt: skip
+    """`count` frames spread evenly from frame `first` to frame `last` (default: the end of the
+    video), as (frame_index, BGR frame).
+
+    Frames are counted by decoding them: phone videos often report more frames than they have.
+    """
+    if last is None:
+        cap = _open(path)
+        try:
+            last = -1
+            while cap.grab():
+                last += 1
+        finally:
+            cap.release()
+    size = last - first + 1
+    wanted = set(np.linspace(first, last, min(count, size)).round().astype(int).tolist())
+    frames = []
+    for index, frame in iter_frames(path):
+        if index > last:
+            break
+        if index in wanted:
+            frames.append((index, frame))
+    return frames
+
+
 def write_video(path: str | Path, frames: Iterable[np.ndarray], fps: float) -> int:
     """Write BGR frames to an H.264 .mp4 file and return the number of frames written."""
     writer = None

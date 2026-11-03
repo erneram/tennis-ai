@@ -1,8 +1,12 @@
-"""Serve module: phases, measurements, criteria, drills, and versioned prompts."""
-
-from strokes.serve.metrics import MEASUREMENT_LABELS, measure
-from strokes.serve.phases import LABELS, PHASES, key_frames, segment
+"""Serve module: phases, criteria, drills, and versioned prompts."""
 
 NAME = "serve"
-
-__all__ = ["LABELS", "MEASUREMENT_LABELS", "NAME", "PHASES", "key_frames", "measure", "segment"]
+PHASES = ("stance", "toss", "trophy", "leg_drive", "contact", "follow_through")
+LABELS = {
+    "stance": "1. Posición inicial",
+    "toss": "2. Lanzamiento",
+    "trophy": "3. Posición de trofeo",
+    "leg_drive": "4. Impulso de piernas",
+    "contact": "5. Impacto",
+    "follow_through": "6. Terminación",
+}

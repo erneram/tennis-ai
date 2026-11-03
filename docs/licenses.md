@@ -8,14 +8,13 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 
 | Resource | License | Status |
 | --- | --- | --- |
-| [MediaPipe](https://github.com/google-ai-edge/mediapipe) | Apache-2.0 | OK. Confirm the Pose Landmarker model card license in Phase 1. |
 | [MLX](https://github.com/ml-explore/mlx) / [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) | MIT | OK. |
-| OpenCV (installed by MediaPipe) | Apache-2.0 | OK. |
+| [OpenCV](https://github.com/opencv/opencv-python) | Apache-2.0 | OK. Video reading, frame sampling, and the slow-motion video. |
 | [Gradio](https://github.com/gradio-app/gradio) | Apache-2.0 | OK. Web interface; analytics disabled in `app/`. |
 | [Transformers](https://github.com/huggingface/transformers) (installed by MLX-VLM) | Apache-2.0 | OK. |
 | [llguidance](https://github.com/guidance-ai/llguidance) (installed by MLX-VLM) | MIT | OK. Constrains the model output to the JSON schema. |
 | [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) ([MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-VL-4B-Instruct-4bit)) | Apache-2.0 | OK. Primary vision-language model. |
-| [Ultralytics YOLO Pose](https://docs.ultralytics.com/tasks/pose/) (`yolo26n-pose.pt`) | AGPL-3.0 | Allowed for this public course repository. Optional group (`uv sync --group yolo`), so the default install has no AGPL code. Commercial use needs an Ultralytics Enterprise license or removing this backend. |
+| [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) ([MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-VL-2B-Instruct-4bit)) | Apache-2.0 | OK. Baseline: smaller model. |
 
 ## Candidate models for later iterations
 

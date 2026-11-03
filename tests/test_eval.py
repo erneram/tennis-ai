@@ -1,7 +1,9 @@
+import json
 import math
 
 import pytest
 
+from eval import run_eval
 from eval.run_eval import compute, kappa, macro_prf
 
 
@@ -18,11 +20,16 @@ def label(valid, phase="", category="", drill_id=""):
 
 
 def test_compute_counts_wrong_rejections_as_errors():
-    answer = {"phase": "contact", "category": "low_contact_point", "drill_id": "higher_toss"}
+    answer = {
+        "phase": "contact",
+        "category": "low_contact_point",
+        "drill_id": "higher_toss",
+        "consistent": True,
+    }
     records = [
         # correct answer
         {"label": label(True, "contact", "low_contact_point", "higher_toss"), "valid": True,
-         "prediction": answer, "grounded": True, "seconds": 2.0},
+         "prediction": answer, "seconds": 2.0, "tokens": 6000, "mem_gb": 5.0},
         # valid video wrongly rejected
         {"label": label(True, "trophy", "toss_arm_drops_early"), "valid": False, "seconds": 1.0},
         # invalid video correctly rejected
@@ -34,6 +41,7 @@ def test_compute_counts_wrong_rejections_as_errors():
     assert metrics["drill_acc"] == 1.0
     assert metrics["hallucination_rate"] == 0.0
     assert metrics["latency_s"] == 2.0
+    assert metrics["tokens"] == 6000 and metrics["mem_gb"] == 5.0
 
 
 def test_kappa():
@@ -41,3 +49,56 @@ def test_kappa():
     assert kappa(["a", "a", "b", "b"], ["a", "b", "a", "b"]) == 0.0  # chance level
     assert kappa(["a", "a", "a", "b"], ["a", "a", "b", "b"]) == pytest.approx(0.5)
     assert kappa(["a"], ["a"]) == 1.0 and math.isnan(kappa([], []))
+
+
+def test_compute_without_labels_keeps_only_operational_metrics():
+    answer = {"category": "no_clear_problem", "consistent": True}
+    flagged = {"category": "toss_arm_bent", "consistent": True}
+    records = [{"label": None, "valid": True, "prediction": p, "seconds": 20.0, "tokens": 9000,
+                "mem_gb": 5.1} for p in (answer, flagged)]  # fmt: skip
+    records.append({"label": None, "valid": True, "error": "guess", "seconds": 9.0})
+    metrics = compute(records)
+    assert (metrics["n"], metrics["answered"], metrics["flagged"]) == (3, 2, 1)
+    assert math.isnan(metrics["phase_acc"]) and math.isnan(metrics["retake_acc"])
+    assert metrics["latency_s"] == 20.0 and metrics["tokens"] == 9000
+    assert metrics["hallucination_rate"] == 0.0
+    for r in records[:2]:  # category chosen by code: consistent by construction, no proxy
+        r["prediction"]["checks"] = {}
+    assert math.isnan(compute(records)["hallucination_rate"])
+
+
+def test_review_fills_hallucination_rate(tmp_path, monkeypatch):
+    log = tmp_path / "iterations.csv"
+    log.write_text("id,a,b,c,d,e,f,g,h,i,hallucination_rate,k,l,m,n,notes\n"
+                   "run1,,,,,,,,,,nan,,,,,n=2\nrun2,,,,,,,,,,nan,,,,,\n")  # fmt: skip
+    monkeypatch.setattr(run_eval, "ITERATIONS", log)
+    review = tmp_path / "review_x.csv"
+    review.write_text("run,video,category,seen_ok,answer_ok,notes\n"
+                      "run1,a.mp4,c1,yes,yes,\nrun1,a.mp4,c2,no,no,\n"
+                      "run1,b.mp4,c1,unclear,yes,\nrun2,a.mp4,c1,no,no,\n")  # fmt: skip
+    run_eval.review(tmp_path / "run1.jsonl", [review])
+    rows = log.read_text().splitlines()
+    assert rows[1].split(",")[10] == "0.5"  # 1 of the 2 judged sentences is wrong
+    assert rows[1].endswith('"n=2 reviewed: 2 sentences, answers_right=0.667"')
+    assert rows[2].split(",")[10] == "nan"  # other runs untouched
+
+
+def test_score_labels_a_saved_run(tmp_path, monkeypatch):
+    log = tmp_path / "iterations.csv"
+    log.write_text("id,a,b,c,d,e,f,g,phase_acc,category_f1,k,retake_acc,l,m,n,notes\n"
+                   "run1,,,,,,,,nan,nan,,nan,,,,n=3\n")  # fmt: skip
+    monkeypatch.setattr(run_eval, "ITERATIONS", log)
+    labels = tmp_path / "labels.csv"
+    labels.write_text("video,player,valid,phase,category,drill_id,notes\n"
+                      "a.mp4,x,1,none,no_clear_problem,,\nb.mp4,x,0,,,,\n")  # fmt: skip
+    prediction = {"phase": "none", "category": "no_clear_problem", "drill_id": "", "checks": {}}
+    run = tmp_path / "run1.jsonl"
+    run.write_text("\n".join(json.dumps(r) for r in [
+        {"video": "data/raw/a.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+        {"video": "data/raw/b.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+        {"video": "data/raw/c.mp4", "valid": True, "prediction": prediction, "seconds": 1, "tokens": 1, "mem_gb": 1},
+    ]))  # fmt: skip
+    run_eval.score([run], labels)
+    row = log.read_text().splitlines()[1].split(",")
+    assert row[8:12] == ["1.0", "1.0", "", "0.5"]  # b should have been a retake; c has no label
+    assert "scored against labels.csv: n=2" in row[15]

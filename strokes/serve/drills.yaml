@@ -2,7 +2,8 @@
 # Version 0.2. Written by the team from common practice; not reviewed by a coach. Kept short,
 # slow and low-load so they are safe to do alone.
 # 0.2: removed feet_line and trophy_pause with their categories (see criteria.yaml 0.3).
-version: "0.2"
+# 0.3: added steady_serves for no_clear_problem (criteria.yaml 0.5).
+version: "0.3"
 
 drills:
   - id: toss_target
@@ -29,3 +30,7 @@ drills:
     category: unbalanced_finish
     name: Aterriza y sostén
     instructions: Después de cada saque, aterriza sobre el pie adelantado dentro de la cancha y mantén el equilibrio 2 segundos. 3 series de 8.
+  - id: steady_serves
+    category: no_clear_problem
+    name: Repetir el mismo saque
+    instructions: Haz 3 series de 10 saques al 70 % de velocidad buscando repetir siempre el mismo movimiento. Al terminar, graba otro saque de lado para revisarlo de nuevo.
