@@ -37,6 +37,23 @@ Over sampling seeds 0 to 3, 4 runs per version (from `uv run python -m experimen
   - 13 of JC's 80 drops are still missed.
 - **Speed:** one analysis takes about 36 s on the Mac.
 
+### Why Qwen3-VL-4B
+
+The same prompt (v17) and seed (0) on three sizes of the same model family, all 4-bit on the Mac:
+
+| Model | Macro-F1 | JC drops found (of 20) | Professional false alarms (of 11) | Seconds per JC video | Memory |
+| --- | --- | --- | --- | --- | --- |
+| Qwen3-VL-2B | 0.052 | 1 | 9 | 18 | 3.7 GB |
+| **Qwen3-VL-4B** | **0.574** | **7** | **0** | 30 | 5.1 GB |
+| Qwen3-VL-8B | 0.135 | 0 | 1 | 48 | 7.9 GB |
+
+- The 2B model flags almost everyone, so it is the baseline that shows what the larger model adds.
+- The 8B model is slower and needs more memory, and it was no better. With v6 and v7 it also followed the wording of the question: it flagged 9, then 11, of the 11 professionals (the 4B model with v6: 3).
+- An open model that runs on the Mac keeps the players' videos on the computer, works without internet at the fair, and costs nothing per analysis. Its license is Apache-2.0, it reads several images in one request (32 frames to find the phases), and it fits in the Mac's 24 GB.
+- Limits of this comparison: the prompts were written for the 4B model, so the 8B model might do better with prompts of its own. And it is one seed, while a version's score can change a lot between seeds.
+
+Runs: 2B `eval/serve/runs/20261102-032818-full.jsonl` and `20261102-033105-full.jsonl`, 4B `20261102-023129-full.jsonl` and `20261102-023612-full.jsonl`, 8B `20261102-031416-full.jsonl` and `20261102-032147-full.jsonl`; with v6 and v7, `20261101-pro-v6-8b`, `20261101-pro-v7-8b`, `20261101-jc-crop-v6-8b` and `20261101-jc-crop-v7-8b`. Each is a row of `experiments/iterations.csv`.
+
 ### What the numbers mean
 
 - **Precision**: when the app says "this is a problem", how often it is right. Low precision means false alarms: telling a player to fix something that was fine.
