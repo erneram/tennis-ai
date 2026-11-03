@@ -3,10 +3,19 @@ pandoc docs/informe.md -s --embed-resources --resource-path=docs --css docs/info
 "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" --headless --no-pdf-header-footer --print-to-pdf=docs/informe.pdf /tmp/informe.html
 -->
 
-# Serve Lab: informe escrito
-
-CC3092 Deep Learning y Sistemas Inteligentes, Proyecto 3: Casos de Uso de LLM. Universidad del Valle de Guatemala.
-Ernesto David Ascencio Ramírez (23009) y Hugo Daniel Barillas Ajín (23556). 6 de noviembre de 2026.
+<div class="cover">
+<div class="band">
+<p class="eyebrow">Universidad del Valle de Guatemala</p>
+<p class="course">CC3092 Deep Learning y Sistemas Inteligentes</p>
+<p class="title">Serve Lab</p>
+<p class="tagline">Graba tu saque con el teléfono: un modelo de visión y lenguaje te dice qué mejorar primero, en tu propia computadora.</p>
+</div>
+<div class="info">
+<p class="kind">Proyecto 3: Casos de Uso de LLM<br>Informe escrito</p>
+<p class="people"><strong>Ernesto David Ascencio Ramírez</strong> · 23009<br><strong>Hugo Daniel Barillas Ajín</strong> · 23556</p>
+<p class="date">Guatemala, 6 de noviembre de 2026<br>github.com/erneram/tennis-ai · rama proyecto-3</p>
+</div>
+</div>
 
 ## 2.1 Definición del problema y usuario objetivo
 
