@@ -25,7 +25,9 @@ data/demo/
 docs/Proyecto_3_Casos_de_Uso_LLM-1.pdf
 Proyecto Final - Caso de uso real.pdf
 
-# Report and poster PDFs: built locally from docs/informe.md and docs/poster/poster.html
+# Proposal, report and poster PDFs: built locally from docs/propuesta-*.html, docs/informe.md
+# and docs/poster/poster.html
+docs/propuesta*.pdf
 docs/informe*.pdf
 docs/poster/*.pdf
 
