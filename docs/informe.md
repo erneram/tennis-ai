@@ -154,6 +154,9 @@ La versión final (v22) saca **macro-F1 0.84 ± 0.08** en 4 semillas. Detecta la
 
 **Siguiente paso:** etiquetas del equipo, más jugadores y ángulos, ajuste fino (LoRA) con cuadros etiquetados, y estimación de pose en el Proyecto Final.
 
-## 2.9 Enlace al repositorio
+## 2.9 Enlace al repositorio y video
 
-https://github.com/erneram/tennis-ai/tree/proyecto-3. Contiene el código, los prompts, el conjunto de evaluación y las corridas. El README explica cómo instalar, ejecutar y reproducir las métricas.
+- **Repositorio:** <https://github.com/erneram/tennis-ai/tree/proyecto-3>
+- **Video de demostración:** <https://youtu.be/7LOiajnxzxk>
+
+El repositorio contiene el código, los prompts, el conjunto de evaluación y las corridas. El README explica cómo instalar, ejecutar y reproducir las métricas.
