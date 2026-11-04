@@ -2,9 +2,12 @@
 
     uv run python -m eval.label      # then open http://127.0.0.1:7861
 
-"Etiquetar": one video at a time, at normal speed and in slow motion, never with the system's
-answers. Writes eval/serve/labels_<name>.csv (guide in data/README.md); the phase and the
-drill follow from the category.
+"Etiquetar": one video at a time, at normal speed and in slow motion next to a professional
+serve, never with the system's answers. Two yes/no questions that need no tennis knowledge: can
+the serve be judged, and has the tossing hand already dropped to the shoulder when the racket is
+lowest behind the back (toss_arm_drops_early in criteria.yaml). Writes
+eval/serve/labels_<name>.csv (guide in data/README.md); the phase and the drill follow from the
+answer.
 "Revisar respuestas": the key frame of each check in a run, with what the model said it saw.
 Only videos the member already labeled are shown, so the labels stay blind. Writes
 eval/serve/review_<name>.csv; `python -m eval.run_eval --review` turns it into the
@@ -36,6 +39,9 @@ NAMES = sorted(p.stem.removeprefix("labels_") for p in EVAL.glob("labels_*.csv")
 LABEL_COLUMNS = ["video", "player", "valid", "phase", "category", "drill_id", "notes"]
 REVIEW_COLUMNS = ["run", "video", "category", "seen_ok", "answer_ok", "notes"]
 OK = [("Sí", "yes"), ("No", "no"), ("No se puede saber", "unclear")]
+REFERENCE = "pro02_s01.mp4"  # a professional filmed from the side, shown next to every video
+ARM = [("Sí, ya está a la altura del hombro o más abajo", "toss_arm_drops_early"),
+       ("No, sigue arriba del hombro, apuntando a la pelota", "no_clear_problem")]  # fmt: skip
 
 
 def read(path: Path) -> list[dict]:
@@ -62,11 +68,6 @@ def playable(name: str, slowdown: int) -> str:
     return str(out)
 
 
-def category_choices() -> list[tuple[str, str]]:
-    return [(f"{STROKE.LABELS.get(c['phase'], 'Sin problema claro')} · {c['description']}", key)
-            for key, c in CATEGORIES.items()]  # fmt: skip
-
-
 def label_view(name: str, choice: str | None = None):
     rows = read(EVAL / f"labels_{name}.csv")
     done = sum(bool(r["valid"]) for r in rows)
@@ -90,7 +91,7 @@ def save_label(name: str, choice: str, valid: str | None, category: str | None, 
     if valid is None:
         raise gr.Error("Elige si el video se puede analizar.")
     if valid == "1" and not category:
-        raise gr.Error("Elige el problema principal, o «sin problema claro».")
+        raise gr.Error("Responde si la mano que lanzó ya bajó.")
     path = EVAL / f"labels_{name}.csv"
     rows = read(path)
     row = next(r for r in rows if r["video"] == choice)
@@ -170,18 +171,22 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
     gr.Markdown("# Etiquetas del set de evaluación\nGuía: data/README.md. Cada uno etiqueta solo.")
     name = gr.Radio(NAMES, value=NAMES[0], label="Quién etiqueta")
     with gr.Tab("Etiquetar"):
-        gr.Markdown("Mira el saque a velocidad normal y en cámara lenta. Juzga solo con las "
-                    "descripciones de las categorías; el estilo personal no es un error.")  # fmt: skip
+        gr.Markdown("Mira el saque en cámara lenta, al lado del saque profesional de "
+                    "referencia. Responde solo lo que ves; no hace falta saber de tenis.")  # fmt: skip
         with gr.Row():
             choice = gr.Dropdown(label="Video")
             status = gr.Markdown()
         with gr.Row():
             normal = gr.Video(label="Velocidad normal", interactive=False)
             slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
-        valid = gr.Radio([("Se puede analizar", "1"), ("Pedir otra grabación", "0")],
-                         label="¿Una persona podría juzgar este saque?")  # fmt: skip
-        category = gr.Radio(category_choices(), label="Problema más claro (si hay dos, el de "
-                            "la fase más temprana)")  # fmt: skip
+            reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
+                                 interactive=False)  # fmt: skip
+        valid = gr.Radio([("Sí", "1"), ("No, pedir otra grabación", "0")],
+                         label="1. ¿Se ve al jugador de lado y de cuerpo entero, con la mano "
+                         "que lanza la pelota visible?")  # fmt: skip
+        category = gr.Radio(ARM, label="2. En el momento en que la raqueta está más abajo, "
+                            "detrás de la espalda (justo antes de subir a pegarle), ¿la mano que "
+                            "lanzó la pelota ya bajó?")  # fmt: skip
         notes = gr.Textbox(label="Notas (opcional)")
         save = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Revisar respuestas"):
@@ -200,6 +205,7 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
     label_out = [choice, status, normal, slow, valid, category, notes]
     review_out = [frame, question, seen_ok, answer_ok, review_notes, item]
     demo.load(label_view, [name], label_out)
+    demo.load(lambda: playable(REFERENCE, 4), None, reference)
     name.input(label_view, [name], label_out).then(review_view, [name, run], review_out)
     choice.input(label_view, [name, choice], label_out)
     save.click(save_label, [name, choice, valid, category, notes], label_out)
