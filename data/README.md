@@ -47,16 +47,16 @@ In Spanish, "entrenar" means two different things. In this repository, *training
 
 In Project 3 the model is not trained: it is used as downloaded, with a prompt. The labels are only the answer key. They are written once, before looking at the system's answers; the model answers without seeing them, and `eval/run_eval.py` compares its answers with them. The app then gives feedback on new videos that nobody labeled.
 
-A label is the main error of the serve, chosen from the categories in `strokes/serve/criteria.yaml` (for example `toss_arm_bent`). Style is not an error: a personal start position, for example, is never labeled as one.
+In Project 3 a label was the main error of the serve, chosen from the categories in `strokes/serve/criteria.yaml`. In the Final Project it only says whether the tossing arm drops early (`toss_arm_drops_early`) or not (`no_clear_problem`), see the guide below. Style is not an error: a personal start position, for example, is never labeled as one.
 
 ## Labeling guide
 
 There is no coach, so Ernesto and Hugo label every evaluation serve. Neither is a tennis expert; the written report says so.
 
-1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers for those videos. `uv run python -m eval.label` (http://127.0.0.1:7861) shows each video at normal speed and in slow motion and writes the file; the phase and the drill follow from the category.
-2. Watch each video at normal speed and in slow motion. Judge it only with the category descriptions and the `observe` notes in `strokes/serve/criteria.yaml`.
-3. Set `valid` to `0` when a person could not judge the serve either: player out of frame, serve cut off, too dark, or not a serve.
-4. Choose the one problem you see most clearly. If two are equally clear, choose the earlier phase. If you see no clear problem, choose category `no_clear_problem` with phase `none`.
+1. Each annotator labels alone, in `eval/serve/labels_<name>.csv` (same columns), without looking at the system's answers, at `eval/serve/claude_labels.csv`, or at the other annotator's file. `uv run python -m eval.label` (http://127.0.0.1:7861) shows each video at normal speed and in slow motion next to a professional serve (`pro02_s01`) and writes the file; the phase and the drill follow from the answers.
+2. The tool asks two yes/no questions that need no tennis knowledge, only what can be seen. Since the Final Project, the label is this one problem, `toss_arm_drops_early` in `strokes/serve/criteria.yaml` (Kovacs 2011), and not the most clear of seven categories: two non-experts cannot diagnose like a coach, and the other categories had 1 to 3 videos each.
+3. "Is the player seen from the side and full body, with the hand that tosses the ball visible?" No sets `valid` to `0`: player out of frame, filmed from behind, serve cut off, too dark, or not a serve.
+4. "When the racket is lowest, behind the back (just before it goes up to hit), has the hand that tossed the ball already dropped?" Yes, to shoulder height or lower, is `toss_arm_drops_early`; no, still above the shoulder and pointing at the ball, is `no_clear_problem`.
 5. Compare the two files with `uv run python -m eval.run_eval --agreement <file A> <file B>`. It prints Cohen's kappa per column and the videos you disagree on.
 6. Settle each disagreement together, write the agreed row in `eval/serve/labels.csv`, and report the kappa values.
 7. Only then, in the tab "Revisar respuestas" of the same tool, judge the checks of a run: for each key frame, whether what the model says it sees is in the frame, and whether its answer is right. Only videos you already labeled are shown. `uv run python -m eval.run_eval --review eval/serve/runs/<run>.jsonl eval/serve/review_*.csv` prints the hallucination rate (sentences that describe something the frame does not show) and writes it in the run's row of `experiments/iterations.csv`.
