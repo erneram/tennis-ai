@@ -9,6 +9,7 @@ dependencies = [
     "mlx-vlm>=0.7.9",
     "opencv-python>=4.10",
     "pyyaml>=6.0",
+    "torch>=2.15.0",
 ]
 
 [dependency-groups]
