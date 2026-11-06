@@ -1,7 +1,7 @@
 """M1, the first trained model of the Final Project: a small temporal convolutional network,
 trained from scratch, that says whether the tossing arm drops early.
 
-    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300]
+    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset). Input: the 64 frames
 of a window, each with x, y and seen/not seen of the 17 joints (51 channels). Trained on the
@@ -9,6 +9,8 @@ labeled train split with random mirroring (left and right joints swapped), scali
 shift of a few frames, then scored on the test split with the metrics of B0
 (strokes/serve/baseline.py): macro-F1 at probability 0.5 and AUROC, mean and SD over seeds.
 Hyperparameters are fixed in advance: the train split is too small to hold out a validation set.
+--arms trains M1b: only the shoulders, elbows and wrists, mirrored so the tossing arm is always
+the left one (and never mirrored at random), so 30 videos fit fewer weights.
 """
 
 import argparse
@@ -25,13 +27,15 @@ MIRROR = [
     dataset.JOINTS.index(j.replace("left", "@").replace("right", "left").replace("@", "right"))
     for j in dataset.JOINTS
 ]
+ARMS = [dataset.JOINTS.index(f"{side}_{joint}")
+        for side in ("left", "right") for joint in ("shoulder", "elbow", "wrist")]  # fmt: skip
 SHIFT, SCALE, NOISE = 3, 0.1, 0.02  # frames, relative size, torso lengths
 
 
-def network(channels: int = 32, dropout: float = 0.3) -> nn.Module:
+def network(inputs: int = 3 * len(dataset.JOINTS), channels: int = 32, dropout: float = 0.3):
     """Two 1-D convolutions over time (the second dilated), max over time, one output logit."""
     return nn.Sequential(
-        nn.Conv1d(3 * len(dataset.JOINTS), channels, 5, padding=2), nn.ReLU(), nn.Dropout(dropout),
+        nn.Conv1d(inputs, channels, 5, padding=2), nn.ReLU(), nn.Dropout(dropout),
         nn.Conv1d(channels, channels, 5, padding=4, dilation=2), nn.ReLU(),
         nn.AdaptiveMaxPool1d(1), nn.Flatten(), nn.Dropout(dropout), nn.Linear(channels, 1),
     )  # fmt: skip
@@ -44,11 +48,24 @@ def features(x: np.ndarray, mask: np.ndarray) -> torch.Tensor:
     return torch.from_numpy(both.astype(np.float32)).transpose(1, 2)
 
 
-def augment(x: np.ndarray, mask: np.ndarray, rng: np.random.Generator):
+def mirror(x: np.ndarray, mask: np.ndarray, chosen: np.ndarray) -> None:
+    """Swap the left and right joints of the chosen windows and negate their x, in place."""
+    x[chosen] = x[chosen][:, :, MIRROR] * [-1, 1]
+    mask[chosen] = mask[chosen][:, :, MIRROR]
+
+
+def arms(x: np.ndarray, mask: np.ndarray):
+    """The arm joints only, with the tossing arm always on the left (input of M1b)."""
     x, mask = x.copy(), mask.copy()
-    flip = rng.random(len(x)) < 0.5
-    x[flip] = x[flip][:, :, MIRROR] * [-1, 1]
-    mask[flip] = mask[flip][:, :, MIRROR]
+    mirror(x, mask, np.array([baseline.tossing_side(w) == "right" for w in x], bool))
+    return x[:, :, ARMS], mask[:, :, ARMS]
+
+
+def augment(x: np.ndarray, mask: np.ndarray, rng: np.random.Generator, flip: bool = True):
+    x, mask = x.copy(), mask.copy()
+    chosen = rng.random(len(x)) < 0.5
+    if flip:
+        mirror(x, mask, chosen)
     x *= rng.uniform(1 - SCALE, 1 + SCALE, (len(x), 1, 1, 1))
     x += rng.normal(0, NOISE, x.shape)
     for i, shift in enumerate(rng.integers(-SHIFT, SHIFT + 1, len(x))):
@@ -56,17 +73,17 @@ def augment(x: np.ndarray, mask: np.ndarray, rng: np.random.Generator):
     return x, mask
 
 
-def train(x, mask, y, seed: int, epochs: int) -> nn.Module:
+def train(x, mask, y, seed: int, epochs: int, flip: bool = True) -> nn.Module:
     """Full-batch AdamW on the class-balanced binary cross-entropy."""
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    model = network()
+    model = network(3 * x.shape[2])
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
     target = torch.tensor(y, dtype=torch.float32)
     loss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((1 - y).sum() / y.sum()))
     for _ in range(epochs):
         model.train()
-        error = loss(model(features(*augment(x, mask, rng))).squeeze(1), target)
+        error = loss(model(features(*augment(x, mask, rng, flip))).squeeze(1), target)
         optimizer.zero_grad()
         error.backward()
         optimizer.step()
@@ -82,20 +99,24 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--seeds", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=300)
+    parser.add_argument("--arms", action="store_true", help="train M1b on the arms only")
     args = parser.parse_args()
     data = np.load(dataset.OUT)
+    x, mask = arms(data["x"], data["mask"]) if args.arms else (data["x"], data["mask"])
     labeled = data["valid"] == 1
     split = {s: labeled & (data["split"] == s) for s in ("train", "test")}
     truth = data["category"]
     y = (truth[split["train"]] == baseline.POSITIVE).astype(np.float32)
-    print(f"M1: {sum(p.numel() for p in network().parameters())} weights, "
+    weights = sum(p.numel() for p in network(3 * x.shape[2]).parameters())
+    print(f"{'M1b' if args.arms else 'M1'}: {weights} weights, "
           f"{split['train'].sum()} train videos ({int(y.sum())} drop early)")  # fmt: skip
     results = {s: [] for s in split}
     for seed in range(args.seeds):
-        model = train(data["x"][split["train"]], data["mask"][split["train"]], y, seed, args.epochs)
+        chosen = split["train"]
+        model = train(x[chosen], mask[chosen], y, seed, args.epochs, flip=not args.arms)
         line = []
         for name, chosen in split.items():
-            score = probability(model, data["x"][chosen], data["mask"][chosen])
+            score = probability(model, x[chosen], mask[chosen])
             f1 = macro_prf(truth[chosen].tolist(), baseline.predict(score, 0.5))[2]
             area = baseline.auroc(truth[chosen] == baseline.POSITIVE, score)
             results[name].append((f1, area))
