@@ -8,8 +8,9 @@ the serve be judged, and has the tossing hand already dropped to the shoulder wh
 lowest behind the back (toss_arm_drops_early in criteria.yaml). Writes
 eval/serve/labels_<name>.csv (guide in data/README.md); the phase and the drill follow from the
 answer.
-"Revisar respuestas": the key frame of each check in a run, with what the model said it saw.
-Only videos the member already labeled are shown, so the labels stay blind. Writes
+"Revisar respuestas": the key frame of each check in the runs of the final Project 3 version
+(REVIEW_RUNS), with what the model said it saw and concluded; the member says whether both match
+the frame. Only videos the member already labeled are shown, so the labels stay blind. Writes
 eval/serve/review_<name>.csv; `python -m eval.run_eval --review` turns it into the
 hallucination rate.
 """
@@ -40,6 +41,10 @@ LABEL_COLUMNS = ["video", "player", "valid", "phase", "category", "drill_id", "n
 REVIEW_COLUMNS = ["run", "video", "category", "seen_ok", "answer_ok", "notes"]
 OK = [("Sí", "yes"), ("No", "no"), ("No se puede saber", "unclear")]
 REFERENCE = "pro02_s01.mp4"  # a professional filmed from the side, shown next to every video
+# The final Project 3 version is v22: v21 plus a retry that only fires after three guesses in a
+# row. With seed 0, the app's, v21 never guessed three times, so these v21 runs are v22's answers.
+REVIEW_RUNS = [("JC: 21 saques", "20261102-131618-full"),
+               ("Profesionales: 11 saques", "20261102-132154-full")]  # fmt: skip
 ARM = [("Sí, ya está a la altura del hombro o más abajo", "toss_arm_drops_early"),
        ("No, sigue arriba del hombro, apuntando a la pelota", "no_clear_problem")]  # fmt: skip
 
@@ -107,12 +112,6 @@ def save_label(name: str, choice: str, valid: str | None, category: str | None, 
     return label_view(name)  # the next video without a label
 
 
-def runs() -> list[str]:
-    """Runs of the full system (with checks), newest first."""
-    files = sorted((EVAL / "runs").glob("*-full.jsonl"), reverse=True)
-    return [p.stem for p in files if '"checks"' in p.read_text()]
-
-
 def review_items(name: str, run: str) -> list[tuple[dict, str]]:
     """(record, category) of every check of the run, for videos `name` already labeled."""
     labeled = {r["video"] for r in read(EVAL / f"labels_{name}.csv") if r["valid"]}
@@ -130,28 +129,41 @@ def key_frame(record: dict, category: str):
     return cv2.cvtColor(resize(crop(frame, record.get("box")), 1024), cv2.COLOR_BGR2RGB)
 
 
-def review_view(name: str, run: str | None):
-    if not run:
-        return None, "Elige una corrida.", None, None, "", None
+def pending(name: str, run: str) -> tuple[list[tuple[dict, str]], int]:
+    """The checks of the run `name` has not reviewed yet, and how many there are in all."""
     done = {(r["video"], r["category"]) for r in read(EVAL / f"review_{name}.csv")
             if r["run"] == run}  # fmt: skip
     items = review_items(name, run)
-    left = [(r, c) for r, c in items if (Path(r["video"]).name, c) not in done]
+    return [(r, c) for r, c in items if (Path(r["video"]).name, c) not in done], len(items)
+
+
+def review_view(name: str, run: str | None):
+    """Frame, text, empty answers, the check on screen, and whether the answer form shows."""
+    if not run:
+        return None, "Elige una corrida.", None, None, "", None, gr.update(visible=False)
+    left, total = pending(name, run)
     if not left:
-        text = (f"No queda nada por revisar en {run}: {len(items)} revisiones hechas. "
-                "Solo aparecen los videos que ya etiquetaste.")  # fmt: skip
-        return None, text, None, None, "", None
+        others = [label for label, other in REVIEW_RUNS if other != run and pending(name, other)[0]]
+        text = (f"### Terminaste esta corrida: revisaste las {total} respuestas.\n\n"
+                + (f"Falta otra: elige «{others[0]}» en la lista de arriba." if others else
+                   "Ya revisaste todas las corridas. Aquí no queda nada por hacer.")
+                if total else "No hay nada que revisar: primero etiqueta los videos en "
+                "«Etiquetar».")  # fmt: skip
+        return None, text, None, None, "", None, gr.update(visible=False)
     record, category = left[0]
     check = record["prediction"]["checks"][category]
-    part, good, bad = CATEGORIES.get(category, {}).get("show", (category, "bien", "mal"))
+    part, good, bad = CATEGORIES[category]["show"]
     state = {"yes": good, "no": bad}.get(check["answer"], "no se ve claro")
+    phase = STROKE.LABELS[check.get("phase") or CATEGORIES[category]["phase"]]
     text = "\n\n".join([
-        f"**{Path(record['video']).name}** · quedan {len(left)} de {len(items)}",
-        f"Pregunta al modelo: _{CATEGORIES.get(category, {}).get('check', category)}_",
-        f"El modelo dice que ve: **{check['seen']}**",
-        f"Su respuesta: **{part}: {state}**",
+        f"### Respuesta {total - len(left) + 1} de {total}",
+        f"{Path(record['video']).name} · cuadro de la fase {phase}",
+        f"Qué revisaba el modelo: **{part}** (bien: {good}; mal: {bad})",
+        f"Lo que el modelo dice que ve (en inglés): _{check['seen']}_",
+        f"Su conclusión: **{part}: {state}**",
     ])  # fmt: skip
-    return key_frame(record, category), text, None, None, "", (Path(record["video"]).name, category)
+    item = (Path(record["video"]).name, category)
+    return key_frame(record, category), text, None, None, "", item, gr.update(visible=True)
 
 
 def save_review(name, run, item, seen_ok, answer_ok, notes):
@@ -190,21 +202,33 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
         notes = gr.Textbox(label="Notas (opcional)")
         save = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Revisar respuestas"):
-        gr.Markdown("Después de etiquetar: ¿lo que dijo el modelo coincide con el cuadro?")
-        run = gr.Dropdown(runs(), label="Corrida (eval/serve/runs)")
+        gr.Markdown(
+            "Aquí se mide si el modelo de Qwen (proyecto 3) inventa cosas. Cada pantalla es una "
+            "respuesta del modelo: la imagen que miró, lo que dice que ve y su conclusión. Mira "
+            "**solo la imagen** y responde:\n\n"
+            "1. ¿Lo que dice que ve aparece de verdad en la imagen? «No» si describe algo que no "
+            "está, por ejemplo, dice que el brazo está arriba y está abajo.\n"
+            "2. ¿Su conclusión es correcta para esta imagen?\n\n"
+            "«No se puede saber» si la imagen no deja ver esa parte del cuerpo. Cada respuesta se "
+            "guarda al pulsar el botón: puedes cerrar y seguir después. Hay que revisar las dos "
+            "corridas de la lista; al terminar una, la pantalla lo dice."
+        )
+        run = gr.Dropdown(REVIEW_RUNS, value=REVIEW_RUNS[0][1], label="Corrida a revisar")
         item = gr.State()
         with gr.Row():
-            frame = gr.Image(label="Cuadro que juzgó el modelo", interactive=False)
+            frame = gr.Image(label="Imagen que miró el modelo", interactive=False)
             with gr.Column():
                 question = gr.Markdown()
-                seen_ok = gr.Radio(OK, label="¿Lo que dice que ve está en el cuadro?")
-                answer_ok = gr.Radio(OK, label="¿Su respuesta es correcta?")
-                review_notes = gr.Textbox(label="Notas (opcional)")
-                save_check = gr.Button("Guardar y siguiente", variant="primary")
+                with gr.Column(visible=False) as form:
+                    seen_ok = gr.Radio(OK, label="1. ¿Lo que dice que ve aparece en la imagen?")
+                    answer_ok = gr.Radio(OK, label="2. ¿Su conclusión es correcta?")
+                    review_notes = gr.Textbox(label="Notas (opcional)")
+                    save_check = gr.Button("Guardar y siguiente", variant="primary")
 
     label_out = [choice, status, normal, slow, valid, category, notes]
-    review_out = [frame, question, seen_ok, answer_ok, review_notes, item]
+    review_out = [frame, question, seen_ok, answer_ok, review_notes, item, form]
     demo.load(label_view, [name], label_out)
+    demo.load(review_view, [name, run], review_out)
     demo.load(lambda: playable(REFERENCE, 4), None, reference)
     name.input(label_view, [name], label_out).then(review_view, [name, run], review_out)
     choice.input(label_view, [name, choice], label_out)
