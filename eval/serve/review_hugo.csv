@@ -1,0 +1,199 @@
+run,video,category,seen_ok,answer_ok,notes
+20261102-145523-full,jc-s14.mp4,toss_arm_bent,no,yes,"Esta recto pero no verticalmente sino diagola, implica que esta en direccion mas inclinada que recta."
+20261102-145523-full,jc-s14.mp4,toss_arm_drops_early,yes,yes,"Ya bajo el brazo pero no totalmente, se puede ver que el brazo esta despegado del cuerpo, el jugador no tiene nada en la mano."
+20261102-145523-full,jc-s14.mp4,insufficient_knee_bend,no,no,en este cuadro las rodillas no estan dobladas
+20261102-145523-full,jc-s14.mp4,bent_arm_at_contact,yes,no,No esta recto totalmente pero si parcial.
+20261102-145523-full,jc-s14.mp4,low_contact_point,yes,no,La raqueta esta arriba de la cabeza del jugador.
+20261102-145523-full,jc-s14.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s10.mp4,toss_arm_bent,yes,no,Su brazo esta extendido
+20261102-131618-full,jc-s10.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s10.mp4,insufficient_knee_bend,yes,yes,bien
+20261102-131618-full,jc-s10.mp4,bent_arm_at_contact,unclear,unclear,"no esta extendido aun el brazo en esta imagen, esta aun doblado"
+20261102-131618-full,jc-s10.mp4,low_contact_point,unclear,unclear,aun no esta arriba de su cabeza
+20261102-131618-full,jc-s10.mp4,unbalanced_finish,yes,no,esta balanceado
+20261102-131618-full,jc-s11.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s11.mp4,toss_arm_drops_early,yes,no,brazo ya bajo y esta extendido
+20261102-131618-full,jc-s11.mp4,insufficient_knee_bend,no,no,aqui ya salto el jugador
+20261102-131618-full,jc-s11.mp4,bent_arm_at_contact,yes,yes,
+20261102-131618-full,jc-s11.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s11.mp4,unbalanced_finish,yes,no,esta balanceado el jugador
+20261102-131618-full,jc-s12.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s12.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s12.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s12.mp4,bent_arm_at_contact,yes,yes,"no esta extendido, no se ve claro pero no esta extendido el brazo"
+20261102-131618-full,jc-s12.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s12.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s13.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s13.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s13.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s13.mp4,bent_arm_at_contact,yes,yes,"no se ve pero esta doblado, no esta extendido el brazo"
+20261102-131618-full,jc-s13.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s13.mp4,unbalanced_finish,yes,no,esta estable
+20261102-131618-full,jc-s14.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s14.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s14.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s14.mp4,bent_arm_at_contact,yes,no,"no esta recto, esta doblado aun preparandose para estar recto"
+20261102-131618-full,jc-s14.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s14.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s15.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s15.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s15.mp4,insufficient_knee_bend,no,no,aqui ya salto el jugador
+20261102-131618-full,jc-s15.mp4,bent_arm_at_contact,yes,no,esta flexionado el brazo
+20261102-131618-full,jc-s15.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s15.mp4,unbalanced_finish,yes,no,esta estable
+20261102-131618-full,jc-s16.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s16.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s16.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s16.mp4,bent_arm_at_contact,yes,no,no esta rectom esta aun doblado preparandose para pegarle
+20261102-131618-full,jc-s16.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s16.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s17.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s17.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s17.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s17.mp4,bent_arm_at_contact,yes,no,esta flexionado el brazo
+20261102-131618-full,jc-s17.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s17.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s18.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s18.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s18.mp4,insufficient_knee_bend,yes,no,ya se esta impulsando para saltar
+20261102-131618-full,jc-s18.mp4,bent_arm_at_contact,yes,no,esta aun flexionado el brazo
+20261102-131618-full,jc-s18.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s18.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s19.mp4,toss_arm_bent,yes,no,brazo recto
+20261102-131618-full,jc-s19.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s19.mp4,insufficient_knee_bend,no,no,estan estiradas las rodillas
+20261102-131618-full,jc-s19.mp4,bent_arm_at_contact,yes,no,esta doblado el brazo no totalmente estirado
+20261102-131618-full,jc-s19.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s19.mp4,unbalanced_finish,yes,no,esta estable
+20261102-131618-full,jc-s20.mp4,toss_arm_bent,yes,no,esta recto el brazo
+20261102-131618-full,jc-s20.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s20.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s20.mp4,bent_arm_at_contact,yes,no,Esta doblado el brazo
+20261102-131618-full,jc-s20.mp4,low_contact_point,unclear,yes,no se puede saber aunque se puede notar que esta arriba de la cabeza
+20261102-131618-full,jc-s20.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s21.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s21.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s21.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s21.mp4,bent_arm_at_contact,yes,yes,"Parcialmente, esta casi recto pero aun se nota doblado"
+20261102-131618-full,jc-s21.mp4,low_contact_point,unclear,yes,Se nota que esta sobre la cabeza
+20261102-131618-full,jc-s21.mp4,unbalanced_finish,unclear,yes,No se puede saber porque aun esta en el aire
+20261102-131618-full,jc-s22.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s22.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s22.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s22.mp4,bent_arm_at_contact,yes,no,Esta doblado el brazo
+20261102-131618-full,jc-s22.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s22.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s23.mp4,toss_arm_bent,yes,no,Esta recto el brazo
+20261102-131618-full,jc-s23.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s23.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s23.mp4,bent_arm_at_contact,yes,no,"no esta el brazo de la raqueta estirado, se ve flexionado"
+20261102-131618-full,jc-s23.mp4,low_contact_point,yes,no,mal se ve por la altura de la cabeza
+20261102-131618-full,jc-s23.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s24.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s24.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s24.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s24.mp4,bent_arm_at_contact,yes,no,el brazo esta flexionado
+20261102-131618-full,jc-s24.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s24.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s25.mp4,toss_arm_bent,yes,no,esta recto el brazo
+20261102-132154-full,pro01_s01.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro01_s01.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro01_s01.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro01_s01.mp4,bent_arm_at_contact,no,unclear,Brazo esta flexionado aun no esta pegandole a la pelota
+20261102-132154-full,pro01_s01.mp4,low_contact_point,no,unclear,
+20261102-132154-full,pro01_s01.mp4,unbalanced_finish,no,unclear,
+20261102-132154-full,pro01_s02.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro01_s02.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro01_s02.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro01_s02.mp4,bent_arm_at_contact,yes,yes,
+20261102-132154-full,pro01_s02.mp4,low_contact_point,no,unclear,
+20261102-132154-full,pro01_s02.mp4,unbalanced_finish,no,yes,
+20261102-132154-full,pro02_s01.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro02_s01.mp4,toss_arm_drops_early,yes,no,brazo ya bajo
+20261102-132154-full,pro02_s01.mp4,insufficient_knee_bend,no,unclear,
+20261102-132154-full,pro02_s01.mp4,bent_arm_at_contact,yes,yes,Esta super recto
+20261102-132154-full,pro02_s01.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro02_s01.mp4,unbalanced_finish,yes,no,estable
+20261102-132154-full,pro03_s01.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro03_s01.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s01.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s01.mp4,bent_arm_at_contact,yes,no,Brazo esta flexionado
+20261102-132154-full,pro03_s01.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s01.mp4,unbalanced_finish,yes,yes,
+20261102-132154-full,pro03_s02.mp4,toss_arm_bent,yes,no,Apuntando a la pelota recto y estirado
+20261102-132154-full,pro03_s02.mp4,toss_arm_drops_early,yes,no,ya bajo
+20261102-132154-full,pro03_s02.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s02.mp4,bent_arm_at_contact,yes,yes,
+20261102-132154-full,pro03_s02.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s02.mp4,unbalanced_finish,yes,yes,
+20261102-132154-full,pro03_s03.mp4,toss_arm_bent,yes,no,recto apuntando a la pelota
+20261102-132154-full,pro03_s03.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s03.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s03.mp4,bent_arm_at_contact,yes,no,esta estirado y recto
+20261102-132154-full,pro03_s03.mp4,low_contact_point,no,no,arriba de la cabeza
+20261102-132154-full,pro03_s03.mp4,unbalanced_finish,yes,no,estable
+20261102-132154-full,pro03_s04.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro03_s04.mp4,toss_arm_drops_early,yes,no,ya bajo
+20261102-132154-full,pro03_s04.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s04.mp4,bent_arm_at_contact,yes,yes,Brazo esta flexionado pero casi recto
+20261102-132154-full,pro03_s04.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s04.mp4,unbalanced_finish,yes,no,estable
+20261102-132154-full,pro03_s05.mp4,toss_arm_bent,yes,no,recto en direccion a la pelota
+20261102-132154-full,pro03_s05.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s05.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s05.mp4,bent_arm_at_contact,yes,yes,
+20261102-132154-full,pro03_s05.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s05.mp4,unbalanced_finish,yes,yes,
+20261102-132154-full,pro03_s06.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro03_s06.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s06.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s06.mp4,bent_arm_at_contact,yes,no,Brazo esta flexionado
+20261102-132154-full,pro03_s06.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s06.mp4,unbalanced_finish,yes,yes,
+20261102-132154-full,pro03_s07.mp4,toss_arm_bent,yes,yes,
+20261102-132154-full,pro03_s07.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s07.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s07.mp4,bent_arm_at_contact,yes,no,Brazo esta flexionado
+20261102-132154-full,pro03_s07.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s07.mp4,unbalanced_finish,yes,yes,
+20261102-132154-full,pro03_s08.mp4,toss_arm_bent,yes,no,brazo recto viendo a la pelota
+20261102-132154-full,pro03_s08.mp4,toss_arm_drops_early,yes,yes,
+20261102-132154-full,pro03_s08.mp4,insufficient_knee_bend,yes,yes,
+20261102-132154-full,pro03_s08.mp4,bent_arm_at_contact,yes,yes,
+20261102-132154-full,pro03_s08.mp4,low_contact_point,yes,yes,
+20261102-132154-full,pro03_s08.mp4,unbalanced_finish,yes,no,estable
+20261102-131618-full,jc-s25.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s25.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s25.mp4,bent_arm_at_contact,yes,no,Brazo esta flexionado
+20261102-131618-full,jc-s25.mp4,low_contact_point,no,yes,
+20261102-131618-full,jc-s25.mp4,unbalanced_finish,yes,no,Esta estable el jugador
+20261102-131618-full,jc-s26.mp4,toss_arm_bent,yes,no,el brazo esta en direcciona la pelota estirado
+20261102-131618-full,jc-s26.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s26.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s26.mp4,bent_arm_at_contact,yes,no,Brazo esta flexionado
+20261102-131618-full,jc-s26.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s26.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s27a.mp4,toss_arm_bent,yes,no,brazo del jugador estirado viendo a la pelota
+20261102-131618-full,jc-s27a.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s27a.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s27a.mp4,bent_arm_at_contact,yes,no,brazo flexionado
+20261102-131618-full,jc-s27a.mp4,low_contact_point,yes,no,arriba de la cabeza
+20261102-131618-full,jc-s27a.mp4,unbalanced_finish,yes,no,estable
+20261102-131618-full,jc-s27b.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s27b.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s27b.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s27b.mp4,bent_arm_at_contact,yes,yes,
+20261102-131618-full,jc-s27b.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s27b.mp4,unbalanced_finish,yes,no,esta estable
+20261102-131618-full,jc-s8.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s8.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s8.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s8.mp4,bent_arm_at_contact,yes,no,brazo flexionado
+20261102-131618-full,jc-s8.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s8.mp4,unbalanced_finish,yes,yes,
+20261102-131618-full,jc-s9.mp4,toss_arm_bent,yes,yes,
+20261102-131618-full,jc-s9.mp4,toss_arm_drops_early,yes,yes,
+20261102-131618-full,jc-s9.mp4,insufficient_knee_bend,yes,yes,
+20261102-131618-full,jc-s9.mp4,bent_arm_at_contact,yes,yes,brazo flexionado
+20261102-131618-full,jc-s9.mp4,low_contact_point,yes,yes,
+20261102-131618-full,jc-s9.mp4,unbalanced_finish,yes,no,estable
