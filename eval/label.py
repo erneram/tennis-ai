@@ -8,6 +8,9 @@ the serve be judged, and has the tossing hand already dropped to the shoulder wh
 lowest behind the back (toss_arm_drops_early in criteria.yaml). Writes
 eval/serve/labels_<name>.csv (guide in data/README.md); the phase and the drill follow from the
 answer.
+"Decidir juntos": the videos where the members' answers differ, with each member's answer, for
+the members to watch together and answer once. Writes eval/serve/labels.csv: the rows everyone
+agrees on and the decisions taken so far.
 "Revisar respuestas": the key frame of each check in the runs of the final Project 3 version
 (REVIEW_RUNS), with what the model said it saw and concluded; the member says whether both match
 the frame. Only videos the member already labeled are shown, so the labels stay blind. Writes
@@ -37,6 +40,7 @@ CACHE = ROOT / "data" / "processed" / "label"  # browser-playable copies of the 
 CATEGORIES = base.load(STROKE, "criteria.yaml")["categories"]
 DRILLS = {d["category"]: d["id"] for d in base.load(STROKE, "drills.yaml")["drills"]}
 NAMES = sorted(p.stem.removeprefix("labels_") for p in EVAL.glob("labels_*.csv"))
+AGREED = EVAL / "labels.csv"  # what strokes/serve/dataset.py trains on
 LABEL_COLUMNS = ["video", "player", "valid", "phase", "category", "drill_id", "notes"]
 REVIEW_COLUMNS = ["run", "video", "category", "seen_ok", "answer_ok", "notes"]
 OK = [("Sí", "yes"), ("No", "no"), ("No se puede saber", "unclear")]
@@ -45,8 +49,13 @@ REFERENCE = "pro02_s01.mp4"  # a professional filmed from the side, shown next t
 # row. With seed 0, the app's, v21 never guessed three times, so these v21 runs are v22's answers.
 REVIEW_RUNS = [("JC: 21 saques", "20261102-131618-full"),
                ("Profesionales: 11 saques", "20261102-132154-full")]  # fmt: skip
+VALID = [("Sí", "1"), ("No, pedir otra grabación", "0")]
 ARM = [("Sí, ya está a la altura del hombro o más abajo", "toss_arm_drops_early"),
        ("No, sigue arriba del hombro, apuntando a la pelota", "no_clear_problem")]  # fmt: skip
+ASK_VALID = ("1. ¿Se ve al jugador de lado y de cuerpo entero, con la mano que lanza la pelota "
+             "visible?")  # fmt: skip
+ASK_ARM = ("2. En el momento en que la raqueta está más abajo, detrás de la espalda (justo antes "
+           "de subir a pegarle), ¿la mano que lanzó la pelota ya bajó?")  # fmt: skip
 
 
 def read(path: Path) -> list[dict]:
@@ -92,24 +101,86 @@ def label_view(name: str, choice: str | None = None):
     )
 
 
-def save_label(name: str, choice: str, valid: str | None, category: str | None, notes: str):
+def answered(row: dict, valid: str | None, category: str | None, notes: str) -> dict:
+    """`row` with the two answers, and the phase and drill that follow from them."""
     if valid is None:
         raise gr.Error("Elige si el video se puede analizar.")
     if valid == "1" and not category:
         raise gr.Error("Responde si la mano que lanzó ya bajó.")
-    path = EVAL / f"labels_{name}.csv"
-    rows = read(path)
-    row = next(r for r in rows if r["video"] == choice)
     keep = valid == "1"
-    row.update(
-        valid=valid,
-        category=category if keep else "",
-        phase=CATEGORIES[category]["phase"] if keep else "",
-        drill_id=DRILLS[category] if keep else "",
-        notes=notes.strip(),
-    )
+    return {
+        **row,
+        "valid": valid,
+        "category": category if keep else "",
+        "phase": CATEGORIES[category]["phase"] if keep else "",
+        "drill_id": DRILLS[category] if keep else "",
+        "notes": notes.strip(),
+    }
+
+
+def save_label(name: str, choice: str, valid: str | None, category: str | None, notes: str):
+    path = EVAL / f"labels_{name}.csv"
+    rows = [answered(r, valid, category, notes) if r["video"] == choice else r for r in read(path)]
     write(path, rows, LABEL_COLUMNS)
     return label_view(name)  # the next video without a label
+
+
+def disputes() -> tuple[list[dict], dict[str, list[dict]]]:
+    """The rows every member labeled the same, and each member's row of the videos that differ."""
+    files = [{r["video"]: r for r in read(EVAL / f"labels_{name}.csv")} for name in NAMES]
+    agreed, differ = [], {}
+    for video_name, first in files[0].items():
+        rows = [f.get(video_name) or {"valid": ""} for f in files]
+        if not all(r["valid"] for r in rows):
+            continue  # someone has not labeled it yet
+        if len({(r["valid"], r["category"]) for r in rows}) > 1:
+            differ[video_name] = rows
+        else:
+            notes = "; ".join(f"{n}: {r['notes']}" for n, r in zip(NAMES, rows) if r["notes"])
+            agreed.append({**first, "notes": notes})
+    return agreed, differ
+
+
+def agree_view(choice: str | None = None):
+    """The next video still to decide (or `choice`), with each member's answer."""
+    _, differ = disputes()
+    if not differ:
+        text = "No hay desacuerdos: primero etiqueten los videos cada uno en «Etiquetar»."
+        return gr.update(choices=[], value=None), text, None, None, "", None, None, ""
+    decided = {r["video"]: r for r in read(AGREED) if r["video"] in differ}
+    left = [v for v in differ if v not in decided]
+    choice = choice or (left[0] if left else next(iter(differ)))
+    if left:
+        status = f"### Decididos {len(decided)} de {len(differ)}"
+    else:
+        status = (f"### Listo: decidieron los {len(differ)} videos.\n\n`eval/serve/labels.csv` "
+                  "está completo. Para cambiar una decisión, elijan el video en la lista.")  # fmt: skip
+    said = []
+    for name, row in zip(NAMES, differ[choice]):
+        answer = {v: k for k, v in ARM}.get(row["category"], "no se puede analizar")
+        said.append(f"- **{name.capitalize()}**: {answer}" + (f" (nota: {row['notes']})"
+                    if row["notes"] else ""))  # fmt: skip
+    row = decided.get(choice, {})
+    return (
+        gr.update(choices=list(differ), value=choice),
+        status,
+        playable(choice, 1),
+        playable(choice, 4),
+        "Lo que respondió cada uno:\n\n" + "\n".join(said),
+        row.get("valid") or None,
+        row.get("category") or None,
+        row.get("notes", ""),
+    )
+
+
+def save_agreement(choice: str, valid: str | None, category: str | None, notes: str):
+    agreed, differ = disputes()
+    decided = {r["video"]: r for r in read(AGREED) if r["video"] in differ}
+    decided[choice] = answered(differ[choice][0], valid, category, notes)
+    order = {r["video"]: i for i, r in enumerate(read(EVAL / f"labels_{NAMES[0]}.csv"))}
+    rows = sorted(agreed + list(decided.values()), key=lambda r: order[r["video"]])
+    write(AGREED, rows, LABEL_COLUMNS)
+    return agree_view()  # the next video still to decide
 
 
 def review_items(name: str, run: str) -> list[tuple[dict, str]]:
@@ -203,14 +274,27 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
             slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
             reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
                                  interactive=False)  # fmt: skip
-        valid = gr.Radio([("Sí", "1"), ("No, pedir otra grabación", "0")],
-                         label="1. ¿Se ve al jugador de lado y de cuerpo entero, con la mano "
-                         "que lanza la pelota visible?")  # fmt: skip
-        category = gr.Radio(ARM, label="2. En el momento en que la raqueta está más abajo, "
-                            "detrás de la espalda (justo antes de subir a pegarle), ¿la mano que "
-                            "lanzó la pelota ya bajó?")  # fmt: skip
+        valid = gr.Radio(VALID, label=ASK_VALID)
+        category = gr.Radio(ARM, label=ASK_ARM)
         notes = gr.Textbox(label="Notas (opcional)")
         save = gr.Button("Guardar y siguiente", variant="primary")
+    with gr.Tab("Decidir juntos"):
+        gr.Markdown("Aquí salen solo los videos en que sus respuestas no coinciden. Véanlos "
+                    "juntos, comenten qué ve cada uno y respondan una sola vez entre los dos. "
+                    "Decidan solo con lo que se ve en el video.")  # fmt: skip
+        with gr.Row():
+            agree_choice = gr.Dropdown(label="Video")
+            agree_status = gr.Markdown()
+        with gr.Row():
+            agree_normal = gr.Video(label="Velocidad normal", interactive=False)
+            agree_slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
+            agree_reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
+                                       interactive=False)  # fmt: skip
+        said = gr.Markdown()
+        agree_valid = gr.Radio(VALID, label=ASK_VALID)
+        agree_category = gr.Radio(ARM, label=ASK_ARM)
+        agree_notes = gr.Textbox(label="Por qué lo decidieron (opcional)")
+        save_agree = gr.Button("Guardar decisión y siguiente", variant="primary")
     with gr.Tab("Revisar respuestas"):
         gr.Markdown(
             "Aquí se mide si el modelo de Qwen (proyecto 3) inventa cosas. Cada pantalla es una "
@@ -238,14 +322,21 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
 
     label_out = [choice, status, normal, slow, valid, category, notes]
     review_out = [frame, question, seen_ok, answer_ok, review_notes, item, form]
+    agree_out = [agree_choice, agree_status, agree_normal, agree_slow, said, agree_valid,
+                 agree_category, agree_notes]  # fmt: skip
     remember = lambda who, chosen: [who, chosen]
     demo.load(restore, remembered, [name, run]).then(label_view, [name], label_out).then(
         review_view, [name, run], review_out)  # fmt: skip
     demo.load(lambda: playable(REFERENCE, 4), None, reference)
+    demo.load(lambda: playable(REFERENCE, 4), None, agree_reference)
+    demo.load(agree_view, None, agree_out)
     name.input(label_view, [name], label_out).then(review_view, [name, run], review_out).then(
         remember, [name, run], remembered)  # fmt: skip
     choice.input(label_view, [name, choice], label_out)
     save.click(save_label, [name, choice, valid, category, notes], label_out)
+    agree_choice.input(agree_view, [agree_choice], agree_out)
+    save_agree.click(save_agreement, [agree_choice, agree_valid, agree_category, agree_notes],
+                     agree_out)  # fmt: skip
     run.input(review_view, [name, run], review_out).then(remember, [name, run], remembered)
     save_check.click(save_review, [name, run, item, seen_ok, answer_ok, review_notes], review_out)
 
