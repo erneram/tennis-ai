@@ -1,0 +1,13 @@
+# Value model of the Final Project (eval/value.py), in quetzales (Q) per analyzed serve.
+# "estimate" marks a number to replace: the coach price with the academy quotes, and hit, miss
+# and false_alarm with the improvement study (Serve Lab group against the coach group).
+prevalence: 0.62        # amateur serves where the tossing arm drops early: 23 of 37 valid JC serves in eval/serve/labels.csv
+coach_per_hour: 200     # Q, one hour of private lesson (estimate until the quotes)
+drill_minutes: 15       # one drill block: toss_hold is 3 series of 8 serves (strokes/serve/drills.yaml)
+hit: 1.0                # fault found: the block is worth a coach-led block (estimate)
+miss: 0.5               # fault missed: told the serve is fine, the player repeats it for half a block (estimate)
+false_alarm: 1.0        # unneeded toss_hold: the whole block is wasted (estimate)
+analyses_per_month: 12  # 3 practice sessions a week, one recorded serve each (estimate)
+watts: 50               # power of the Mac while it analyzes (estimate, 40 to 60 W as in README.md)
+kwh_price: 2.0          # Q per kWh (estimate)
+pose_seconds: 5.0       # MediaPipe heavy per video for B0 and the CNNs: mean of the 18 test videos, max 10.5 (2026-11-06)
