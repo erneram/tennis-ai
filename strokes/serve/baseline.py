@@ -6,14 +6,37 @@ is already at shoulder height or below too long before contact.
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset). The only parameter,
 the time threshold, is the one with the best macro-F1 on the train split; it is then scored on
 the test split. The trained models (M1, M2) must beat it on the same split and metrics.
+Writes the scores to experiments/serve/b0.csv for eval/value.py; B0 learns nothing but its
+threshold, so its scores on the train split are its validation scores.
 """
+
+import csv
 
 import numpy as np
 
+from core import ROOT
 from eval.run_eval import macro_prf
 from strokes.serve import dataset
 
 POSITIVE, NEGATIVE = "toss_arm_drops_early", "no_clear_problem"
+RESULTS = ROOT / "experiments" / "serve"  # scores and training curves of every model
+COLUMNS = ["model", "seed", "split", "video", "player", "truth", "score"]
+
+
+def save(name: str, rows: list[dict]) -> None:
+    """Write rows of `name` (COLUMNS, or the columns of the first row) to RESULTS/<name>.csv."""
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    with open(RESULTS / f"{name}.csv", "w", newline="") as file:
+        writer = csv.DictWriter(file, list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def scored(name: str, seed: int, split: str, data, chosen: np.ndarray, score) -> list[dict]:
+    """Rows of COLUMNS for the videos `chosen` in the dataset `data`."""
+    return [dict(zip(COLUMNS, (name, seed, split, v, p, t, round(float(s), 5))))
+            for v, p, t, s in zip(data["video"][chosen], data["player"][chosen],
+                                  data["category"][chosen], score)]  # fmt: skip
 
 
 def tossing_side(x: np.ndarray) -> str:
@@ -63,6 +86,8 @@ def main() -> None:
     wrong = [f"{v} ({s:.2f} s, {c})" for v, s, c, p in zip(data["video"][chosen], score[chosen],
              truth[chosen], predict(score[chosen], threshold)) if c != p]  # fmt: skip
     print("  test errors:", ", ".join(wrong) or "none")
+    save("b0", [*scored("b0", 0, "validation", data, train, score[train]),
+                *scored("b0", 0, "test", data, chosen, score[chosen])])  # fmt: skip
 
 
 if __name__ == "__main__":
