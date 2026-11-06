@@ -193,6 +193,31 @@ Cost per analysis: the model runs on the Mac, so there is no API cost. Energy is
 
 Settings that change results (number of frames, language model, prompt version, temperature) are in `configs/default.yaml`. Change one at a time and run the evaluation again.
 
+### Final Project: trained models and their value
+
+The Final Project puts models the team trains at the core, on MediaPipe landmarks (`uv run python -m core.pose`), and keeps the Project 3 system as the reference (version A). The label is one fault: whether the tossing arm drops early (`data/README.md`).
+
+```bash
+uv run python -m strokes.serve.dataset                        # 64-frame windows around contact, eval/serve/labels.csv
+uv run python -m strokes.serve.baseline                       # B0, a rule on the tossing wrist
+uv run python -m strokes.serve.train                          # M1, temporal CNN on the 17 joints
+uv run python -m strokes.serve.train --arms                   # M1b, the arms only
+uv run python -m strokes.serve.train --arms --epochs 85 --name m1c   # M1c, M1b stopped where validation loss is lowest
+uv run python -m eval.value                                   # value of each model in quetzales (configs/value.yaml)
+```
+
+Validation scores come from 5-fold cross-validation on the train split; the test split (JC's serves of Nov 1 and professional pro01) is never used to choose. Scores, loss curves, the value curve and the sensitivity table are written to `experiments/serve/`. Results on the 18 test videos (5 seeds for the CNNs; value per analysis with the threshold chosen on validation, 95 % bootstrap interval):
+
+| Model | Test macro-F1 | Test AUROC | Q per analysis | Seconds |
+|---|---|---|---|---|
+| A: Qwen3-VL-4B, Project 3 (v22), one seed | 0.625 | 0.646 | 9.09 (−5.44 to 23.62) | 49.0 |
+| B0: rule | 0.723 | 0.800 | 16.25 (4.85 to 27.42) | 5.0 |
+| M1: CNN, 17 joints, 300 epochs | 0.482 ± 0.090 | 0.532 ± 0.057 | 12.00 (12.00 to 12.00) | 5.0 |
+| M1b: CNN, arms only | 0.682 ± 0.039 | 0.880 ± 0.034 | 16.65 (9.99 to 24.16) | 5.0 |
+| M1c: M1b, 85 epochs | 0.611 ± 0.055 | 0.757 ± 0.023 | 18.84 (12.00 to 26.44) | 5.0 |
+
+Recommending the drill to everyone, with no model, is worth Q12.00 per analysis; M1's value-optimal threshold does exactly that. The intervals overlap: 18 test videos with 5 negatives cannot separate the models yet, which is why more amateur players are being recorded. The coach price and the hit, miss and false-alarm weights are estimates until the academy quotes and the improvement study replace them.
+
 ## Privacy
 
 - Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1`, and the Gradio fallback has its analytics disabled.
