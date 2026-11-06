@@ -166,6 +166,13 @@ def review_view(name: str, run: str | None):
     return key_frame(record, category), text, None, None, "", item, gr.update(visible=True)
 
 
+def restore(saved: list[str]) -> tuple[str, str]:
+    """The person and run this browser chose last, so a reload never opens someone else's file."""
+    who, chosen = saved
+    runs = [other for _, other in REVIEW_RUNS]
+    return who if who in NAMES else NAMES[0], chosen if chosen in runs else runs[0]
+
+
 def save_review(name, run, item, seen_ok, answer_ok, notes):
     if item is None:
         raise gr.Error("No hay nada que guardar.")
@@ -182,6 +189,9 @@ def save_review(name, run, item, seen_ok, answer_ok, notes):
 with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
     gr.Markdown("# Etiquetas del set de evaluación\nGuía: data/README.md. Cada uno etiqueta solo.")
     name = gr.Radio(NAMES, value=NAMES[0], label="Quién etiqueta")
+    # Kept in the browser: the name and run are not private, and a fixed secret survives restarts
+    remembered = gr.BrowserState([NAMES[0], REVIEW_RUNS[0][1]], storage_key="serve-lab-labels",
+                                 secret="serve-lab-labels")  # fmt: skip
     with gr.Tab("Etiquetar"):
         gr.Markdown("Mira el saque en cámara lenta, al lado del saque profesional de "
                     "referencia. Responde solo lo que ves; no hace falta saber de tenis.")  # fmt: skip
@@ -214,7 +224,8 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
             "corridas de la lista; al terminar una, la pantalla lo dice."
         )
         run = gr.Dropdown(REVIEW_RUNS, value=REVIEW_RUNS[0][1], label="Corrida a revisar")
-        item = gr.State()
+        # The check on screen lives in the page, not in a server session that a restart forgets
+        item = gr.JSON(visible="hidden")
         with gr.Row():
             frame = gr.Image(label="Imagen que miró el modelo", interactive=False)
             with gr.Column():
@@ -227,13 +238,15 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
 
     label_out = [choice, status, normal, slow, valid, category, notes]
     review_out = [frame, question, seen_ok, answer_ok, review_notes, item, form]
-    demo.load(label_view, [name], label_out)
-    demo.load(review_view, [name, run], review_out)
+    remember = lambda who, chosen: [who, chosen]
+    demo.load(restore, remembered, [name, run]).then(label_view, [name], label_out).then(
+        review_view, [name, run], review_out)  # fmt: skip
     demo.load(lambda: playable(REFERENCE, 4), None, reference)
-    name.input(label_view, [name], label_out).then(review_view, [name, run], review_out)
+    name.input(label_view, [name], label_out).then(review_view, [name, run], review_out).then(
+        remember, [name, run], remembered)  # fmt: skip
     choice.input(label_view, [name, choice], label_out)
     save.click(save_label, [name, choice, valid, category, notes], label_out)
-    run.input(review_view, [name, run], review_out)
+    run.input(review_view, [name, run], review_out).then(remember, [name, run], remembered)
     save_check.click(save_review, [name, run, item, seen_ok, answer_ok, review_notes], review_out)
 
 
