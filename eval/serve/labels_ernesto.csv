@@ -1,56 +1,56 @@
 video,player,valid,phase,category,drill_id,notes
-jc-s1.mp4,jc,,,,,
-jc-s2.mp4,jc,,,,,
-jc-s3.mp4,jc,,,,,
-jc-s4.mp4,jc,,,,,
-jc-s5.mp4,jc,,,,,
-jc-s6.mp4,jc,,,,,
-jc-s7.mp4,jc,,,,,
-jc-s8.mp4,jc,,,,,
-jc-s9.mp4,jc,,,,,
-jc-s10.mp4,jc,,,,,
-jc-s11.mp4,jc,,,,,
-jc-s12.mp4,jc,,,,,
-jc-s13.mp4,jc,,,,,
-jc-s14.mp4,jc,,,,,
-jc-s15.mp4,jc,,,,,
-jc-s16.mp4,jc,,,,,
-jc-s17.mp4,jc,,,,,
-jc-s18.mp4,jc,,,,,
-jc-s19.mp4,jc,,,,,
-jc-s20.mp4,jc,,,,,
-jc-s21.mp4,jc,,,,,
-jc-s22.mp4,jc,,,,,
-jc-s23.mp4,jc,,,,,
-jc-s24.mp4,jc,,,,,
-jc-s25.mp4,jc,,,,,
-jc-s26.mp4,jc,,,,,
-jc-s27a.mp4,jc,,,,,
-jc-s27b.mp4,jc,,,,,
-pro01_s01.mp4,pro01,,,,,
-pro01_s02.mp4,pro01,,,,,
-pro02_s01.mp4,pro02,,,,,
-pro03_s01.mp4,pro03,,,,,
-pro03_s02.mp4,pro03,,,,,
-pro03_s03.mp4,pro03,,,,,
-pro03_s04.mp4,pro03,,,,,
-pro03_s05.mp4,pro03,,,,,
-pro03_s06.mp4,pro03,,,,,
-pro03_s07.mp4,pro03,,,,,
-pro03_s08.mp4,pro03,,,,,
-jc-s28.mp4,jc,,,,,
-jc-s29.mp4,jc,,,,,
-jc-s30.mp4,jc,,,,,
-jc-s31.mp4,jc,,,,,
-jc-s32.mp4,jc,,,,,
-jc-s33.mp4,jc,,,,,
-jc-s34.mp4,jc,,,,,
-jc-s35.mp4,jc,,,,,
-jc-s36.mp4,jc,,,,,
-jc-s37.mp4,jc,,,,,
-jc-s38.mp4,jc,,,,,
-jc-s39.mp4,jc,,,,,
-jc-s40.mp4,jc,,,,,
-jc-s41.mp4,jc,,,,,
-jc-s42.mp4,jc,,,,,
-jc-s43.mp4,jc,,,,,
+jc-s1.mp4,jc,0,,,,
+jc-s2.mp4,jc,0,,,,
+jc-s3.mp4,jc,0,,,,
+jc-s4.mp4,jc,0,,,,
+jc-s5.mp4,jc,0,,,,
+jc-s6.mp4,jc,0,,,,
+jc-s7.mp4,jc,0,,,,
+jc-s8.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, flexionar las rodillas y mejorar el inpulso en el salto."
+jc-s9.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo apuntar bien a la pelota,  buena impulso y terminacion"
+jc-s10.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo,  buen impulso y buena terminacion."
+jc-s11.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, buen impulso y buena terminacion."
+jc-s12.mp4,jc,1,none,no_clear_problem,steady_serves,"No bajar el brazo, buen impulso y buena terminacion."
+jc-s13.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, buen impulso y buena terminacion."
+jc-s14.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, buen impulso pero muy temprano, hace falta mejorar  la terminacion."
+jc-s15.mp4,jc,1,none,no_clear_problem,steady_serves,"Brazo apuntando a la pelota, buen impulso aunque muy temprano aun asi hubo una buena terminacion."
+jc-s16.mp4,jc,1,none,no_clear_problem,steady_serves,"Buena posicion de brazo, buen impulso aunque muy temprano pero tuvo una buena terminacion."
+jc-s17.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, buen impulso  pero tempranero aunque tuvo una buena terminacion."
+jc-s18.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando a la pelota pero no esta estirado, buen impulso pero tempranero aunque tuvo una buena terminacion."
+jc-s19.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado, buen impulso pero tempranero aunque tuvo una buena terminacion."
+jc-s20.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"No bajar el brazo, buen impulso pero tempranero aunque tuvo una buena terminacion."
+jc-s21.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando a la pelota pero no esta estirado hacia la pelota, buen impulso y buena terminacion."
+jc-s22.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso tempranero pero buena terminacion."
+jc-s23.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso y flexion de rodillas  y buena terminacion."
+jc-s24.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso y flexion de rodillas  y buena terminacion."
+jc-s25.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso y flexion de rodillas  y buena terminacion."
+jc-s26.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso y flexion de rodillas  y buena terminacion."
+jc-s27a.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso tardio, buena flexion de rodillas  y buena terminacion."
+jc-s27b.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota pero no esta estirado apuntando hacia la pelota, buen impulso aunque hubo un desbalance en el cuerpo, no hubo flexion de rodillas y buena terminacion."
+pro01_s01.mp4,pro01,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+pro01_s02.mp4,pro01,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas y excelente terminacion"
+pro02_s01.mp4,pro02,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas y excelente terminacion"
+pro03_s01.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas no hubo mucho impulso pero excelente terminacion"
+pro03_s02.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, no hubo mucha flexion de rodillas pero excelente terminacion"
+pro03_s03.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, poco impulso y excelente terminacion"
+pro03_s04.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+pro03_s05.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+pro03_s06.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+pro03_s07.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+pro03_s08.mp4,pro03,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota, buena flexion de rodillas, buen impulso y excelente terminacion"
+jc-s28.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando hacia arriba pero baja muy rapido,  impulso y flexion de rodillas tempranero, causo una mala terminacion"
+jc-s29.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando hacia arriba pero baja muy rapido,  impulso y flexion de rodillas tardio, causo una mala terminacion"
+jc-s30.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando hacia arriba pero baja muy rapido,  impulso y flexion de rodillas tardio y hay un desbalance en el cuerpo, causo una mala terminacion"
+jc-s31.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando hacia arriba pero baja muy rapido,  no hay impulso y flexion de rodillas,  aceptable terminacion"
+jc-s32.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo apuntando hacia arriba pero baja muy rapido,  impulso y flexion de rodillas tempranero, causo una regular terminacion"
+jc-s33.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso tempranero causa mala terminacion"
+jc-s34.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso bueno y  buena terminacion"
+jc-s35.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso donde hay un desbalance causa una terminacion regular"
+jc-s36.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas leve  pero sin impulso,  terminacion regular"
+jc-s37.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso tempranero causa terminacion regular"
+jc-s38.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso tempranero pero buena terminacion"
+jc-s39.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso tempranero causa terminacion regular"
+jc-s40.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso tempranero causa mala terminacion"
+jc-s41.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas bueno pero no hay impulso causa terminacion regular"
+jc-s42.mp4,jc,1,none,no_clear_problem,steady_serves,"brazo apuntando a la pelota,  flexion de rodillas e impulso correcto pero terminacion regular"
+jc-s43.mp4,jc,1,trophy,toss_arm_drops_early,toss_hold,"brazo baja muy rapido pero sigue apuntando a la pelota,  flexion de rodillas e impulso bueno y buena terminacion"
