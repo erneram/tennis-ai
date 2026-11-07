@@ -120,7 +120,7 @@ How one video is analyzed (`app/service.py`, 3 to 6 s on the Mac):
 1. OpenCV checks the video (frame rate, length).
 2. MediaPipe Pose (heavy) finds 33 landmarks in every frame, inside a square around the region that moves (`core.pose`).
 3. Contact is the highest wrist in the second after the toss; the 64 frames around it, from 1.6 s before to 0.5 s after, become the model's input (`strokes.serve.dataset`): the shoulders, elbows and wrists, with the tossing arm always on the same side.
-4. The model of `configs/default.yaml` (M1c, one network per training seed) gives the probability that the tossing arm drops early; the drill is `toss_hold` from the threshold `eval/value.py` chose for the most value on validation scores, `steady_serves` below it (`strokes.serve.model`). Occlusion says which joint and moment the answer rests on: each arm joint, during each stretch of 0.27 s, is replaced by the same joint of a clean serve (the mean of the train serves without the problem) and the change in the probability is measured.
+4. The model of `configs/default.yaml` (M2c, one network per training seed) gives the probability that the tossing arm drops early; the drill is `toss_hold` from the threshold `eval/value.py` chose for the most value on validation scores, `steady_serves` below it (`strokes.serve.model`). Occlusion says which joint and moment the answer rests on: each arm joint, during each stretch of 0.27 s, is replaced by the same joint of a clean serve (the mean of the train serves without the problem) and the change in the probability is measured.
 
 The video is recorded again when no person is found in most frames, when there is no toss (no wrist above the shoulders), or when MediaPipe saw less than 70 % of the arm points around contact; on the train split, 3 of the 7 serves the team could not judge fall under that line and no serve they judged. Under 85 %, the confidence is low.
 
@@ -214,23 +214,40 @@ uv run python -m strokes.serve.baseline                       # B0, a rule on th
 uv run python -m strokes.serve.train                          # M1, temporal CNN on the 17 joints
 uv run python -m strokes.serve.train --arms                   # M1b, the arms only
 uv run python -m strokes.serve.train --arms --epochs 85 --name m1c   # M1c, M1b stopped where validation loss is lowest
+uv run python -m strokes.serve.pretrain --epochs 2000         # M2's encoder, pretrained without labels (THETIS, below)
+uv run python -m strokes.serve.train --arms --init pretrain   # M2, M1b fine-tuned from that encoder
+uv run python -m strokes.serve.train --arms --init pretrain --epochs 58 --name m2c   # M2c, M2 stopped where validation loss is lowest
 uv run python -m eval.value                                   # value of each model in quetzales (configs/value.yaml)
-uv run python -m strokes.serve.model                          # occlusion map of the app's model (M1c) on the test videos
+uv run python -m strokes.serve.model --name m2c               # occlusion map of the app's model on the test videos
 ```
 
-Validation scores come from 5-fold cross-validation on the train split; the test split (JC's serves of Nov 1 and professional pro01) is never used to choose. Scores, loss curves, the value curve and the sensitivity table are written to `experiments/serve/`. Results on the 18 test videos (5 seeds for the CNNs; value per analysis with the threshold chosen on validation, 95 % bootstrap interval):
+M2's pretraining reads THETIS ([github.com/THETIS-dataset](https://github.com/THETIS-dataset), Gourgari et al., CVPR Workshops 2013): 495 flat, kick and slice serves of 55 players (31 beginners), filmed indoors from the front without a ball. They are downloaded into the ignored `data/external/thetis/` and prepared once (about 20 minutes; licensing in [docs/licenses.md](docs/licenses.md)):
 
-| Model | Test macro-F1 | Test AUROC | Q per analysis | Seconds |
-|---|---|---|---|---|
-| A: Qwen3-VL-4B, Project 3 (v22), one seed | 0.625 | 0.646 | 9.09 (−5.44 to 23.62) | 49.0 |
-| B0: rule | 0.723 | 0.800 | 16.25 (4.85 to 27.42) | 5.0 |
-| M1: CNN, 17 joints, 300 epochs | 0.482 ± 0.090 | 0.532 ± 0.057 | 12.00 (12.00 to 12.00) | 5.0 |
-| M1b: CNN, arms only | 0.682 ± 0.039 | 0.880 ± 0.034 | 16.65 (9.99 to 24.16) | 5.0 |
-| M1c: M1b, 85 epochs | 0.611 ± 0.055 | 0.757 ± 0.023 | 18.84 (12.00 to 26.44) | 5.0 |
+```bash
+mkdir -p data/external/thetis && for d in flat_service kick_service slice_service; do
+  gh api "repos/THETIS-dataset/dataset/contents/VIDEO_RGB/$d" --jq '.[].download_url'
+done | (cd data/external/thetis && xargs -n 1 -P 8 curl -sSfLO)
+uv run python -m core.pose data/external/thetis/*.avi --out data/processed/thetis-pose
+uv run python -m strokes.serve.dataset --pose data/processed/thetis-pose --out data/processed/thetis_dataset.npz
+```
+
+Validation scores come from 5-fold cross-validation on the train split (30 videos); the test split (JC's serves of Nov 1 and professional pro01, 18 videos) is never used to choose. Scores, loss curves, the value curve and the sensitivity table are written to `experiments/serve/`. Results (5 seeds for the CNNs; value per analysis with the threshold chosen on validation, 95 % bootstrap interval on test):
+
+| Model | Validation AUROC | Validation Q | Test macro-F1 | Test AUROC | Test Q per analysis | Seconds |
+|---|---|---|---|---|---|---|
+| A: Qwen3-VL-4B, Project 3 (v22), one seed | 0.650 | 14.95 | 0.625 | 0.646 | 9.09 (−5.44 to 23.62) | 49.0 |
+| B0: rule | 0.608 | 14.00 | 0.723 | 0.800 | 16.25 (4.85 to 27.42) | 5.0 |
+| M1: CNN, 17 joints, 300 epochs | 0.706 ± 0.044 | 13.14 | 0.482 ± 0.090 | 0.532 ± 0.057 | 12.00 (12.00 to 12.00) | 5.0 |
+| M1b: CNN, arms only, 300 epochs | 0.721 ± 0.042 | 15.71 | 0.682 ± 0.039 | 0.880 ± 0.034 | 16.65 (9.40 to 24.25) | 5.0 |
+| M1c: M1b, 85 epochs | 0.681 ± 0.063 | 18.31 | 0.611 ± 0.055 | 0.757 ± 0.023 | 18.84 (12.00 to 26.44) | 5.0 |
+| M2: M1b from the pretrained encoder, 300 epochs | 0.673 ± 0.036 | 16.64 | 0.700 ± 0.061 | 0.702 ± 0.033 | 19.60 (12.00 to 27.20) | 5.0 |
+| M2c: M2, 58 epochs | 0.644 ± 0.031 | 20.36 | 0.718 ± 0.037 | 0.618 ± 0.038 | 18.84 (12.00 to 26.44) | 5.0 |
 
 Recommending the drill to everyone, with no model, is worth Q12.00 per analysis; M1's value-optimal threshold does exactly that. The intervals overlap: 18 test videos with 5 negatives cannot separate the models yet, which is why more amateur players are being recorded. The coach price and the hit, miss and false-alarm weights are estimates until the academy quotes and the improvement study replace them.
 
-The app runs M1c, the model with the most value on validation scores, at the threshold chosen there (0.198). Its occlusion map on the test videos (`experiments/serve/m1c-occlusion.png`) shows where the answer rests: on serves where the arm drops early, mostly on the tossing wrist from 0.53 to 0.27 s before contact and at the start of the window, 1.6 s before contact, then on the tossing elbow; the racket arm barely moves it. Hiding the points instead, as MediaPipe does when it loses one, mostly raises the probability: the model reads an unseen arm point as a sign of the fault, a bias to watch with new players and cameras.
+Pretraining against training from scratch (M2 against M1b, M2c against M1c: same data, seeds, folds and training) does not improve the ranking (validation AUROC 0.673 against 0.721) but gives the most value on validation (M2c, Q20.36 against M1c's Q18.31). It is a weak pretraining: filling in hidden stretches of the arms, the encoder errs 0.026 torso lengths² on held-out THETIS players after 2000 epochs, twice as much as a straight line across each stretch (0.013, `experiments/serve/pretrain-curves.png`), so it learns little beyond smooth motion; THETIS is also filmed from the front, not from the side. A first try with 300 epochs of pretraining (error 0.038) gave M2 a validation AUROC of 0.630, and 2000 epochs were kept on validation scores.
+
+The app runs M2c, the model with the most value on validation scores, at the threshold chosen there (0.267). Its occlusion map on the test videos (`experiments/serve/m2c-occlusion.png`) shows where the answer rests: on serves where the arm drops early, on the tossing wrist through the whole drop, most from 0.53 to 0.27 s before contact; the racket arm barely moves it. M1c's map (`m1c-occlusion.png`) rests on the same wrist but also on the start of the window, 1.6 s before contact. Hiding the points instead, as MediaPipe does when it loses one, mostly raises M1c's probability: the model reads an unseen arm point as a sign of the fault, a bias to watch with new players and cameras.
 
 ## Privacy
 

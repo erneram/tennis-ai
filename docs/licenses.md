@@ -16,6 +16,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | [llguidance](https://github.com/guidance-ai/llguidance) (installed by MLX-VLM) | MIT | OK. Constrains the model output to the JSON schema. |
 | [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) ([MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-VL-4B-Instruct-4bit)) | Apache-2.0 | OK. Primary vision-language model. |
 | [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) ([MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-VL-2B-Instruct-4bit)) | Apache-2.0 | OK. Baseline: smaller model. |
+| [PyTorch](https://github.com/pytorch/pytorch) | BSD-3-Clause | OK. Final Project: trains and runs the serve models (`strokes/serve/`). |
 
 ## Candidate models for later iterations
 
@@ -38,7 +39,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | Dataset | License | Status |
 | --- | --- | --- |
 | [Tennis Player Actions Dataset](https://data.mendeley.com/datasets/nv3rpsxhhk/1) | CC BY 4.0 | OK with attribution. |
-| [THETIS](https://openaccess.thecvf.com/content_cvpr_workshops_2013/W08/papers/Gourgari_THETIS_Three_Dimensional_2013_CVPR_paper.pdf) | No explicit license found | Check the terms with the authors before use. Do not redistribute. |
+| [THETIS](https://github.com/THETIS-dataset/dataset) ([paper](https://openaccess.thecvf.com/content_cvpr_workshops_2013/W08/papers/Gourgari_THETIS_Three_Dimensional_2013_CVPR_paper.pdf)) | No license file. The authors' repository asks only that work using it cite one of their papers (checked 2026-11-06). | In use with citation. Final Project: M2's pretraining reads its 495 RGB serve videos, downloaded to the ignored `data/external/`. Never committed or redistributed. |
 | [Roboflow tennis-pose-detection](https://universe.roboflow.com/degree-jpabx/tennis-pose-detection) | Not verified | Check the license on the dataset page before use. |
 | [RacketVision](https://github.com/OrcustD/RacketVision/) | MIT (code) | OK. Future work. |
 | Own recordings | Player consent | Written consent required. Never committed (see `data/README.md`). |
