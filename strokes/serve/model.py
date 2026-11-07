@@ -29,6 +29,11 @@ from strokes.serve import baseline, dataset, train
 
 BIN = 8  # frames of one occluded stretch: 0.27 s at 30 fps
 STARTS = np.arange(0, dataset.BEFORE + 1 + dataset.AFTER, BIN)  # 8 stretches of the 64 frames
+STANCE = 16  # first frames of the window (0.53 s): the player stands, before the toss
+# Shoulder width (shoulder_width) under which the app asks for a new recording. Our 44 videos: 0.17
+# to 0.36 in 5 the team could not judge, 0.47 or more in every judgeable one; 79 % of the THETIS
+# serves, filmed from in front of the player, are under it.
+MIN_SHOULDERS = 0.4
 # The joints of train.ARMS after train.arms: the tossing arm is the left one
 PARTS = [
     f"{arm} {joint}" for arm in ("tossing", "racket") for joint in ("shoulder", "elbow", "wrist")
@@ -86,6 +91,14 @@ def seconds(start: int) -> float:
     return (start - dataset.BEFORE) / dataset.FPS
 
 
+def shoulder_width(x: np.ndarray) -> np.ndarray:
+    """Median distance across the image between the shoulders in the first STANCE frames of each
+    window, in torso lengths: about 0.6 with the camera to the side looking at the chest, as the
+    app asks; about 0.2 with the camera in front of or behind the player (THETIS)."""
+    left, right = dataset.SHOULDERS
+    return np.median(np.abs(x[..., :STANCE, left, 0] - x[..., :STANCE, right, 0]), -1)
+
+
 def predict(model: dict, keypoints: np.ndarray, fps: float) -> dict:
     """The answer for one video's landmarks (core.pose.extract). Raises ValueError when the
     video shows no toss."""
@@ -104,6 +117,7 @@ def predict(model: dict, keypoints: np.ndarray, fps: float) -> dict:
         "tossing_side": side,
         "drop_seconds": baseline.drop_time(x[0]),  # B0's measure, shown as evidence
         "seen": float(mm.mean()),  # share of arm points MediaPipe saw in the window
+        "shoulders": float(shoulder_width(x[0])),
         "contact": frame,
         "occlusion": None if fall is None else fall.round(4).tolist(),
     }

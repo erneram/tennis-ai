@@ -188,6 +188,9 @@ def run_analysis(video_path, progress) -> dict:
     except ValueError:
         return {"retake": "No vemos el lanzamiento de la pelota: graba el saque completo, con el "
                           "brazo que lanza y la raqueta arriba dentro del cuadro."}  # fmt: skip
+    if answer["shoulders"] < model.MIN_SHOULDERS:
+        return {"retake": "La cámara no te ve de lado: un hombro tapa al otro. Graba de lado, con la "
+                          "cámara mirando tu pecho, sobre la prolongación de la línea de fondo."}  # fmt: skip
     if answer["seen"] < MIN_SEEN:
         return {"retake": f"Solo vimos el {answer['seen']:.0%} de los puntos de tus brazos cerca "
                           "del impacto. Graba de lado, con más luz y sin que nada tape el brazo."}  # fmt: skip
