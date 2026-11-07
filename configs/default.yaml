@@ -16,7 +16,7 @@ app:
   slowdown: 4                 # slow-motion factor of the labeled video
 
 serve:
-  model: m1c                  # the app's model: experiments/serve/<model>.pt, threshold in value.csv
+  model: m2c                  # the app's model: experiments/serve/<model>.pt, threshold in value.csv
 
 pose:
   model: heavy                # MediaPipe Pose Landmarker: lite | full | heavy (offline, so the most accurate)
