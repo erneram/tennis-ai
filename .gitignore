@@ -34,6 +34,8 @@ docs/poster/*.pdf
 # Downloaded model weights
 models/
 *.pt
+# except the trained serve models, a few kB each
+!experiments/serve/*.pt
 *.onnx
 
 # Web frontend build output and deps

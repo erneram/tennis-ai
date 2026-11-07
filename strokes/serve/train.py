@@ -11,7 +11,9 @@ at probability 0.5 and AUROC, mean and SD over seeds. The train split is too sma
 validation set, so the validation scores come from 5-fold cross-validation on it (each video
 scored by the model that did not see it); hyperparameters are fixed in advance and no choice looks
 at the test split. Writes the scores and the loss per epoch (train, validation, test) to
-experiments/serve/<model>.csv and <model>-curves.csv/.png for eval/value.py and the report.
+experiments/serve/<model>.csv and <model>-curves.csv/.png for eval/value.py and the report, and
+the weights of the model of each seed trained on the whole train split, with the mean window of the
+train serves without the problem, to <model>.pt for the app (strokes/serve/model.py).
 --arms trains M1b: only the shoulders, elbows and wrists, mirrored so the tossing arm is always
 the left one (and never mirrored at random), so 30 videos fit fewer weights. M1c is M1b stopped
 at 85 epochs, where M1b's mean validation loss is lowest (experiments/serve/m1b-curves.png):
@@ -141,7 +143,7 @@ def main() -> None:
     weights = sum(p.numel() for p in network(3 * x.shape[2]).parameters())
     print(f"{name.upper()}: {weights} weights, {train_.sum()} train videos ({int(y.sum())} drop "
           f"early), {FOLDS}-fold cross-validation for the validation scores")  # fmt: skip
-    rows, curves, results = [], [], {s: [] for s in ("train", "validation", "test")}
+    rows, curves, results, states = [], [], {s: [] for s in ("train", "validation", "test")}, []
     for seed in range(args.seeds):
         fold, validation, fold_loss = folds(y, seed), np.zeros(len(y)), []
         for k in range(FOLDS):
@@ -151,6 +153,7 @@ def main() -> None:
             validation[out] = probability(model, xt[out], mt[out])
             fold_loss.append(np.array(curve)[:, 1])
         model, curve = train(xt, mt, y, seed, args.epochs, flip, [(x[test], mask[test], y_test)])
+        states.append(model.state_dict())
         val_loss = np.mean(fold_loss, 0)
         for epoch, ((fit_loss, test_loss), val) in enumerate(zip(curve, val_loss, strict=True), 1):
             curves.append({"model": name, "seed": seed, "epoch": epoch, "train": fit_loss,
@@ -170,6 +173,9 @@ def main() -> None:
         print(f"  {split}: macro-F1 {f1:.3f} ± {sd_f1:.3f}, AUROC {area:.3f} ± {sd_area:.3f}")
     baseline.save(name, rows)
     baseline.save(f"{name}-curves", curves)
+    reference = torch.from_numpy(xt[y == 0].mean(0))  # a clean serve, for strokes.serve.model
+    torch.save({"arms": args.arms, "epochs": args.epochs, "weights": states, "reference": reference},
+               baseline.RESULTS / f"{name}.pt")  # fmt: skip
     plot(name, curves)
 
 
