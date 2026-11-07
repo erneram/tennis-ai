@@ -1,4 +1,4 @@
-"""Player sessions, progress summaries, and practice plans.
+"""Player sessions: the attempts of each practice, to follow a player's progress.
 
 History is one JSON file per player in data/history/ (ignored by Git: personal data).
 """
@@ -6,13 +6,11 @@ History is one JSON file per player in data/history/ (ignored by Git: personal d
 import json
 import re
 from datetime import datetime
-from string import Template
 
 from core import ROOT
 
 HISTORY_DIR = ROOT / "data" / "history"
 PLAYER_ID = re.compile(r"[A-Za-z0-9_-]{1,40}")
-MAX_ATTEMPTS_IN_PROMPT = 30  # bounds the summary prompt to about 1k tokens
 
 
 def _file(player: str):
@@ -37,38 +35,11 @@ def save_session(player: str, attempts: list[dict]) -> list[dict]:
     return sessions
 
 
-def attempt(feedback: dict) -> dict:
+def attempt(category: str, probability: float, drill_id: str) -> dict:
+    """One analyzed serve of a session: the model's answer and the drill it led to."""
     return {
         "time": f"{datetime.now():%H:%M}",
-        "phase": feedback["phase"],
-        "category": feedback["category"],
-        "drill_id": feedback["drill_id"],
+        "category": category,
+        "probability": round(probability, 3),
+        "drill_id": drill_id,
     }
-
-
-def summarize(vlm, prompts: dict, labels: dict[str, str], sessions: list[dict],
-              **generation) -> dict:  # fmt: skip
-    """Progress summary and next practice focus.
-
-    `prompts` holds the stroke's summary prompt; `labels` maps each phase, in order, to its name.
-    """
-    lines = [
-        f"- {session['date']}: {a['phase']} / {a['category']}"
-        for session in sessions
-        for a in session["attempts"]
-    ][-MAX_ATTEMPTS_IN_PROMPT:]
-    if not lines:
-        raise ValueError("No attempts to summarize")
-    schema = {
-        "type": "object",
-        "properties": {
-            "summary": {"type": "string", "maxLength": 600},
-            "next_focus": {"type": "string", "maxLength": 300},
-            "focus_phase": {"type": "string", "enum": list(labels)},
-        },
-        "required": ["summary", "next_focus", "focus_phase"],
-        "additionalProperties": False,
-    }
-    phases = ", ".join(f"{phase} ({label})" for phase, label in labels.items())
-    user = Template(prompts["user"]).substitute(phases=phases, history="\n".join(lines))
-    return vlm.generate_json(prompts["system"], user, [], schema, **generation).data

@@ -5,8 +5,8 @@ from core import history
 
 def test_sessions_accumulate_per_player(tmp_path, monkeypatch):
     monkeypatch.setattr(history, "HISTORY_DIR", tmp_path)
-    feedback = {"phase": "trophy", "category": "toss_arm_drops_early", "drill_id": "toss_hold"}
-    first = history.attempt(feedback)
+    first = history.attempt("toss_arm_drops_early", 0.6412, "toss_hold")
+    assert first["probability"] == 0.641
     history.save_session("p01", [first])
     sessions = history.save_session("p01", [first, first])
     assert [len(s["attempts"]) for s in sessions] == [1, 2]
