@@ -1,0 +1,25 @@
+model,group,value,positives,recall,negatives,false_alarms
+b0,player,amateur (JC),23,0.87,14,0.786
+b0,frame rate,60 fps,23,0.87,16,0.812
+b0,arm points seen,90 % or more,21,0.905,23,0.609
+b0,orientation,landscape,23,0.87,15,0.8
+b0,arm points seen,under 90 %,2,0.5,2,0.5
+b0,player,professional,0,,11,0.364
+b0,frame rate,30 fps,0,,9,0.222
+b0,orientation,portrait,0,,10,0.3
+m1c,player,amateur (JC),23,0.983,14,0.971
+m1c,frame rate,60 fps,23,0.983,16,0.862
+m1c,arm points seen,90 % or more,21,0.981,23,0.583
+m1c,orientation,landscape,23,0.983,15,0.92
+m1c,arm points seen,under 90 %,2,1.0,2,0.6
+m1c,player,professional,0,,11,0.091
+m1c,frame rate,30 fps,0,,9,0.089
+m1c,orientation,portrait,0,,10,0.08
+m2c,player,amateur (JC),23,1.0,14,1.0
+m2c,frame rate,60 fps,23,1.0,16,0.875
+m2c,arm points seen,90 % or more,21,1.0,23,0.583
+m2c,orientation,landscape,23,1.0,15,0.933
+m2c,arm points seen,under 90 %,2,1.0,2,0.5
+m2c,player,professional,0,,11,0.036
+m2c,frame rate,30 fps,0,,9,0.044
+m2c,orientation,portrait,0,,10,0.04

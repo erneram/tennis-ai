@@ -39,7 +39,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | Dataset | License | Status |
 | --- | --- | --- |
 | [Tennis Player Actions Dataset](https://data.mendeley.com/datasets/nv3rpsxhhk/1) | CC BY 4.0 | OK with attribution. |
-| [THETIS](https://github.com/THETIS-dataset/dataset) ([paper](https://openaccess.thecvf.com/content_cvpr_workshops_2013/W08/papers/Gourgari_THETIS_Three_Dimensional_2013_CVPR_paper.pdf)) | No license file. The authors' repository asks only that work using it cite one of their papers (checked 2026-11-06). | In use with citation. Final Project: M2's pretraining reads its 495 RGB serve videos, downloaded to the ignored `data/external/`. Never committed or redistributed. |
+| [THETIS](https://github.com/THETIS-dataset/dataset) ([paper](https://openaccess.thecvf.com/content_cvpr_workshops_2013/W08/papers/Gourgari_THETIS_Three_Dimensional_2013_CVPR_paper.pdf)) | No license file. The authors' repository asks only that work using it cite one of their papers (checked 2026-11-06). | In use with citation. Final Project: M2's pretraining and the bias check (`eval/bias.py`) read its 495 RGB serve videos, downloaded to the ignored `data/external/`. Never committed or redistributed. |
 | [Roboflow tennis-pose-detection](https://universe.roboflow.com/degree-jpabx/tennis-pose-detection) | Not verified | Check the license on the dataset page before use. |
 | [RacketVision](https://github.com/OrcustD/RacketVision/) | MIT (code) | OK. Future work. |
 | Own recordings | Player consent | Written consent required. Never committed (see `data/README.md`). |
