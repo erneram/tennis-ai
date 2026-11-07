@@ -32,7 +32,7 @@ import numpy as np
 
 from strokes.serve import baseline, dataset, model, pretrain, train
 
-MODELS = ["b0", "m1c", "m2c"]  # the rule, the best model from scratch, the app's model
+MODELS = ["b0", "m1c", "m2c"]  # the rule, the app's model (from scratch), the pretrained one
 SHARES = [0.0, 0.1, 0.2, 0.3, 0.4]  # of the arm points set unseen
 REPEATS = 20
 ARM_JOINTS = np.array(train.ARMS)
