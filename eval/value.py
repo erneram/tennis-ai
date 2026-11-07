@@ -11,7 +11,8 @@ the value of one analysis is
     B × (p × TPR × hit − p × (1 − TPR) × miss − (1 − p) × FPR × false_alarm) − compute cost
 
 and a player makes analyses_per_month of them. Parameters and their sources: configs/value.yaml.
-Models: B0, M1, M1b, M1c (experiments/serve/<model>.csv, from strokes.serve.baseline and .train)
+Models: B0, M1, M1b, M1c, M2, M2c (experiments/serve/<model>.csv, from strokes.serve.baseline and
+.train)
 and Qwen3-VL, the Project 3 system, from its runs. Each model's threshold is the one with the
 most value on its validation scores, never on the test split; test values get a 95 % bootstrap
 interval over the test videos. Writes experiments/serve/value.csv, sensitivity.csv (every
@@ -37,7 +38,7 @@ RUNS = ROOT / "eval" / "serve" / "runs"
 # Qwen3-VL with prompt v22, the final Project 3 version (eval/label.py, REVIEW_RUNS)
 QWEN_RUNS = {"validation": ["20261102-131618-full", "20261102-132154-full"],
              "test": ["20261106-133044-full"]}  # fmt: skip
-MODELS = ["b0", "m1", "m1b", "m1c", "qwen"]
+MODELS = ["b0", "m1", "m1b", "m1c", "m2", "m2c", "qwen"]
 FACTORS = [0.5, 0.8, 1.2, 1.5]
 BOOTSTRAP = 2000
 
@@ -140,12 +141,13 @@ def bootstrap(truth, scores, threshold, config, seconds, rng) -> tuple[float, fl
 
 def evaluate(models: dict, config: dict) -> list[dict]:
     """Threshold from validation, test rates and value of each model."""
-    out, rng = [], np.random.default_rng(0)
+    out = []
     for name, m in models.items():
         threshold = best_threshold(*m["validation"], config, m["seconds"])
         truth, scores = m["test"]
         tpr, fpr = rates(truth, scores, threshold)
         test = mean_value(truth, scores, threshold, config, m["seconds"])
+        rng = np.random.default_rng(0)  # the same resamples for every model
         low, high = bootstrap(truth, scores, threshold, config, m["seconds"], rng)
         out.append({
             "model": name, "threshold": threshold, "seconds": round(m["seconds"], 2),
