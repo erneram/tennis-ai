@@ -24,6 +24,7 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leav
 
 import csv
 import json
+import re
 from pathlib import Path
 
 import cv2
@@ -82,16 +83,27 @@ def playable(name: str, slowdown: int) -> str:
     return str(out)
 
 
-def label_view(name: str, choice: str | None = None):
+def rows_of(name: str) -> list[dict]:
+    """The member's rows, plus an empty one for each video in data/raw/ not in the file yet (new
+    clips, for example from strokes/serve/split.py); saving a label writes them to the file."""
     rows = read(EVAL / f"labels_{name}.csv")
-    done = sum(bool(r["valid"]) for r in rows)
-    choice = choice or next((r["video"] for r in rows if not r["valid"]), rows[0]["video"])
+    listed = {r["video"] for r in rows}
+    new = sorted(p.name for p in RAW.iterdir()
+                 if p.suffix.lower() in (".mp4", ".mov") and p.name not in listed)  # fmt: skip
+    empty = dict.fromkeys(LABEL_COLUMNS, "")
+    return rows + [{**empty, "video": v, "player": re.split(r"[-_]", Path(v).stem)[0]} for v in new]
+
+
+def label_view(name: str, choice: str | None = None):
+    """The videos still to label (every video once all are labeled) and `choice` or the next."""
+    rows = rows_of(name)
+    left = [r["video"] for r in rows if not r["valid"]]
+    choice = choice or (left[0] if left else rows[0]["video"])
     row = next(r for r in rows if r["video"] == choice)
-    status = f"{done} de {len(rows)} videos etiquetados" + (
-        " (todos)." if done == len(rows) else "."
-    )
+    status = (f"Faltan {len(left)} de {len(rows)} videos; la lista muestra solo esos." if left
+              else f"Los {len(rows)} videos están etiquetados.")  # fmt: skip
     return (
-        gr.update(choices=[r["video"] for r in rows], value=choice),
+        gr.update(choices=left or [r["video"] for r in rows], value=choice),
         status,
         playable(choice, 1),
         playable(choice, 4),
@@ -120,7 +132,9 @@ def answered(row: dict, valid: str | None, category: str | None, notes: str) -> 
 
 def save_label(name: str, choice: str, valid: str | None, category: str | None, notes: str):
     path = EVAL / f"labels_{name}.csv"
-    rows = [answered(r, valid, category, notes) if r["video"] == choice else r for r in read(path)]
+    rows = [
+        answered(r, valid, category, notes) if r["video"] == choice else r for r in rows_of(name)
+    ]
     write(path, rows, LABEL_COLUMNS)
     return label_view(name)  # the next video without a label
 

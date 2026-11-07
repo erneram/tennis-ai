@@ -28,3 +28,23 @@ def test_save_agreement_writes_agreed_rows_and_decisions(tmp_path, monkeypatch):
     ]  # fmt: skip
     assert rows[1]["notes"] == "both saw it up"
     assert label.agree_view()[1].startswith("### Listo")
+
+
+def test_new_clips_in_raw_are_listed_until_labeled(tmp_path, monkeypatch):
+    raw = tmp_path / "raw"
+    (raw / "uncut").mkdir(parents=True)
+    for name in ("old.mp4", "ea-2-s01.mp4", "uncut/session.MOV", "cuts.csv"):
+        (raw / name).touch()
+    monkeypatch.setattr(label, "EVAL", tmp_path)
+    monkeypatch.setattr(label, "RAW", raw)
+    monkeypatch.setattr(label, "playable", lambda name, slowdown: name)
+    old = label.answered({"video": "old.mp4", "player": "jc"}, "0", None, "")
+    label.write(tmp_path / "labels_a.csv", [old], label.LABEL_COLUMNS)
+
+    choices, status = label.label_view("a")[:2]
+    assert choices["choices"] == ["ea-2-s01.mp4"] and status.startswith("Faltan 1 de 2")
+    label.save_label("a", "ea-2-s01.mp4", "1", NONE, "")
+    rows = label.read(tmp_path / "labels_a.csv")
+    assert [(r["video"], r["player"], r["category"]) for r in rows] == [
+        ("old.mp4", "jc", ""), ("ea-2-s01.mp4", "ea", NONE)
+    ]  # fmt: skip
