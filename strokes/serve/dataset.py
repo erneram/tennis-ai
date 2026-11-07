@@ -29,6 +29,7 @@ JOINTS = (
     "left_ankle", "right_ankle", "left_heel", "right_heel", "left_foot_index", "right_foot_index",
 )  # fmt: skip
 SHOULDERS, HIPS = [1, 2], [7, 8]  # positions in JOINTS
+TOSS = 0.4  # torso lengths a wrist rises above the shoulders while the ball goes up
 # Never used to train or pretrain: the session filmed on Nov 1 and one professional
 TEST_VIDEOS = {f"jc-s{i}" for i in range(28, 44)}
 TEST_PLAYERS = {"pro01"}
@@ -37,7 +38,7 @@ TEST_PLAYERS = {"pro01"}
 def contact(keypoints: np.ndarray, fps: float) -> int:
     """Frame of contact: the highest wrist in the second after the toss.
 
-    The toss is the longest stretch with a wrist 0.4 torso lengths above the shoulders: the tossing
+    The toss is the longest stretch with a wrist TOSS torso lengths above the shoulders: the tossing
     arm stays up while the ball rises. The frame with the most motion (core.video.motion) is wrong
     when someone walks by or the player runs in after the serve."""
     points = keypoints[:, [pose.LANDMARKS.index(j) for j in JOINTS]]
@@ -45,7 +46,7 @@ def contact(keypoints: np.ndarray, fps: float) -> int:
     torso = np.nanmedian(np.linalg.norm(shoulders - hips, axis=1))
     above = (shoulders[:, None, 1] - points[:, [5, 6], 1]) / torso  # image y grows downward
     height = np.nan_to_num(np.fmax(above[:, 0], above[:, 1]), nan=-np.inf)
-    up = np.flatnonzero(height >= 0.4)
+    up = np.flatnonzero(height >= TOSS)
     if not len(up):
         raise ValueError("no wrist above the shoulders")
     toss_end = max(np.split(up, np.flatnonzero(np.diff(up) > 1) + 1), key=len)[-1]
