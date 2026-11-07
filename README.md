@@ -96,6 +96,7 @@ The model is never trained, so these numbers do not change it. They decide which
 - macOS on Apple Silicon (developed on a Mac M5 Pro, 24 GB).
 - [uv](https://docs.astral.sh/uv/). It installs Python 3.12 automatically if needed.
 - [Node.js](https://nodejs.org/) 20 or later, only to build the web page once.
+- [ffmpeg](https://ffmpeg.org/), only to cut long practice sessions into serves (`brew install ffmpeg`).
 
 ## Installation
 
@@ -165,7 +166,14 @@ At start, each video in `data/demo/` is analyzed once; the answer is saved in `d
 
 The labels written by the team are only the answer key: in Project 3 the model is not trained, it is used as downloaded with a prompt. See [what the labels are for](data/README.md#what-the-labels-are-for).
 
-1. Put the videos in `data/raw/`. There is no coach: both members label each serve on their own, compare, and write the agreed labels in `eval/serve/labels.csv` (guide in [data/README.md](data/README.md)):
+1. Put the videos in `data/raw/`, one serve each. A long practice session with many serves goes to `data/raw/uncut/` and is cut first (needs [ffmpeg](https://ffmpeg.org/)): `find` writes the candidates and an image of each in `data/processed/split/`; look at the image, then `cut` with the numbers that are not serves (a bag MediaPipe took for a person, a toss caught without a swing) and the seconds of any serve it missed. Clips are 5 s, from 3 s before the top of the toss, with the phone's rotation applied; `cuts.csv` next to the session records where each comes from. On the first 10 sessions (39 minutes) `find` gave 169 candidates for the 102 serves found by checking each one and every stretch where it lost the player, and missed one.
+
+```bash
+uv run python -m strokes.serve.split find data/raw/uncut/*.MOV
+uv run python -m strokes.serve.split cut data/raw/uncut/ea_2.MOV --name ea-2 --drop 1,5,8 [--add 262.0]
+```
+
+There is no coach: both members label each serve on their own, compare, and write the agreed labels in `eval/serve/labels.csv` (guide in [data/README.md](data/README.md)). The labeling tool lists only the videos the member has not labeled yet, new clips included:
 
 ```bash
 uv run python -m eval.label      # labeling tool, http://127.0.0.1:7861
