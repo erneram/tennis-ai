@@ -11,7 +11,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | [MediaPipe](https://github.com/google-ai-edge/mediapipe) Pose Landmarker (heavy) | Apache-2.0 | OK. Final Project: 33 landmarks per frame, the input of the trained model. Weights downloaded to `models/`, not committed. |
 | [MLX](https://github.com/ml-explore/mlx) / [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) | MIT | OK. |
 | [OpenCV](https://github.com/opencv/opencv-python) | Apache-2.0 | OK. Video reading, frame sampling, and the slow-motion video. |
-| [Gradio](https://github.com/gradio-app/gradio) | Apache-2.0 | OK. Web interface; analytics disabled in `app/`. |
+| [Gradio](https://github.com/gradio-app/gradio) | Apache-2.0 | OK. Labeling tool (`eval/label.py`); analytics disabled. |
 | [Transformers](https://github.com/huggingface/transformers) (installed by MLX-VLM) | Apache-2.0 | OK. |
 | [llguidance](https://github.com/guidance-ai/llguidance) (installed by MLX-VLM) | MIT | OK. Constrains the model output to the JSON schema. |
 | [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) ([MLX 4-bit](https://huggingface.co/mlx-community/Qwen3-VL-4B-Instruct-4bit)) | Apache-2.0 | OK. Primary vision-language model. |

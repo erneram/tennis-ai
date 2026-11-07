@@ -2,7 +2,7 @@
 
 Interactive assistant that analyzes the **tennis serve** from a short video. It splits the motion into phases, finds the phase with the main opportunity for improvement, shows the frames that support the observation, and suggests a drill. It keeps a history of sessions to follow the player's progress.
 
-Project 3 of CC3092 Deep Learning y Sistemas Inteligentes (UVG). Only a vision-language model looks at the video: there is no pose model and there are no measurements. Full proposal: [docs/proposal.md](docs/proposal.md). The Final Project, which adds pose estimation, lives on the `proyecto-final` branch.
+Final Project of CC3092 Deep Learning y Sistemas Inteligentes (UVG), on the `proyecto-final` branch. The app runs the team's own model: MediaPipe finds the body in every frame and a small temporal CNN, trained on the team's labels, says whether the tossing arm drops early ([Final Project](#final-project-trained-models-and-their-value)). Project 3's system, where only a vision-language model looks at the video, is kept as version A to compare against; most of this README still documents it. Full proposal: [docs/proposal.md](docs/proposal.md).
 
 ## Summary of the work
 
@@ -15,7 +15,7 @@ The model (Qwen3-VL-4B, 4-bit, on the Mac) is never trained: the work is in the 
 - **v18 and v22:** more tries when the phases look guessed.
 - **v20 and v21:** the tossing arm. The model described JC's arm as "extended outward" but answered "above the head", because it looked at the racket hand. v20 makes it find the racket hand first and asks which way the other arm points. v21 counts a diagonal closer to horizontal as a drop.
 
-The web page was also rebuilt in React with The Gridcn components; the earlier Gradio app is kept as a fallback.
+The web page was also rebuilt in React with The Gridcn components.
 
 ### Results
 
@@ -105,7 +105,7 @@ cp .env.example .env     # optional settings
 cd web && npm install && npm run build && cd ..   # build the web page into web/dist
 ```
 
-The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. After that, everything runs offline on the Mac.
+The first analysis downloads MediaPipe's pose model (about 30 MB) into `models/`. Only version A, Project 3's system (`eval.run_eval`), downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. After that, everything runs offline on the Mac.
 
 ## Usage
 
@@ -113,9 +113,31 @@ The first run downloads Qwen3-VL-4B (about 3 GB) into the Hugging Face cache. Af
 uv run python -m app.api     # web app at http://127.0.0.1:7860
 ```
 
-The page is a React app in `web/` (components from [The Gridcn](https://thegridcn.com), how to build and change it in [web/README.md](web/README.md)), served with its API by `app/api.py`. `uv run python -m app` starts the earlier Gradio version instead, kept as a fallback: it gives the same answers.
+The page is a React app in `web/` (components from [The Gridcn](https://thegridcn.com), how to build and change it in [web/README.md](web/README.md)), served with its API by `app/api.py`.
 
-How one video is analyzed (prompt v22):
+How one video is analyzed (`app/service.py`, 3 to 6 s on the Mac):
+
+1. OpenCV checks the video (frame rate, length).
+2. MediaPipe Pose (heavy) finds 33 landmarks in every frame, inside a square around the region that moves (`core.pose`).
+3. Contact is the highest wrist in the second after the toss; the 64 frames around it, from 1.6 s before to 0.5 s after, become the model's input (`strokes.serve.dataset`): the shoulders, elbows and wrists, with the tossing arm always on the same side.
+4. The model of `configs/default.yaml` (M1c, one network per training seed) gives the probability that the tossing arm drops early; the drill is `toss_hold` from the threshold `eval/value.py` chose for the most value on validation scores, `steady_serves` below it (`strokes.serve.model`). Occlusion says which joint and moment the answer rests on: each arm joint, during each stretch of 0.27 s, is replaced by the same joint of a clean serve (the mean of the train serves without the problem) and the change in the probability is measured.
+
+The video is recorded again when no person is found in most frames, when there is no toss (no wrist above the shoulders), or when MediaPipe saw less than 70 % of the arm points around contact; on the train split, 3 of the 7 serves the team could not judge fall under that line and no serve they judged. Under 85 %, the confidence is low.
+
+The app shows:
+
+- whether the tossing arm drops early, what the landmarks show (when the tossing wrist goes below its shoulder) and a drill,
+- how far to trust it ("Qué tan seguro está"): the confidence (high when every seed agrees, MediaPipe saw the arms and the probability is 0.15 or more from the threshold; low when seeds disagree or under 85 % of the points were seen), the probability against the threshold and the spread over seeds, and the model's rates on the test videos,
+- four key moments with the skeleton drawn and the tossing arm in orange: the start of the window, the tossing wrist at its highest, the last frame with it above the shoulder ("★ Aquí" when the arm drops early) and contact,
+- "En qué se fijó el modelo": the occlusion map, joints by time, and the joint and stretch that move the answer most,
+- the slow motion from 1.6 s before contact with the skeleton, the time from contact and the latest key moment,
+- from the second attempt on, how the probability changed since the previous attempt.
+
+"Terminar sesión" summarizes the session from the attempts alone (how often the arm dropped early, how the probability moved) and gives the drill for the next practice. With a player ID, the session is added to that player's history in `data/history/`. "Empezar de nuevo" clears the video, the answers and the session for the next player.
+
+### Version A: the Project 3 pipeline (Qwen3-VL)
+
+How one video was analyzed in Project 3 (prompt v22, `uv run python -m eval.run_eval`):
 
 1. OpenCV checks the video (frame rate, length) and takes 32 evenly spaced frames.
 2. The model draws a box around the player on the first, middle and last frames. The box is joined, grown to the reach of a serve (toss, racket, landing), and every frame is decoded again cropped to it, so a player far from the camera fills the frame. No crop when it would keep most of the frame.
@@ -125,30 +147,19 @@ How one video is analyzed (prompt v22):
 
 Every answer is JSON constrained by a schema, so the model can only choose known frames, phases, categories, and drills. Why each step exists is in the header of each prompt version, `strokes/serve/prompts/v*.yaml`.
 
-In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish), or pick a demo video, and press "Analizar saque". Progress is shown in four numbered steps. The app shows:
+In the Project 3 app, the answer was the phase to improve among six, with each phase's key frame and verdict ([screenshot](docs/images/app/result.jpg)).
 
-- the phase with the main opportunity for improvement (and the phase whose frame shows it), the observation and a drill,
-- how far to trust it ("Qué tan seguro está"): the confidence and how many checks the model could judge,
-- the key frame of each of the six phases with its verdict in words and color: se ve bien (green), a mejorar (red), no se ve claro (grey), sin revisar; "★ Aquí" marks the frame the observation talks about. A frame opens large when tapped,
-- the video in slow motion with the current phase,
-- every check with what the model saw ("Qué revisamos en cada fase"),
-- from the second attempt on, a comparison with the previous attempt.
+In the app, upload one serve recorded from the side, following [docs/grabacion.md](docs/grabacion.md) (recording guide, in Spanish), or pick a demo video, and press "Analizar saque". Progress is shown in four numbered steps. If the video cannot be analyzed, the app shows the reason and the recording tips instead of feedback. The page bundles its fonts and loads nothing from the internet, so it works offline.
 
-![The app after analyzing a serve](docs/images/app/result.jpg)
+### Demo mode (presentation)
 
-"Terminar sesión" summarizes the session and proposes the focus of the next practice. With a player ID, the session is added to that player's history in `data/history/`. "Empezar de nuevo" clears the video, the answers and the session for the next player.
-
-If the video cannot be analyzed (wrong angle, player out of frame, too dark, too short or too long, low frame rate, not a video), the app shows the reason and the recording tips instead of feedback. If the model gives no valid answer, the app says so and asks to try again. The page bundles its fonts and loads nothing from the internet, so it works offline.
-
-### Demo mode (fair)
-
-One analysis takes 15 to 45 s on the Mac. For the fair, put the demo videos in `data/demo/` (only players with `consent_image` = `yes`; include one bad recording to show the request for a new one) and run:
+For a presentation, put the demo videos in `data/demo/` (only players with `consent_image` = `yes`; include one bad recording to show the request for a new one) and run:
 
 ```bash
 uv run python -m app.api --demo
 ```
 
-At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". The poster for the stand is in `docs/poster/`: `poster.html` to show on a screen (it needs no internet) and `poster.png`. The PDF to print at 24 × 36 in is built locally and not kept in Git. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model, prompt version and criteria version; delete `data/processed/demo_cache/` to analyze again.
+At start, each video in `data/demo/` is analyzed once; the answer is saved in `data/processed/demo_cache/` and shown at once after that, marked "respuesta guardada". The videos appear under "Videos de la demo". The poster for the stand is in `docs/poster/`: `poster.html` to show on a screen (it needs no internet) and `poster.png`. The PDF to print at 24 × 36 in is built locally and not kept in Git. Any other video, such as a visitor's, is analyzed live and its answer is not saved. A saved answer is reused only for the same video, model weights, threshold and pose model; delete `data/processed/demo_cache/` to analyze again.
 
 ## Evaluation
 
@@ -204,6 +215,7 @@ uv run python -m strokes.serve.train                          # M1, temporal CNN
 uv run python -m strokes.serve.train --arms                   # M1b, the arms only
 uv run python -m strokes.serve.train --arms --epochs 85 --name m1c   # M1c, M1b stopped where validation loss is lowest
 uv run python -m eval.value                                   # value of each model in quetzales (configs/value.yaml)
+uv run python -m strokes.serve.model                          # occlusion map of the app's model (M1c) on the test videos
 ```
 
 Validation scores come from 5-fold cross-validation on the train split; the test split (JC's serves of Nov 1 and professional pro01) is never used to choose. Scores, loss curves, the value curve and the sensitivity table are written to `experiments/serve/`. Results on the 18 test videos (5 seeds for the CNNs; value per analysis with the threshold chosen on validation, 95 % bootstrap interval):
@@ -218,9 +230,11 @@ Validation scores come from 5-fold cross-validation on the train split; the test
 
 Recommending the drill to everyone, with no model, is worth Q12.00 per analysis; M1's value-optimal threshold does exactly that. The intervals overlap: 18 test videos with 5 negatives cannot separate the models yet, which is why more amateur players are being recorded. The coach price and the hit, miss and false-alarm weights are estimates until the academy quotes and the improvement study replace them.
 
+The app runs M1c, the model with the most value on validation scores, at the threshold chosen there (0.198). Its occlusion map on the test videos (`experiments/serve/m1c-occlusion.png`) shows where the answer rests: on serves where the arm drops early, mostly on the tossing wrist from 0.53 to 0.27 s before contact and at the start of the window, 1.6 s before contact, then on the tossing elbow; the racket arm barely moves it. Hiding the points instead, as MediaPipe does when it loses one, mostly raises the probability: the model reads an unseen arm point as a sign of the fault, a bias to watch with new players and cameras.
+
 ## Privacy
 
-- Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1`, and the Gradio fallback has its analytics disabled.
+- Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1`, and the Gradio labeling tool (`eval/label.py`) has its analytics disabled.
 
 ## Tests
 
@@ -234,7 +248,7 @@ uv run pytest
 configs/      shared settings (frames, model, generation parameters)
 core/         code shared by all analyses: video, frames, llm, history
 strokes/      one module per stroke; serve/ is the current prototype
-app/          API and shared analysis (api.py, service.py), Gradio fallback (__main__.py)
+app/          API and the analysis of one video with the team's model (api.py, service.py)
 web/          web page (React), served by app/api.py
 data/         videos (not in Git) and annotations, see data/README.md
 eval/         evaluation sets and metric scripts, per stroke
