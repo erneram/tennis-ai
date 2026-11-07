@@ -18,6 +18,7 @@ data/raw/
 data/processed/
 data/history/
 data/demo/
+data/external/
 *.mp4
 *.mov
 

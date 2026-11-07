@@ -1,6 +1,6 @@
 """Training data for the serve model of the Final Project: MediaPipe landmarks around contact.
 
-    uv run python -m strokes.serve.dataset [--labels eval/serve/labels.csv]
+    uv run python -m strokes.serve.dataset [--labels eval/serve/labels.csv] [--pose DIR --out FILE]
 
 Reads data/processed/pose/<video>.npz (written by `python -m core.pose`) and writes
 data/processed/serve_dataset.npz with one window per video: 64 frames at 30 fps aligned on
@@ -80,12 +80,14 @@ def window(keypoints: np.ndarray, fps: float, contact: int) -> tuple[np.ndarray,
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--labels", type=Path, default=LABELS)
+    parser.add_argument("--pose", type=Path, default=POSE_DIR, help="folder of pose files")
+    parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args()
     rows = csv.DictReader(args.labels.read_text().splitlines())
     labels = {Path(r["video"]).stem: r for r in rows}
     columns = ("x", "mask", "video", "player", "valid", "category", "split", "contact", "video_fps")
     data = {name: [] for name in columns}
-    for path in sorted(POSE_DIR.glob("*.npz")):
+    for path in sorted(args.pose.glob("*.npz")):
         result = np.load(path)
         keypoints, fps = result["keypoints"], float(result["fps"])
         try:
@@ -106,8 +108,8 @@ def main() -> None:
         for name, value in zip(columns, values):
             data[name].append(value)
     data = {name: np.array(values) for name, values in data.items()}
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(OUT, **data, joints=np.array(JOINTS), fps=FPS, before=BEFORE)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(args.out, **data, joints=np.array(JOINTS), fps=FPS, before=BEFORE)
     seen = data["mask"].mean()
     print(f"{len(data['video'])} videos, {seen:.0%} of points seen; labels {args.labels.name}")
     for split in ("train", "test"):

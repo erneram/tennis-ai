@@ -1,8 +1,8 @@
 """Extract MediaPipe landmarks from serve videos.
 
-    uv run python -m core.pose data/raw/*.mp4 [--model heavy] [--sheet]
+    uv run python -m core.pose data/raw/*.mp4 [--model heavy] [--sheet] [--out DIR]
 
-Writes data/processed/pose/<video>.npz (see core.pose.extract) and, with --sheet, <video>.jpg:
+Writes data/processed/pose/<video>.npz (or DIR/<video>.npz) (see core.pose.extract) and, with --sheet, <video>.jpg:
 10 frames around contact with the skeleton drawn, to check the landmarks by eye.
 """
 
@@ -35,14 +35,15 @@ def main() -> None:
     parser.add_argument("videos", type=Path, nargs="+")
     parser.add_argument("--model", default=load_config()["pose"]["model"])
     parser.add_argument("--sheet", action="store_true", help="also write a check image")
+    parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args()
-    OUT.mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     for path in args.videos:
         start = time.perf_counter()
         result = pose.extract(path, args.model)
-        np.savez_compressed(OUT / f"{path.stem}.npz", **result)
+        np.savez_compressed(args.out / f"{path.stem}.npz", **result)
         if args.sheet:
-            sheet(path, result, OUT / f"{path.stem}.jpg")
+            sheet(path, result, args.out / f"{path.stem}.jpg")
         found = ~np.isnan(result["keypoints"][:, 0, 0])
         serve = found[result["first"] : result["last"] + 1]
         print(f"{path.name}: {len(found)} frames in {time.perf_counter() - start:.0f}s, person "
