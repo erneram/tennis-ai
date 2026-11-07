@@ -1,7 +1,7 @@
 """M1, the first trained model of the Final Project: a small temporal convolutional network,
 trained from scratch, that says whether the tossing arm drops early.
 
-    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms] [--name m1]
+    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms] [--init pretrain] [--name m1]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset). Input: the 64 frames
 of a window, each with x, y and seen/not seen of the 17 joints (51 channels). Trained on the
@@ -17,7 +17,9 @@ train serves without the problem, to <model>.pt for the app (strokes/serve/model
 --arms trains M1b: only the shoulders, elbows and wrists, mirrored so the tossing arm is always
 the left one (and never mirrored at random), so 30 videos fit fewer weights. M1c is M1b stopped
 at 85 epochs, where M1b's mean validation loss is lowest (experiments/serve/m1b-curves.png):
-`--arms --epochs 85 --name m1c`.
+`--arms --epochs 85 --name m1c`. --init pretrain trains M2: M1b whose convolutions start from the
+encoder strokes/serve/pretrain.py learned without labels (the same seed's), so the change against
+M1b, trained from scratch the same way, is the effect of pretraining.
 """
 
 import argparse
@@ -42,6 +44,7 @@ ARMS = [dataset.JOINTS.index(f"{side}_{joint}")
         for side in ("left", "right") for joint in ("shoulder", "elbow", "wrist")]  # fmt: skip
 SHIFT, SCALE, NOISE = 3, 0.1, 0.02  # frames, relative size, torso lengths
 FOLDS = 5
+ENCODER = 5  # network()[:ENCODER]: both convolutions, before pooling over time
 
 
 def network(inputs: int = 3 * len(dataset.JOINTS), channels: int = 32, dropout: float = 0.3):
@@ -94,13 +97,15 @@ def folds(y: np.ndarray, seed: int) -> np.ndarray:
     return fold
 
 
-def train(x, mask, y, seed: int, epochs: int, flip: bool = True, held_out=()):
-    """Full-batch AdamW on the class-balanced binary cross-entropy. Returns the model and, per
-    epoch, the training loss and the loss on each (x, mask, y) in `held_out`, which nothing uses
-    to choose."""
+def train(x, mask, y, seed: int, epochs: int, flip: bool = True, held_out=(), init=None):
+    """Full-batch AdamW on the class-balanced binary cross-entropy, from random weights or with
+    the convolutions from `init` (a pretrained encoder). Returns the model and, per epoch, the
+    training loss and the loss on each (x, mask, y) in `held_out`, which nothing uses to choose."""
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     model = network(3 * x.shape[2])
+    if init is not None:
+        model[:ENCODER].load_state_dict(init)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
     target = torch.tensor(y, dtype=torch.float32)
     loss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((1 - y).sum() / y.sum()))
@@ -130,10 +135,16 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--arms", action="store_true", help="train M1b on the arms only")
+    parser.add_argument("--init", help="pretrained encoders in experiments/serve, e.g. pretrain")
     parser.add_argument("--name", help="of the files in experiments/serve; default m1 or m1b")
     args = parser.parse_args()
+    if args.init and not args.arms:
+        parser.error("the pretrained encoder takes the arms only: add --arms")
     data = np.load(dataset.OUT)
-    name, flip = args.name or ("m1b" if args.arms else "m1"), not args.arms
+    name = args.name or ("m2" if args.init else "m1b" if args.arms else "m1")
+    flip = not args.arms
+    inits = (torch.load(baseline.RESULTS / f"{args.init}.pt")["encoders"] if args.init
+             else [None] * args.seeds)  # fmt: skip
     x, mask = arms(data["x"], data["mask"]) if args.arms else (data["x"], data["mask"])
     labeled = data["valid"] == 1
     train_, test = (labeled & (data["split"] == s) for s in ("train", "test"))
@@ -149,10 +160,11 @@ def main() -> None:
         for k in range(FOLDS):
             fit, out = fold != k, fold == k
             model, curve = train(xt[fit], mt[fit], y[fit], seed, args.epochs, flip,
-                                 [(xt[out], mt[out], y[out])])  # fmt: skip
+                                 [(xt[out], mt[out], y[out])], inits[seed])  # fmt: skip
             validation[out] = probability(model, xt[out], mt[out])
             fold_loss.append(np.array(curve)[:, 1])
-        model, curve = train(xt, mt, y, seed, args.epochs, flip, [(x[test], mask[test], y_test)])
+        model, curve = train(xt, mt, y, seed, args.epochs, flip, [(x[test], mask[test], y_test)],
+                             inits[seed])  # fmt: skip
         states.append(model.state_dict())
         val_loss = np.mean(fold_loss, 0)
         for epoch, ((fit_loss, test_loss), val) in enumerate(zip(curve, val_loss, strict=True), 1):

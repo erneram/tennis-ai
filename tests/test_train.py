@@ -1,6 +1,6 @@
 import numpy as np
 
-from strokes.serve import dataset, train
+from strokes.serve import dataset, pretrain, train
 
 J = dataset.JOINTS.index
 
@@ -26,3 +26,12 @@ def test_arms_puts_the_tossing_arm_on_the_left():
     elbow = train.ARMS.index(J("left_elbow"))
     assert arms.shape[2] == mask.shape[2] == 6
     assert np.allclose(arms[0, :, elbow], 0) and np.allclose(arms[1, :, elbow], [-0.5, 0.2])
+
+
+def test_pretraining_hides_stretches_and_a_straight_motion_is_filled_exactly():
+    x = np.zeros((3, 64, 6, 2))
+    x[..., 1] = np.linspace(-2, 1, 64)[None, :, None]  # every joint moves at constant speed
+    mask = np.ones(x.shape[:3], bool)
+    shown, shown_mask, hidden = pretrain.hide(x, mask, np.random.default_rng(0))
+    assert hidden.any() and not shown[hidden].any() and not shown_mask[hidden].any()
+    assert pretrain.interpolation(x, mask, np.random.default_rng(0)) < 1e-12
