@@ -1,53 +1,47 @@
 // Typed client for the Serve Lab API (same origin, under /api).
 // VITE_MOCK=1 swaps every call for fixtures in src/fixtures with a fake ~4 s job.
 
-export type Verdict = "yes" | "no" | "unclear"
-
 export interface Config {
   model: string
   version: string
-  phases: { id: string; label: string }[]
   demo: { id: string; label: string; kind: "amateur" | "pro"; video_url: string }[]
   tips: string[]
 }
 
 export interface Feedback {
-  phase: string | null
-  phase_label: string | null
-  category: string
+  drops_early: boolean
+  title: string
+  phase_label: string
   observation: string
-  seen_in: string | null
-  seen_in_label: string | null
+  reason: string
   drill: { name: string; instructions: string }
+  probability: number
+  threshold: number
+  seeds: number[]
   confidence: "high" | "medium" | "low"
   confidence_label: "alta" | "media" | "baja"
   certainty: string
-  checked: number
-  total: number
 }
 
-export interface Phase {
+/** A key frame around contact, with the skeleton drawn. */
+export interface Moment {
   id: string
   label: string
-  verdict: Verdict | null
   evidence: boolean
   image_url: string
 }
 
-export interface Check {
-  category: string
-  phase: string
-  phase_label: string
-  part: string
-  state: string
-  answer: Verdict
-  seen: string
+/** Fall in the probability when one arm joint moves like a clean serve during one stretch. */
+export interface Occlusion {
+  parts: string[]
+  starts: number[]
+  values: number[][]
 }
 
 export interface AttemptRecord {
   time: string
-  phase: string
   category: string
+  probability: number
   drill_id: string
 }
 
@@ -58,8 +52,8 @@ export interface Result {
   seconds?: number
   cached?: boolean
   feedback?: Feedback
-  phases?: Phase[]
-  checks?: Check[]
+  moments?: Moment[]
+  occlusion?: Occlusion
   slow_url?: string
   record?: AttemptRecord
 }

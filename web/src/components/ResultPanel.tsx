@@ -1,16 +1,15 @@
 import { TriangleAlertIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import type { Config, Result, Summary } from "@/api"
+import type { Config, Feedback as Answer, Occlusion, Result, Summary } from "@/api"
 import type { Run } from "@/App"
 import { Tips } from "@/components/InputPanel"
-import { PhaseTiles, VERDICT } from "@/components/PhaseTiles"
+import { MomentTiles } from "@/components/MomentTiles"
 import { ProgressPanel } from "@/components/ProgressPanel"
 import { AlertBanner } from "@/components/thegridcn/alert"
 import { Badge } from "@/components/thegridcn/badge"
 import { DataCard } from "@/components/thegridcn/data-card"
 import { EmptyState } from "@/components/thegridcn/empty-state"
 import { HUDFrame } from "@/components/thegridcn/hud-frame"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
 
 export interface Attempt {
@@ -45,8 +44,8 @@ export function ResultPanel({ config, run, current, previous, summary }: Props) 
 function Idle() {
   const steps = [
     "Elige un video de la demo o sube el tuyo, grabado de lado.",
-    "Pulsa Analizar saque: tarda unos 30 s, todo en esta computadora.",
-    "Mira la fase a mejorar, el ejercicio y qué tan seguro está el asistente.",
+    "Pulsa Analizar saque: tarda unos 10 s, todo en esta computadora.",
+    "Mira si el brazo que lanza baja antes de tiempo, el ejercicio y en qué se fijó el modelo.",
   ]
   return (
     <EmptyState title="Cómo funciona" className="animate-enter py-12">
@@ -85,7 +84,7 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
   const r = attempt.result
   const f = r.feedback
   if (!f) return null
-  const confidence = CONFIDENCE[f.confidence]
+  const evidence = r.moments?.find((m) => m.evidence) ?? r.moments?.find((m) => m.id === "contact")
 
   return (
     <HUDFrame label="Resultado" className="animate-enter">
@@ -101,20 +100,10 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
             ) : null}
             {r.cached ? " · Respuesta guardada" : null}
           </p>
-          <h2 className="font-bold text-3xl leading-tight sm:text-4xl">
-            {f.phase_label ? (
-              <>
-                <span className="text-muted-foreground">Fase a mejorar:</span> {f.phase_label}
-              </>
-            ) : (
-              "No vemos un problema claro"
-            )}
-          </h2>
-          {f.seen_in_label && f.seen_in !== f.phase ? (
-            <p className="text-lg text-muted-foreground">
-              Se ve en <span className="font-bold text-foreground">{f.seen_in_label}</span>
-            </p>
-          ) : null}
+          <h2 className="font-bold text-3xl leading-tight sm:text-4xl">{f.title}</h2>
+          <p className="text-lg text-muted-foreground">
+            Fase: <span className="font-bold text-foreground">{f.phase_label}</span>
+          </p>
         </header>
 
         <p className="max-w-[68ch] text-xl leading-normal">{f.observation}</p>
@@ -123,26 +112,35 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
           <DataCard subtitle="Ejercicio" title={f.drill.name}>
             <p className="text-lg leading-normal">{f.drill.instructions}</p>
           </DataCard>
-          <div className="flex flex-col items-start gap-2 rounded border border-primary/30 bg-background p-5">
+          <div className="flex flex-col items-start gap-3 rounded border border-primary/30 bg-background p-5">
             <span className="label-hud text-muted-foreground">Qué tan seguro está</span>
-            <Badge variant={confidence} size="md" dot>
+            <Badge variant={CONFIDENCE[f.confidence]} size="md" dot>
               Confianza {f.confidence_label}
             </Badge>
+            <Meter answer={f} />
             <p className="text-base">{f.certainty}</p>
           </div>
         </div>
 
-        <section aria-labelledby="phases-title" className="flex flex-col gap-3">
-          <SectionTitle id="phases-title">Las seis fases</SectionTitle>
-          <PhaseTiles phases={r.phases ?? []} />
+        <section aria-labelledby="moments-title" className="flex flex-col gap-3">
+          <SectionTitle id="moments-title">Momentos clave</SectionTitle>
+          <MomentTiles moments={r.moments ?? []} />
         </section>
+
+        {r.occlusion ? (
+          <section aria-labelledby="why-title" className="flex flex-col gap-3">
+            <SectionTitle id="why-title">En qué se fijó el modelo</SectionTitle>
+            <p className="max-w-[68ch] text-lg">{f.reason}</p>
+            <OcclusionMap occlusion={r.occlusion} />
+          </section>
+        ) : null}
 
         {r.slow_url ? (
           <section aria-labelledby="slow-title" className="flex flex-col gap-3">
             <SectionTitle id="slow-title">Cámara lenta</SectionTitle>
             <video
               src={r.slow_url}
-              poster={r.phases?.find((p) => p.id === (f.seen_in ?? f.phase ?? "contact"))?.image_url}
+              poster={evidence?.image_url}
               controls
               loop
               muted
@@ -153,77 +151,134 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
           </section>
         ) : null}
 
-        {r.checks?.length ? (
-          <Accordion type="single" collapsible>
-            <AccordionItem value="checks" className="border-primary/30 border-y">
-              <AccordionTrigger>Qué revisamos en cada fase</AccordionTrigger>
-              <AccordionContent>
-                <ul className="flex flex-col divide-y divide-border">
-                  {r.checks.map((c, i) => {
-                    const s = VERDICT[c.answer]
-                    return (
-                      <li key={i} className="flex gap-3 py-3">
-                        <span
-                          aria-hidden="true"
-                          className={cn("w-5 shrink-0 text-center font-bold font-mono text-lg", s.text)}
-                        >
-                          {s.icon}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="label-hud text-muted-foreground">
-                            {c.phase_label} <span className="sr-only">· {s.word}</span>
-                          </p>
-                          <p className="mt-1 font-bold text-lg leading-snug">
-                            {c.part}: <span className={s.text}>{c.state}</span>
-                          </p>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        ) : null}
-
         {previous ? <Comparison previous={previous} current={attempt} /> : null}
       </div>
     </HUDFrame>
   )
 }
 
+const percent = (p: number) => `${Math.round(p * 100)} %`
+
+/** The probability of "drops early" against the threshold chosen for the most value. */
+function Meter({ answer }: { answer: Answer }) {
+  const low = Math.min(...answer.seeds)
+  const high = Math.max(...answer.seeds)
+  return (
+    <div className="flex w-full flex-col gap-1.5">
+      <div
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(answer.probability * 100)}
+        aria-label="Probabilidad de que el brazo baje antes de tiempo"
+        className="relative h-3 w-full rounded-sm border border-primary/40 bg-muted"
+      >
+        <span
+          className="absolute inset-y-0 left-0 rounded-sm bg-ink/40"
+          style={{ left: `${low * 100}%`, width: `${(high - low) * 100}%` }}
+        />
+        <span
+          className={cn("absolute inset-y-0 w-1 -translate-x-1/2", answer.drops_early ? "bg-destructive" : "bg-success")}
+          style={{ left: `${answer.probability * 100}%` }}
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
+          style={{ left: `${answer.threshold * 100}%` }}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Probabilidad {percent(answer.probability)} (versiones: {percent(low)} a {percent(high)}); recomienda el
+        ejercicio desde {percent(answer.threshold)}.
+      </p>
+    </div>
+  )
+}
+
+/** Joints by stretch of time: red pushes toward "drops early", blue toward a clean serve. */
+function OcclusionMap({ occlusion }: { occlusion: Occlusion }) {
+  const largest = Math.max(0.02, ...occlusion.values.flat().map(Math.abs))
+  const shade = (v: number) =>
+    `color-mix(in oklch, var(${v >= 0 ? "--destructive" : "--ink"}) ${Math.round((Math.abs(v) / largest) * 85)}%, transparent)`
+  return (
+    <figure className="flex flex-col gap-2">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] border-separate border-spacing-0.5 font-mono text-sm">
+          <thead>
+            <tr>
+              <th scope="col" className="sr-only">
+                Articulación
+              </th>
+              {occlusion.starts.map((s) => (
+                <th key={s} scope="col" className="font-normal text-muted-foreground">
+                  {s > 0 ? "+" : ""}
+                  {s.toFixed(1)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {occlusion.parts.map((part, j) => (
+              <tr key={part}>
+                <th scope="row" className="whitespace-nowrap pr-2 text-left font-sans font-normal">
+                  {part}
+                </th>
+                {occlusion.values[j].map((v, k) => (
+                  <td
+                    key={k}
+                    title={`${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} puntos`}
+                    className="h-7 min-w-8 rounded-sm border border-border"
+                    style={{ background: shade(v) }}
+                  >
+                    <span className="sr-only">{(v * 100).toFixed(1)} puntos</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <figcaption className="text-muted-foreground">
+        Columnas: segundos desde el impacto. Cada casilla dice cuánto cambiaría la probabilidad si esa articulación se
+        moviera, en ese tramo, como en un saque sin el problema. Rojo: empuja hacia «baja antes»; azul: hacia «está
+        bien».
+      </figcaption>
+    </figure>
+  )
+}
+
 function Comparison({ previous, current }: { previous: Attempt; current: Attempt }) {
   const before = previous.result.feedback
   const now = current.result.feedback
-  const phase = now?.phase ?? before?.phase
-  const label = (l?: string | null) => l ?? "ningún problema claro"
+  if (!before || !now) return null
+  const change = now.probability - before.probability
   const sentence =
-    before?.phase === now?.phase
-      ? `El punto a mejorar sigue siendo el mismo (${label(now?.phase_label)}).`
-      : `Cambió el punto principal: antes ${label(before?.phase_label)}, ahora ${label(now?.phase_label)}.`
-  const image = (a: Attempt) => a.result.phases?.find((p) => p.id === phase)?.image_url
+    Math.abs(change) < 0.05
+      ? `La probabilidad casi no cambió: ${percent(before.probability)} antes, ${percent(now.probability)} ahora.`
+      : `La probabilidad de que el brazo baje antes ${change < 0 ? "bajó" : "subió"} de ${percent(before.probability)} a ${percent(now.probability)}.`
+  const image = (a: Attempt) =>
+    (a.result.moments?.find((m) => m.id === "arm_down") ?? a.result.moments?.find((m) => m.id === "contact"))
+      ?.image_url
 
   return (
     <section aria-labelledby="compare-title" className="flex flex-col gap-3 border-primary/30 border-t pt-6">
       <SectionTitle id="compare-title">Comparación con el intento anterior</SectionTitle>
       <p className="text-lg">{sentence}</p>
-      {phase ? (
-        <div className="grid max-w-md grid-cols-2 gap-3">
-          {[
-            ["Intento " + previous.n, image(previous)],
-            ["Intento " + current.n + " (este)", image(current)],
-          ].map(([caption, src]) => (
-            <figure key={caption} className="flex flex-col gap-1.5">
-              <img
-                src={src}
-                alt={`${caption}: cuadro de la fase`}
-                className="aspect-square w-full rounded-sm border border-primary/40 bg-muted object-contain"
-              />
-              <figcaption className="label-hud text-muted-foreground">{caption}</figcaption>
-            </figure>
-          ))}
-        </div>
-      ) : null}
+      <div className="grid max-w-md grid-cols-2 gap-3">
+        {[
+          ["Intento " + previous.n, image(previous)],
+          ["Intento " + current.n + " (este)", image(current)],
+        ].map(([caption, src]) => (
+          <figure key={caption} className="flex flex-col gap-1.5">
+            <img
+              src={src}
+              alt={`${caption}: cuando la muñeca baja del hombro`}
+              className="aspect-square w-full rounded-sm border border-primary/40 bg-muted object-contain"
+            />
+            <figcaption className="label-hud text-muted-foreground">{caption}</figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
   )
 }
@@ -235,11 +290,11 @@ function SummaryPanel({ summary }: { summary: Summary }) {
         <p className="max-w-[68ch] text-xl leading-normal">{summary.text}</p>
         <dl className="grid gap-4 @2xl:grid-cols-2">
           <div>
-            <dt className="label-hud text-muted-foreground">Punto principal</dt>
+            <dt className="label-hud text-muted-foreground">Ejercicio para la próxima sesión</dt>
             <dd className="mt-1 font-bold text-lg">{summary.focus_label}</dd>
           </div>
           <div>
-            <dt className="label-hud text-muted-foreground">Para la próxima sesión</dt>
+            <dt className="label-hud text-muted-foreground">Cómo hacerlo</dt>
             <dd className="mt-1 text-lg">{summary.next_focus}</dd>
           </div>
         </dl>

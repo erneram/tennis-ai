@@ -105,7 +105,7 @@ export default function App() {
     }
   }
 
-  // Mock-only: ?auto=jc-s15.mp4,jc-s4.MOV runs those demos in order (for screenshots).
+  // Mock-only: ?auto=jc-s15.mp4,jc-s4.mp4 runs those demos in order (for screenshots).
   const autoRan = useRef(false)
   useEffect(() => {
     const auto = new URLSearchParams(location.search).get("auto")
@@ -143,7 +143,7 @@ export default function App() {
           <h1 className="font-display font-bold text-3xl tracking-[0.08em] sm:text-4xl">
             SERVE <span className="text-ink">LAB</span>
           </h1>
-          <p className="mt-1 text-lg text-muted-foreground">Análisis de saque con un modelo de visión y lenguaje</p>
+          <p className="mt-1 text-lg text-muted-foreground">Análisis de saque con MediaPipe y una red entrenada por el equipo</p>
         </div>
       </header>
 

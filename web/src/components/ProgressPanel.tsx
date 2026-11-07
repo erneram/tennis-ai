@@ -6,8 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 const STEPS = [
   { label: "Revisar video" },
-  { label: "Buscar fases" },
-  { label: "Revisar cada fase" },
+  { label: "Encontrar el cuerpo" },
+  { label: "Medir el brazo" },
   { label: "Cámara lenta" },
 ]
 
@@ -21,15 +21,15 @@ export function ProgressPanel({ job }: { job: Job | null }) {
         <p aria-live="polite" className="text-lg">
           {job?.message || "Preparando el análisis…"}
         </p>
-        <p className="text-muted-foreground">Tarda unos 30 segundos. Todo ocurre en esta computadora.</p>
+        <p className="text-muted-foreground">Tarda unos 10 segundos. Todo ocurre en esta computadora.</p>
 
         <div aria-hidden="true" className="mt-2 flex flex-col gap-3">
           <Skeleton className="h-4 w-48" />
           <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
-          <div className="mt-3 grid grid-cols-3 gap-3 @2xl:grid-cols-6">
-            {Array.from({ length: 6 }, (_, i) => (
+          <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
               <Skeleton key={i} className="aspect-square w-full" />
             ))}
           </div>
