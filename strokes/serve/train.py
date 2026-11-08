@@ -1,7 +1,7 @@
 """M1, the first trained model of the Final Project: a small temporal convolutional network,
 trained from scratch, that says whether the tossing arm drops early.
 
-    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms] [--init pretrain] [--name m1]
+    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms] [--init pretrain] [--more jc-post] [--name m1]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset). Input: the 64 frames
 of a window, each with x, y and seen/not seen of the 17 joints (51 channels). Trained on the
@@ -19,7 +19,10 @@ the left one (and never mirrored at random), so 30 videos fit fewer weights. M1c
 at 85 epochs, where M1b's mean validation loss is lowest (experiments/serve/m1b-curves.png):
 `--arms --epochs 85 --name m1c`. --init pretrain trains M2: M1b whose convolutions start from the
 encoder strokes/serve/pretrain.py learned without labels (the same seed's), so the change against
-M1b, trained from scratch the same way, is the effect of pretraining.
+M1b, trained from scratch the same way, is the effect of pretraining. --more adds the judged clips of
+dataset.NEW whose names start with it to the train split (and to its cross-validation): M1d is M1c
+with JC's serves after the feedback, all without the fault, so the change against M1c is the
+effect of those data; EA stays unseen (`--arms --epochs 85 --more jc-post --name m1d`).
 """
 
 import argparse
@@ -136,6 +139,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--arms", action="store_true", help="train M1b on the arms only")
     parser.add_argument("--init", help="pretrained encoders in experiments/serve, e.g. pretrain")
+    parser.add_argument("--more", help="clips of dataset.NEW to train on too, by name: jc-post")
     parser.add_argument("--name", help="of the files in experiments/serve; default m1 or m1b")
     args = parser.parse_args()
     if args.init and not args.arms:
@@ -148,6 +152,8 @@ def main() -> None:
     x, mask = arms(data["x"], data["mask"]) if args.arms else (data["x"], data["mask"])
     labeled = data["valid"] == 1
     train_, test = (labeled & (data["split"] == s) for s in ("train", "test"))
+    if args.more:
+        train_ |= labeled & (data["split"] == "new") & np.char.startswith(data["video"], args.more)
     truth = data["category"]
     y, y_test = ((truth[s] == baseline.POSITIVE).astype(np.float32) for s in (train_, test))
     xt, mt = x[train_], mask[train_]
