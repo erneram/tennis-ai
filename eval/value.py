@@ -11,7 +11,7 @@ the value of one analysis is
     B × (p × TPR × hit − p × (1 − TPR) × miss − (1 − p) × FPR × false_alarm) − compute cost
 
 and a player makes analyses_per_month of them. Parameters and their sources: configs/value.yaml.
-Models: B0, M1, M1b, M1c, M2, M2c (experiments/serve/<model>.csv, from strokes.serve.baseline and
+Models: B0, M1, M1b, M1c, M1d, M2, M2c (experiments/serve/<model>.csv, from strokes.serve.baseline and
 .train)
 and Qwen3-VL, the Project 3 system, from its runs. Each model's threshold is the one with the
 most value on its validation scores, never on the test split; test values get a 95 % bootstrap
@@ -38,7 +38,7 @@ RUNS = ROOT / "eval" / "serve" / "runs"
 # Qwen3-VL with prompt v22, the final Project 3 version (eval/label.py, REVIEW_RUNS)
 QWEN_RUNS = {"validation": ["20261102-131618-full", "20261102-132154-full"],
              "test": ["20261106-133044-full"]}  # fmt: skip
-MODELS = ["b0", "m1", "m1b", "m1c", "m2", "m2c", "qwen"]
+MODELS = ["b0", "m1", "m1b", "m1c", "m1d", "m2", "m2c", "qwen"]
 FACTORS = [0.5, 0.8, 1.2, 1.5]
 BOOTSTRAP = 2000
 

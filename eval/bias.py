@@ -19,8 +19,9 @@ Every model at the threshold eval/value.py chose for it on validation scores:
    p1 to p31) against experts (p32 to p55), and the share the app's camera check (shoulder width
    in the stance) sends back to be recorded again.
 6. Recorded after the models were chosen (dataset.NEW: a new amateur, EA, and JC after the
-   feedback): recall and false alarms of the trained models as they are, on every judged serve
-   and on the ones the app does not send back (camera to the side, arm points seen).
+   feedback): recall and false alarms of each model on the clips it was not trained on (M1d
+   trained on JC's), on every judged serve and on the ones the app does not send back (camera to
+   the side, arm points seen).
 
 Writes experiments/serve/bias.csv (rates by group) and bias.png (parts 3 and 5).
 """
@@ -36,7 +37,7 @@ import numpy as np
 from app import service
 from strokes.serve import baseline, dataset, model, pretrain, train
 
-MODELS = ["b0", "m1c", "m2c"]  # the rule, the app's model (from scratch), the pretrained one
+MODELS = ["b0", "m1c", "m2c", "m1d"]  # the rule, the app's model, the pretrained one, M1c + data
 SHARES = [0.0, 0.1, 0.2, 0.3, 0.4]  # of the arm points set unseen
 REPEATS = 20
 ARM_JOINTS = np.array(train.ARMS)
@@ -101,9 +102,10 @@ def rates(model_name: str, group: str, value: str, said: np.ndarray, positive: n
 
 def new_players(data, loaded: dict, cuts: dict) -> list[dict]:
     """Recall and false alarms on the judged serves of dataset.NEW, by player, with every serve and
-    with the ones the app does not send back."""
+    with the ones the app does not send back; each model only on the clips it was not trained on."""
     chosen = (data["split"] == "new") & (data["valid"] == 1)
     x, mask, players = data["x"][chosen], data["mask"][chosen], data["player"][chosen]
+    videos = data["video"][chosen]
     positive = data["category"][chosen] == baseline.POSITIVE
     kept = (model.shoulder_width(x) >= model.MIN_SHOULDERS) & (
         train.arms(x, mask)[1].mean((1, 2)) >= service.MIN_SEEN
@@ -112,8 +114,11 @@ def new_players(data, loaded: dict, cuts: dict) -> list[dict]:
     rows = []
     for name in MODELS:
         said = predict(name, loaded, x, mask) >= cuts[name]
+        unseen = ~np.isin(videos, [v for _, v in scores(name)])  # M1d trained on JC's after
         for player in np.unique(players):
-            mine = players == player
+            mine = (players == player) & unseen
+            if not mine.any():
+                continue
             for value, keep in ((names.get(player, player), mine),
                                 (f"{names.get(player, player)}, kept", mine & kept)):  # fmt: skip
                 rows.append(rates(name, "recorded after", value, said[keep], positive[keep]))
