@@ -1,7 +1,7 @@
 """M1, the first trained model of the Final Project: a small temporal convolutional network,
 trained from scratch, that says whether the tossing arm drops early.
 
-    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms] [--init pretrain] [--more jc-post] [--name m1]
+    uv run python -m strokes.serve.train [--seeds 5] [--epochs 300] [--arms | --heights] [--init pretrain] [--more jc-post] [--name m1]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset). Input: the 64 frames
 of a window, each with x, y and seen/not seen of the 17 joints (51 channels). Trained on the
@@ -23,6 +23,12 @@ M1b, trained from scratch the same way, is the effect of pretraining. --more add
 dataset.NEW whose names start with it to the train split (and to its cross-validation): M1d is M1c
 with JC's serves after the feedback, all without the fault, so the change against M1c is the
 effect of those data; EA stays unseen (`--arms --epochs 85 --more jc-post --name m1d`).
+--heights trains M1e: M1c whose input is only the height of each elbow and wrist above its own
+shoulder (`--heights --epochs 85 --name m1e`). Without the x of the points, which says where the
+arms are across the image, and without the mask, the model sees what the labeling question asks
+(is the tossing hand still up while the racket drops?) and less of what tells players and
+recordings apart. M1f is M1e with JC's serves after the feedback, as M1d is M1c with them
+(`--heights --epochs 85 --more jc-post --name m1f`).
 """
 
 import argparse
@@ -79,6 +85,14 @@ def arms(x: np.ndarray, mask: np.ndarray):
     return x[:, :, ARMS], mask[:, :, ARMS]
 
 
+def heights(x: np.ndarray, mask: np.ndarray):
+    """(N, T, 4, 1) height above its own shoulder of the tossing elbow and wrist, then the racket
+    elbow and wrist, in torso lengths, with every point counted as seen (input of M1e)."""
+    y = arms(x, mask)[0][..., 1]  # image y grows downward
+    up = y[:, :, [0, 0, 3, 3]] - y[:, :, [1, 2, 4, 5]]
+    return up[..., None], np.ones(up.shape, bool)
+
+
 def augment(x: np.ndarray, mask: np.ndarray, rng: np.random.Generator, flip: bool = True):
     x, mask = x.copy(), mask.copy()
     chosen = rng.random(len(x)) < 0.5
@@ -106,7 +120,7 @@ def train(x, mask, y, seed: int, epochs: int, flip: bool = True, held_out=(), in
     training loss and the loss on each (x, mask, y) in `held_out`, which nothing uses to choose."""
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    model = network(3 * x.shape[2])
+    model = network(x.shape[2] * (x.shape[3] + 1))
     if init is not None:
         model[:ENCODER].load_state_dict(init)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
@@ -138,6 +152,7 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--arms", action="store_true", help="train M1b on the arms only")
+    parser.add_argument("--heights", action="store_true", help="train M1e on arm heights only")
     parser.add_argument("--init", help="pretrained encoders in experiments/serve, e.g. pretrain")
     parser.add_argument("--more", help="clips of dataset.NEW to train on too, by name: jc-post")
     parser.add_argument("--name", help="of the files in experiments/serve; default m1 or m1b")
@@ -145,11 +160,15 @@ def main() -> None:
     if args.init and not args.arms:
         parser.error("the pretrained encoder takes the arms only: add --arms")
     data = np.load(dataset.OUT)
-    name = args.name or ("m2" if args.init else "m1b" if args.arms else "m1")
-    flip = not args.arms
+    name = args.name or (
+        "m2" if args.init else "m1e" if args.heights else "m1b" if args.arms else "m1"
+    )
+    flip = not (args.arms or args.heights)
     inits = (torch.load(baseline.RESULTS / f"{args.init}.pt")["encoders"] if args.init
              else [None] * args.seeds)  # fmt: skip
-    x, mask = arms(data["x"], data["mask"]) if args.arms else (data["x"], data["mask"])
+    x, mask = data["x"], data["mask"]
+    if args.heights or args.arms:
+        x, mask = (heights if args.heights else arms)(x, mask)
     labeled = data["valid"] == 1
     train_, test = (labeled & (data["split"] == s) for s in ("train", "test"))
     if args.more:
@@ -157,7 +176,7 @@ def main() -> None:
     truth = data["category"]
     y, y_test = ((truth[s] == baseline.POSITIVE).astype(np.float32) for s in (train_, test))
     xt, mt = x[train_], mask[train_]
-    weights = sum(p.numel() for p in network(3 * x.shape[2]).parameters())
+    weights = sum(p.numel() for p in network(x.shape[2] * (x.shape[3] + 1)).parameters())
     print(f"{name.upper()}: {weights} weights, {train_.sum()} train videos ({int(y.sum())} drop "
           f"early), {FOLDS}-fold cross-validation for the validation scores")  # fmt: skip
     rows, curves, results, states = [], [], {s: [] for s in ("train", "validation", "test")}, []
@@ -192,8 +211,8 @@ def main() -> None:
     baseline.save(name, rows)
     baseline.save(f"{name}-curves", curves)
     reference = torch.from_numpy(xt[y == 0].mean(0))  # a clean serve, for strokes.serve.model
-    torch.save({"arms": args.arms, "epochs": args.epochs, "weights": states, "reference": reference},
-               baseline.RESULTS / f"{name}.pt")  # fmt: skip
+    torch.save({"arms": args.arms, "heights": args.heights, "epochs": args.epochs,
+                "weights": states, "reference": reference}, baseline.RESULTS / f"{name}.pt")  # fmt: skip
     plot(name, curves)
 
 

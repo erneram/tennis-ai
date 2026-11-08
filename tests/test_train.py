@@ -35,3 +35,15 @@ def test_pretraining_hides_stretches_and_a_straight_motion_is_filled_exactly():
     shown, shown_mask, hidden = pretrain.hide(x, mask, np.random.default_rng(0))
     assert hidden.any() and not shown[hidden].any() and not shown_mask[hidden].any()
     assert pretrain.interpolation(x, mask, np.random.default_rng(0)) < 1e-12
+
+
+def test_heights_are_above_each_shoulder_with_the_tossing_arm_first():
+    x = np.zeros((1, dataset.BEFORE + 1 + dataset.AFTER, len(dataset.JOINTS), 2))
+    x[0, dataset.BEFORE, J("left_wrist"), 1] = -3  # racket wrist higher: the right arm tosses
+    x[0, :, J("right_shoulder")] = [0.4, -1]  # image y grows downward
+    x[0, :, J("right_wrist")] = [0.9, -1.5]
+    mask = np.zeros(x.shape[:3], bool)  # unseen points count as seen: no mask in the input
+    up, seen = train.heights(x, mask)
+    assert up.shape == (1, x.shape[1], 4, 1) and seen.all()
+    assert np.allclose(up[0, :, 1, 0], 0.5) and np.allclose(up[0, :, 0, 0], -1)  # wrist, elbow
+    assert train.network(8)(train.features(up, seen)).shape == (1, 1)

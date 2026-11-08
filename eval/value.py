@@ -38,7 +38,7 @@ RUNS = ROOT / "eval" / "serve" / "runs"
 # Qwen3-VL with prompt v22, the final Project 3 version (eval/label.py, REVIEW_RUNS)
 QWEN_RUNS = {"validation": ["20261102-131618-full", "20261102-132154-full"],
              "test": ["20261106-133044-full"]}  # fmt: skip
-MODELS = ["b0", "m1", "m1b", "m1c", "m1d", "m2", "m2c", "qwen"]
+MODELS = ["b0", "m1", "m1b", "m1c", "m1d", "m1e", "m1f", "m2", "m2c", "qwen"]
 FACTORS = [0.5, 0.8, 1.2, 1.5]
 BOOTSTRAP = 2000
 

@@ -38,13 +38,15 @@ MIN_SHOULDERS = 0.4
 PARTS = [
     f"{arm} {joint}" for arm in ("tossing", "racket") for joint in ("shoulder", "elbow", "wrist")
 ]
+HEIGHT_PARTS = [p for p in PARTS if "shoulder" not in p]  # train.heights: above each shoulder
 
 
 def load(name: str) -> dict:
     """The models of every seed, their clean reference serve, and the threshold eval/value.py chose
     and the test rates at it (experiments/serve/value.csv)."""
     saved = torch.load(baseline.RESULTS / f"{name}.pt")
-    inputs = 3 * (len(train.ARMS) if saved["arms"] else len(dataset.JOINTS))
+    inputs = saved["weights"][0]["0.weight"].shape[1]  # of the first convolution
+    heights = saved.get("heights", False)
     models = []
     for weights in saved["weights"]:
         model = train.network(inputs)
@@ -52,12 +54,16 @@ def load(name: str) -> dict:
         models.append(model.eval())
     rows = csv.DictReader((baseline.RESULTS / "value.csv").open())
     row = next(r for r in rows if r["model"] == name)
-    return {"name": name, "arms": saved["arms"], "models": models, "reference":
+    parts = HEIGHT_PARTS if heights else PARTS if saved["arms"] else None  # of occlusion maps
+    return {"name": name, "arms": saved["arms"], "heights": heights, "parts": parts,
+            "models": models, "reference":
             saved["reference"].numpy(), **{k: float(row[k]) for k in ("threshold", "test_tpr",
             "test_fpr")}}  # fmt: skip
 
 
 def inputs(model: dict, x: np.ndarray, mask: np.ndarray):
+    if model["heights"]:
+        return train.heights(x, mask)
     return train.arms(x, mask) if model["arms"] else (x, mask)
 
 
@@ -108,7 +114,7 @@ def predict(model: dict, keypoints: np.ndarray, fps: float) -> dict:
     side = baseline.tossing_side(x[0])
     mx, mm = inputs(model, x, mask)
     seeds = probabilities(model, mx, mm)[:, 0]
-    fall = occlusion(model, mx, mm)[0] if model["arms"] else None
+    fall = occlusion(model, mx, mm)[0] if model["parts"] else None
     return {
         "probability": float(seeds.mean()),
         "seeds": seeds.round(4).tolist(),
@@ -116,7 +122,7 @@ def predict(model: dict, keypoints: np.ndarray, fps: float) -> dict:
         "drops_early": bool(seeds.mean() >= model["threshold"]),
         "tossing_side": side,
         "drop_seconds": baseline.drop_time(x[0]),  # B0's measure, shown as evidence
-        "seen": float(mm.mean()),  # share of arm points MediaPipe saw in the window
+        "seen": float(train.arms(x, mask)[1].mean()),  # share of arm points MediaPipe saw
         "shoulders": float(shoulder_width(x[0])),
         "contact": frame,
         "occlusion": None if fall is None else fall.round(4).tolist(),
@@ -128,8 +134,8 @@ def main() -> None:
     parser.add_argument("--name", default="m1c")
     args = parser.parse_args()
     model = load(args.name)
-    if not model["arms"]:
-        raise SystemExit("occlusion maps are for arm models (M1b, M1c, M2)")
+    if not model["parts"]:
+        raise SystemExit("occlusion maps are for arm models (M1b, M1c, M1e, M2)")
     data = np.load(dataset.OUT)
     test = (data["valid"] == 1) & (data["split"] == "test")
     positive = data["category"][test] == baseline.POSITIVE
@@ -137,7 +143,7 @@ def main() -> None:
     rows = [{"model": args.name, "class": c, "part": part, "start_s": round(seconds(s), 3),
              "fall": round(float(fall[chosen, j, k].mean()), 5)}
             for c, chosen in ((baseline.POSITIVE, positive), (baseline.NEGATIVE, ~positive))
-            for j, part in enumerate(PARTS) for k, s in enumerate(STARTS)]  # fmt: skip
+            for j, part in enumerate(model["parts"]) for k, s in enumerate(STARTS)]  # fmt: skip
     baseline.save(f"{args.name}-occlusion", rows)
     _, axes = plt.subplots(1, 2, figsize=(10, 3.4), sharey=True)
     groups = (("drops early", positive), ("no problem", ~positive))
@@ -149,13 +155,13 @@ def main() -> None:
         ax.set(
             title=f"{title} ({chosen.sum()} test videos)", xlabel="stretch start (s from contact)"
         )
-    axes[0].set_yticks(range(len(PARTS)), PARTS)
+    axes[0].set_yticks(range(len(model["parts"])), model["parts"])
     plt.colorbar(image, ax=axes, label="fall in P(drops early)")
     plt.suptitle(f"{args.name.upper()}: what the answer rests on (occlusion)", y=1.04)
     plt.savefig(baseline.RESULTS / f"{args.name}-occlusion.png", dpi=150, bbox_inches="tight")
     top = np.unravel_index(np.abs(fall[positive].mean(0)).argmax(), fall.shape[1:])
     print(f"{args.name.upper()}: on 'drops early' test videos the answer rests most on the "
-          f"{PARTS[top[0]]} from {seconds(STARTS[top[1]]):+.2f} s")  # fmt: skip
+          f"{model['parts'][top[0]]} from {seconds(STARTS[top[1]]):+.2f} s")  # fmt: skip
 
 
 if __name__ == "__main__":
