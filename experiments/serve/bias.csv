@@ -35,13 +35,21 @@ b0,recorded after,EA,0,,54,0.13
 b0,recorded after,"EA, kept",0,,51,0.118
 b0,recorded after,JC after feedback,0,,44,0.705
 b0,recorded after,"JC after feedback, kept",0,,44,0.705
+b0,recorded after,pro04 (slowed down),0,,8,0.625
+b0,recorded after,"pro04 (slowed down), kept",0,,8,0.625
 m1c,recorded after,EA,0,,54,0.796
 m1c,recorded after,"EA, kept",0,,51,0.784
 m1c,recorded after,JC after feedback,0,,44,1.0
 m1c,recorded after,"JC after feedback, kept",0,,44,1.0
+m1c,recorded after,pro04 (slowed down),0,,8,0.0
+m1c,recorded after,"pro04 (slowed down), kept",0,,8,0.0
 m2c,recorded after,EA,0,,54,0.574
 m2c,recorded after,"EA, kept",0,,51,0.608
 m2c,recorded after,JC after feedback,0,,44,1.0
 m2c,recorded after,"JC after feedback, kept",0,,44,1.0
+m2c,recorded after,pro04 (slowed down),0,,8,0.0
+m2c,recorded after,"pro04 (slowed down), kept",0,,8,0.0
 m1d,recorded after,EA,0,,54,0.167
 m1d,recorded after,"EA, kept",0,,51,0.137
+m1d,recorded after,pro04 (slowed down),0,,8,0.125
+m1d,recorded after,"pro04 (slowed down), kept",0,,8,0.125

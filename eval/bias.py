@@ -110,7 +110,7 @@ def new_players(data, loaded: dict, cuts: dict) -> list[dict]:
     kept = (model.shoulder_width(x) >= model.MIN_SHOULDERS) & (
         train.arms(x, mask)[1].mean((1, 2)) >= service.MIN_SEEN
     )
-    names = {"jc": "JC after feedback", "ea": "EA"}
+    names = {"jc": "JC after feedback", "ea": "EA", "pro04": "pro04 (slowed down)"}
     rows = []
     for name in MODELS:
         said = predict(name, loaded, x, mask) >= cuts[name]

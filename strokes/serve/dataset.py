@@ -33,9 +33,10 @@ TOSS = 0.4  # torso lengths a wrist rises above the shoulders while the ball goe
 # Never used to train or pretrain: the session filmed on Nov 1 and one professional
 TEST_VIDEOS = {f"jc-s{i}" for i in range(28, 44)}
 TEST_PLAYERS = {"pro01"}
-# Recorded on Nov 7, after the models were chosen: a new amateur and JC after the feedback. Scored
-# by eval/bias.py; trained on only through train.py --more (M1d), never pretrained on.
-NEW = ("ea-", "jc-post")
+# Added after the models were chosen: a new amateur and JC after the feedback (recorded on Nov 7)
+# and a fourth professional (pro04, slow-motion videos found online, Nov 8). Scored by
+# eval/bias.py; trained on only through train.py --more (M1d), never pretrained on.
+NEW = ("ea-", "jc-post", "pro04")
 
 
 def contact(keypoints: np.ndarray, fps: float) -> int:

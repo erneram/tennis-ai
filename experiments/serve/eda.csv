@@ -156,3 +156,12 @@ pro03_s05,pro03,train,1,no_clear_problem,30.0,576,1024,5.37,3.1,0.994,0.982,righ
 pro03_s06,pro03,train,1,no_clear_problem,30.0,576,1024,4.53,2.17,0.992,0.977,right,0.133
 pro03_s07,pro03,train,1,no_clear_problem,30.0,576,1024,9.7,1.73,0.994,0.982,right,0.1
 pro03_s08,pro03,train,1,no_clear_problem,29.2,792,1184,5.14,3.67,0.988,0.966,right,0.133
+pro04-s01,pro04,new,1,no_clear_problem,60.0,1920,1080,2.02,1.33,0.86,0.833,left,0.1
+pro04-s02,pro04,new,1,no_clear_problem,60.0,1920,1080,1.93,1.3,0.845,0.818,left,0.1
+pro04-s03,pro04,new,1,no_clear_problem,60.0,1920,1080,1.98,1.35,0.858,0.826,left,0.133
+pro04-s04,pro04,new,1,no_clear_problem,60.0,1920,1080,1.93,1.33,0.858,0.828,left,0.1
+pro04-s05,pro04,new,1,no_clear_problem,60.0,1920,1080,2.12,1.38,0.876,0.849,left,0.133
+pro04-s06,pro04,new,1,no_clear_problem,60.0,1920,1080,2.22,1.42,0.892,0.865,left,0.133
+pro04-s07,pro04,new,1,no_clear_problem,60.0,1920,1080,2.42,1.27,0.828,0.799,left,0.133
+pro04-s08,pro04,new,1,no_clear_problem,60.0,1920,1080,4.12,2.47,0.977,0.935,left,0.133
+pro04-s09,pro04,new,0,,30.0,480,854,5.0,3.27,0.99,0.971,left,0.133
