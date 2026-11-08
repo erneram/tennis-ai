@@ -43,6 +43,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | [Roboflow tennis-pose-detection](https://universe.roboflow.com/degree-jpabx/tennis-pose-detection) | Not verified | Check the license on the dataset page before use. |
 | [RacketVision](https://github.com/OrcustD/RacketVision/) | MIT (code) | OK. Future work. |
 | Own recordings | Player consent | Written consent required. Never committed (see `data/README.md`). |
+| Federer serves (pro04): public YouTube videos by Essential Tennis, Bob shi and TennisAcademy101 | YouTube terms; no license to redistribute | Downloaded to the ignored `data/raw/roger/` for local training and evaluation only (Final Project, split `new`). Never committed; no frames in the app demo, poster or report. |
 
 ## Published research behind the serve criteria
 

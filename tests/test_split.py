@@ -1,6 +1,10 @@
-import numpy as np
+import shutil
 
-from core import pose
+import cv2
+import numpy as np
+import pytest
+
+from core import pose, video
 from strokes.serve import split
 
 
@@ -19,3 +23,18 @@ def test_one_candidate_per_toss_at_the_highest_wrist():
     found = split.candidates(60.0, frames, points)
     assert [c["frame"] for c in found] == [85 * 4, 310 * 4]
     assert found[0]["seconds"] == round(85 * 4 / 60, 3) and found[0]["height"] == 1.0
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_retime_plays_a_slowed_span_at_real_speed(tmp_path, monkeypatch):
+    source = tmp_path / "slow.mp4"
+    writer = cv2.VideoWriter(str(source), cv2.VideoWriter_fourcc(*"mp4v"), 30, (64, 64))
+    for i in range(90):  # 3 s
+        writer.write(np.full((64, 64, 3), i * 2, np.uint8))
+    writer.release()
+    monkeypatch.setattr(split, "RAW", tmp_path)
+    split.retime(source, "pro09", 4.0, [(0.0, 2.0)])
+    info = video.probe(tmp_path / "pro09-s01.mp4")
+    assert abs(info.frame_count / info.fps - 0.5) < 0.1 and info.fps == 60  # 2 s at 4x: 0.5 s
+    log = (tmp_path / "retimed.csv").read_text().splitlines()
+    assert log[1] == "pro09-s01.mp4,slow.mp4,0.000,2.000,4"

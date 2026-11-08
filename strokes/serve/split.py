@@ -16,9 +16,18 @@ cut: data/raw/<name>-sNN.mp4 for every candidate not in --drop, plus --add (seco
 check found missing), from BEFORE seconds before the top of the toss to AFTER seconds after it:
 H.264 with the phone's rotation applied (ffmpeg). Appends clip, source and times to cuts.csv next
 to the source video. Never overwrites a clip.
+
+retime: for slow-motion videos (professionals' serves found online), one clip per span given by
+hand, played back at real speed so the dataset's 30 fps and its 1.6 s before contact are real
+time. --slow is how many times slower the video plays: a camera at 240 fps played at 24 is 10.
+To estimate it, the tossed ball's vertical acceleration in the video is g / slow², in torso
+lengths (README).
+
+    uv run python -m strokes.serve.split retime data/raw/roger/<video>.mp4 --name pro04 --slow 10 --spans 0-19.6,21.2-39.9
 """
 
 import argparse
+import csv
 import json
 import subprocess
 from pathlib import Path
@@ -156,6 +165,30 @@ def cut(path: Path, name: str, drop: set[int], add: list[float]) -> None:
         print(f"{clip.name}: {path.name} at {top:.2f} s", flush=True)
 
 
+def retime(path: Path, name: str, slow: float, spans: list[tuple[float, float]]) -> None:
+    """data/raw/<name>-sNN.mp4 for each span (video seconds, one serve each) of a video played
+    `slow` times slower than real, at real speed and at most 60 fps; numbers continue after the
+    clips of that name already in data/raw. Appends clip, source, span and slow to retimed.csv."""
+    first = len(list(RAW.glob(f"{name}-s*.mp4"))) + 1
+    fps = min(60.0, video.probe(path).fps * slow)
+    log = path.parent / "retimed.csv"
+    new = not log.exists()
+    for k, (start, end) in enumerate(spans, first):
+        clip = RAW / f"{name}-s{k:02d}.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-n", "-ss", f"{start:.3f}",
+                        "-t", f"{end - start:.3f}", "-i", str(path), "-map", "0:v:0", "-an",
+                        "-vf", f"setpts=(PTS-STARTPTS)/{slow}", "-r", f"{fps:g}",
+                        "-c:v", "libx264", "-crf", "18", "-preset", "fast", "-pix_fmt", "yuv420p",
+                        "-movflags", "+faststart", str(clip)], check=True)  # fmt: skip
+        with log.open("a", newline="") as file:
+            writer = csv.writer(file)
+            if new:
+                writer.writerow(["clip", "source", "start_s", "end_s", "slow"])
+                new = False
+            writer.writerow([clip.name, path.name, f"{start:.3f}", f"{end:.3f}", f"{slow:g}"])
+        print(f"{clip.name}: {path.name} {start:.2f}-{end:.2f} s, {slow:g}x slower", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     steps = parser.add_subparsers(dest="step", required=True)
@@ -165,12 +198,20 @@ def main() -> None:
     one.add_argument("--name", required=True, help="clip prefix, player first: ea-2, jc-post1")
     one.add_argument("--drop", default="", help="candidate numbers that are not serves: 1,5,8")
     one.add_argument("--add", default="", help="seconds of serves find missed: 262.0")
+    slowed = steps.add_parser("retime")
+    slowed.add_argument("video", type=Path)
+    slowed.add_argument("--name", required=True, help="clip prefix, player first: pro04")
+    slowed.add_argument("--slow", type=float, required=True, help="times slower than real: 10")
+    slowed.add_argument("--spans", required=True, help="video seconds per serve: 0-19.6,21.2-40")
     args = parser.parse_args()
+    numbers = lambda text, kind: [kind(v) for v in text.split(",") if v]
     if args.step == "find":
         find(args.videos)
-    else:
-        numbers = lambda text, kind: [kind(v) for v in text.split(",") if v]
+    elif args.step == "cut":
         cut(args.video, args.name, set(numbers(args.drop, int)), numbers(args.add, float))
+    else:
+        spans = [tuple(float(v) for v in span.split("-")) for span in args.spans.split(",")]
+        retime(args.video, args.name, args.slow, spans)
 
 
 if __name__ == "__main__":
