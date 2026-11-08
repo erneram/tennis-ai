@@ -33,6 +33,9 @@ TOSS = 0.4  # torso lengths a wrist rises above the shoulders while the ball goe
 # Never used to train or pretrain: the session filmed on Nov 1 and one professional
 TEST_VIDEOS = {f"jc-s{i}" for i in range(28, 44)}
 TEST_PLAYERS = {"pro01"}
+# Recorded on Nov 7, after the models were chosen: a new amateur and JC after the feedback. Only
+# scored (eval/bias.py), never used to train, pretrain or choose.
+NEW = ("ea-", "jc-post")
 
 
 def contact(keypoints: np.ndarray, fps: float) -> int:
@@ -104,7 +107,7 @@ def main() -> None:
         valid = int(label["valid"]) if label and label["valid"] else -1  # -1: not labeled
         category = label["category"] if valid == 1 else ""
         test = path.stem in TEST_VIDEOS or player in TEST_PLAYERS
-        split = "test" if test else "train"
+        split = "test" if test else "new" if path.stem.startswith(NEW) else "train"
         values = (x, mask, path.stem, player, valid, category, split, frame, fps)
         for name, value in zip(columns, values):
             data[name].append(value)
@@ -113,7 +116,7 @@ def main() -> None:
     np.savez_compressed(args.out, **data, joints=np.array(JOINTS), fps=FPS, before=BEFORE)
     seen = data["mask"].mean()
     print(f"{len(data['video'])} videos, {seen:.0%} of points seen; labels {args.labels.name}")
-    for split in ("train", "test"):
+    for split in ("train", "test", "new"):
         chosen = (data["split"] == split) & (data["valid"] == 1)
         names, counts = np.unique(data["category"][chosen], return_counts=True)
         labeled = dict(zip(names.tolist(), counts.tolist()))

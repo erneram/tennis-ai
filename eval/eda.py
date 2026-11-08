@@ -25,11 +25,15 @@ from strokes.serve import baseline, dataset, train
 RAW = ROOT / "data" / "raw"
 RATERS = ["ernesto", "hugo"]
 GROUPS = {"JC, drops early": ("jc", baseline.POSITIVE), "JC, no clear problem": ("jc", baseline.NEGATIVE),
+          "JC after feedback": ("jc-post", baseline.NEGATIVE), "EA": ("ea", baseline.NEGATIVE),
           "professionals": ("pro", baseline.NEGATIVE)}  # fmt: skip
 
 
-def kind(player: str) -> str:
-    return "pro" if player.startswith("pro") else player
+def kind(row: dict) -> str:
+    """pro, jc (before the feedback), jc-post (after it, dataset.NEW) or another amateur."""
+    if row["player"].startswith("pro"):
+        return "pro"
+    return "jc-post" if row["video"].startswith("jc-post") else row["player"]
 
 
 def rows(data) -> list[dict]:
@@ -73,7 +77,7 @@ def main() -> None:
     agreement()
     print("Videos by player and split (valid: drops early / no clear problem; not valid):")
     for player in sorted({r["player"] for r in table}):
-        for split in ("train", "test"):
+        for split in ("train", "test", "new"):
             mine = [r for r in table if r["player"] == player and r["split"] == split]
             if mine:
                 drop = sum(r["category"] == baseline.POSITIVE for r in mine)
@@ -81,8 +85,8 @@ def main() -> None:
                 print(f"  {player:6} {split:5}: {len(mine):2} videos, {drop:2} / {none:2}; "
                       f"{sum(r['valid'] == 0 for r in mine)} not valid")  # fmt: skip
     print("Recordings and landmarks by player type:")
-    for group in ("jc", "pro"):
-        mine = [r for r in table if kind(r["player"]) == group]
+    for group in ("jc", "jc-post", "ea", "pro"):
+        mine = [r for r in table if kind(r) == group]
         fps = sorted({round(r["fps"]) for r in mine})
         sizes = sorted({f"{r['width']}x{r['height']}" for r in mine})
         seconds = np.array([r["seconds"] for r in mine])
@@ -98,7 +102,7 @@ def main() -> None:
     print("Seconds before contact the tossing wrist goes below its shoulder (B0's measure):")
     for name, (group, category) in GROUPS.items():
         drop = np.array([r["drop_seconds"] for r in table
-                         if kind(r["player"]) == group and r["category"] == category])  # fmt: skip
+                         if kind(r) == group and r["category"] == category])  # fmt: skip
         low, mid, high = np.percentile(drop, [25, 50, 75])
         print(f"  {name}: median {mid:.2f} s (quartiles {low:.2f} to {high:.2f}), n = {len(drop)}")
     plot(data, table)
@@ -112,7 +116,7 @@ def plot(data, table: list[dict]) -> None:
         (baseline.RESULTS / "value.csv").open()) if r["model"] == "b0")  # fmt: skip
     _, (left, right) = plt.subplots(1, 2, figsize=(11, 3.8))
     for n, (name, (group, category)) in enumerate(GROUPS.items()):
-        chosen = np.array([kind(r["player"]) == group and r["category"] == category for r in table])
+        chosen = np.array([kind(r) == group and r["category"] == category for r in table])
         mean, sd = height[chosen].mean(0), height[chosen].std(0)
         line = left.plot(seconds, mean, label=f"{name} ({chosen.sum()})")[0]
         left.fill_between(seconds, mean - sd, mean + sd, color=line.get_color(), alpha=0.15)
