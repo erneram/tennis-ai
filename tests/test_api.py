@@ -14,8 +14,8 @@ def api():
 
 
 def answer(probability=0.64, seeds=(0.6, 0.62, 0.66, 0.64, 0.7)):
-    fall = np.zeros((6, 8))
-    fall[2, 4] = 0.05  # tossing wrist, from 0.53 s before contact
+    fall = np.zeros((4, 8))  # the app model's parts (M1e: elbows and wrists)
+    fall[1, 4] = 0.05  # tossing wrist, from 0.53 s before contact
     return {"probability": probability, "seeds": list(seeds), "threshold": 0.2,
             "drops_early": probability >= 0.2, "tossing_side": "left", "drop_seconds": 0.4,
             "seen": 0.95, "contact": 90, "occlusion": fall.tolist()}  # fmt: skip
@@ -52,7 +52,7 @@ def test_an_uploaded_video_gives_the_answer_its_moments_and_slow_motion(api, mon
     assert feedback["reason"].endswith("muñeca (lanza) entre 0.53 y 0.27 s antes del impacto.")
     assert [(m["id"], m["evidence"]) for m in result["moments"]] == [
         ("start", False), ("arm_down", True), ("contact", False)]  # fmt: skip
-    assert len(result["occlusion"]["values"]) == 6 and len(result["occlusion"]["starts"]) == 8
+    assert len(result["occlusion"]["values"]) == 4 and len(result["occlusion"]["starts"]) == 8
     assert result["record"]["category"] == "toss_arm_drops_early"
     assert client.get(result["moments"][0]["image_url"]).status_code == 200
     assert client.get(result["slow_url"]).content == b"mp4"

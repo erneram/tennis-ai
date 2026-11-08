@@ -21,6 +21,6 @@ def test_shoulder_width_reads_only_the_stance():
 
 
 def test_the_app_model_has_every_seed_and_the_threshold_chosen_by_value():
-    m1c = model.load("m1c")
-    assert len(m1c["models"]) == 5 and m1c["arms"]
-    assert 0 < m1c["threshold"] < 1 and m1c["reference"].shape == (64, 6, 2)
+    m1e = model.load("m1e")
+    assert len(m1e["models"]) == 5 and m1e["heights"] and len(m1e["parts"]) == 4
+    assert 0 < m1e["threshold"] < 1 and m1e["reference"].shape == (64, 4, 1)

@@ -39,10 +39,10 @@ MIN_SEEN, SURE_SEEN = 0.7, 0.85
 SURE_MARGIN = 0.15  # distance of the probability to the threshold for a high confidence
 SMALL_FALL = 0.02  # an occlusion fall under it moves the answer too little to name a reason
 IMAGE_SIDE = 720  # longest side of the key moments and the slow motion
-# Joints of the occlusion map (model.PARTS) in Spanish
-PARTS = [
-    f"{joint} ({arm})" for arm in ("lanza", "raqueta") for joint in ("Hombro", "Codo", "Muñeca")
-]
+# Joints of the app model's occlusion map (model.PARTS or model.HEIGHT_PARTS) in Spanish
+SPANISH = {"tossing": "lanza", "racket": "raqueta", "shoulder": "Hombro", "elbow": "Codo",
+           "wrist": "Muñeca"}  # fmt: skip
+PARTS = [f"{SPANISH[joint]} ({SPANISH[arm]})" for arm, joint in map(str.split, MODEL["parts"])]
 MOMENTS = {"start": "Inicio", "arm_up": "Brazo más arriba", "arm_down": "La muñeca baja del hombro",
            "contact": "Impacto"}  # fmt: skip
 

@@ -37,7 +37,8 @@ import numpy as np
 from app import service
 from strokes.serve import baseline, dataset, model, pretrain, train
 
-MODELS = ["b0", "m1c", "m2c", "m1d"]  # the rule, the app's model, the pretrained one, M1c + data
+# The rule, M1c, the pretrained one, M1c + data, the app's model (heights only), M1e + data
+MODELS = ["b0", "m1c", "m2c", "m1d", "m1e", "m1f"]
 SHARES = [0.0, 0.1, 0.2, 0.3, 0.4]  # of the arm points set unseen
 REPEATS = 20
 ARM_JOINTS = np.array(train.ARMS)
