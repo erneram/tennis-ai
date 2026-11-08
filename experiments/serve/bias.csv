@@ -23,3 +23,15 @@ m2c,arm points seen,under 90 %,2,1.0,2,0.5
 m2c,player,professional,0,,11,0.036
 m2c,frame rate,30 fps,0,,9,0.044
 m2c,orientation,portrait,0,,10,0.04
+b0,recorded after,EA,0,,54,0.13
+b0,recorded after,"EA, kept",0,,51,0.118
+b0,recorded after,JC after feedback,0,,44,0.705
+b0,recorded after,"JC after feedback, kept",0,,44,0.705
+m1c,recorded after,EA,0,,54,0.796
+m1c,recorded after,"EA, kept",0,,51,0.784
+m1c,recorded after,JC after feedback,0,,44,1.0
+m1c,recorded after,"JC after feedback, kept",0,,44,1.0
+m2c,recorded after,EA,0,,54,0.574
+m2c,recorded after,"EA, kept",0,,51,0.608
+m2c,recorded after,JC after feedback,0,,44,1.0
+m2c,recorded after,"JC after feedback, kept",0,,44,1.0

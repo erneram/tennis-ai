@@ -18,6 +18,9 @@ Every model at the threshold eval/value.py chose for it on validation scores:
    thetis_dataset.npz; skipped when absent) each model calls "drops early", beginners (players
    p1 to p31) against experts (p32 to p55), and the share the app's camera check (shoulder width
    in the stance) sends back to be recorded again.
+6. Recorded after the models were chosen (dataset.NEW: a new amateur, EA, and JC after the
+   feedback): recall and false alarms of the trained models as they are, on every judged serve
+   and on the ones the app does not send back (camera to the side, arm points seen).
 
 Writes experiments/serve/bias.csv (rates by group) and bias.png (parts 3 and 5).
 """
@@ -30,6 +33,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from app import service
 from strokes.serve import baseline, dataset, model, pretrain, train
 
 MODELS = ["b0", "m1c", "m2c"]  # the rule, the app's model (from scratch), the pretrained one
@@ -88,6 +92,40 @@ def by_group(data, names: list[str], cuts: dict) -> list[dict]:
     return out
 
 
+def rates(model_name: str, group: str, value: str, said: np.ndarray, positive: np.ndarray) -> dict:
+    pos, neg = said[positive], said[~positive]
+    return {"model": model_name, "group": group, "value": value,
+            "positives": len(pos), "recall": round(np.mean(pos), 3) if len(pos) else "",
+            "negatives": len(neg), "false_alarms": round(np.mean(neg), 3) if len(neg) else ""}  # fmt: skip
+
+
+def new_players(data, loaded: dict, cuts: dict) -> list[dict]:
+    """Recall and false alarms on the judged serves of dataset.NEW, by player, with every serve and
+    with the ones the app does not send back."""
+    chosen = (data["split"] == "new") & (data["valid"] == 1)
+    x, mask, players = data["x"][chosen], data["mask"][chosen], data["player"][chosen]
+    positive = data["category"][chosen] == baseline.POSITIVE
+    kept = (model.shoulder_width(x) >= model.MIN_SHOULDERS) & (
+        train.arms(x, mask)[1].mean((1, 2)) >= service.MIN_SEEN
+    )
+    names = {"jc": "JC after feedback", "ea": "EA"}
+    rows = []
+    for name in MODELS:
+        said = predict(name, loaded, x, mask) >= cuts[name]
+        for player in np.unique(players):
+            mine = players == player
+            for value, keep in ((names.get(player, player), mine),
+                                (f"{names.get(player, player)}, kept", mine & kept)):  # fmt: skip
+                rows.append(rates(name, "recorded after", value, said[keep], positive[keep]))
+    return rows
+
+
+def show(rows: list[dict]) -> None:
+    for r in rows:
+        print(f"  {r['model'].upper():4} {r['group']:16} {r['value']:24} recall {r['recall']!s:5} "
+              f"of {r['positives']:2}, false alarms {r['false_alarms']!s:5} of {r['negatives']:2}")  # fmt: skip
+
+
 def within_jc(data, names: list[str]) -> None:
     for name in names:
         line = []
@@ -134,11 +172,10 @@ def main() -> None:
     cuts = thresholds()
     loaded = {n: model.load(n) for n in MODELS if n != "b0"}
     table = by_group(data, MODELS, cuts)
-    baseline.save("bias", table)
+    fresh = new_players(data, loaded, cuts)
+    baseline.save("bias", table + fresh)
     print("1. Recall and false alarms by group (validation and test scores, mean over seeds):")
-    for r in table:
-        print(f"  {r['model'].upper():4} {r['group']:16} {r['value']:13} recall {r['recall']!s:5} "
-              f"of {r['positives']:2}, false alarms {r['false_alarms']!s:5} of {r['negatives']:2}")  # fmt: skip
+    show(table)
     print("2. AUROC on every serve and on JC's serves only:")
     within_jc(data, MODELS)
 
@@ -184,6 +221,9 @@ def main() -> None:
                   f"of the {side.sum()} the app does not send back, {said[side].mean():.0%}")  # fmt: skip
         print(f"  The app asks for a new recording of {1 - side.mean():.0%} of them (shoulders "
               f"under {model.MIN_SHOULDERS} torso lengths apart in the stance)")  # fmt: skip
+    if fresh:
+        print("6. Recorded after the models were chosen (kept: not sent back by the app):")
+        show(fresh)
     plot(curves, front)
 
 
