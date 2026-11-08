@@ -85,9 +85,10 @@ def playable(name: str, slowdown: int) -> str:
 
 def rows_of(name: str) -> list[dict]:
     """The member's rows, plus an empty one for each video in data/raw/ not in the file yet (new
-    clips, for example from strokes/serve/split.py); saving a label writes them to the file."""
+    clips, for example from strokes/serve/split.py) nor in labels.csv (labeled by someone else at
+    the team's request); saving a label writes them to the file."""
     rows = read(EVAL / f"labels_{name}.csv")
-    listed = {r["video"] for r in rows}
+    listed = {r["video"] for r in rows} | {r["video"] for r in read(AGREED)}
     new = sorted(p.name for p in RAW.iterdir()
                  if p.suffix.lower() in (".mp4", ".mov") and p.name not in listed)  # fmt: skip
     empty = dict.fromkeys(LABEL_COLUMNS, "")
@@ -193,7 +194,8 @@ def save_agreement(choice: str, valid: str | None, category: str | None, notes: 
     decided[choice] = answered(differ[choice][0], valid, category, notes)
     order = {r["video"]: i for i, r in enumerate(read(EVAL / f"labels_{NAMES[0]}.csv"))}
     rows = sorted(agreed + list(decided.values()), key=lambda r: order[r["video"]])
-    write(AGREED, rows, LABEL_COLUMNS)
+    others = [r for r in read(AGREED) if r["video"] not in order]  # not the members' labels
+    write(AGREED, rows + others, LABEL_COLUMNS)
     return agree_view()  # the next video still to decide
 
 

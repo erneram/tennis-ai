@@ -21,10 +21,13 @@ def test_save_agreement_writes_agreed_rows_and_decisions(tmp_path, monkeypatch):
     assert list(differ) == ["v1.mp4"]
     assert label.agree_view()[1] == "### Decididos 0 de 1"
 
+    other = label.answered({"video": "pro09-s01.mp4", "player": "pro09"}, "1", NONE, "claude")
+    label.write(tmp_path / "labels.csv", [other], label.LABEL_COLUMNS)  # not a member's label
     label.save_agreement("v1.mp4", "1", NONE, " both saw it up ")
     rows = label.read(tmp_path / "labels.csv")
     assert [(r["video"], r["category"], r["drill_id"]) for r in rows] == [
-        ("v0.mp4", DROP, "toss_hold"), ("v1.mp4", NONE, "steady_serves"), ("v2.mp4", "", "")
+        ("v0.mp4", DROP, "toss_hold"), ("v1.mp4", NONE, "steady_serves"), ("v2.mp4", "", ""),
+        ("pro09-s01.mp4", NONE, "steady_serves"),
     ]  # fmt: skip
     assert rows[1]["notes"] == "both saw it up"
     assert label.agree_view()[1].startswith("### Listo")
@@ -33,10 +36,13 @@ def test_save_agreement_writes_agreed_rows_and_decisions(tmp_path, monkeypatch):
 def test_new_clips_in_raw_are_listed_until_labeled(tmp_path, monkeypatch):
     raw = tmp_path / "raw"
     (raw / "uncut").mkdir(parents=True)
-    for name in ("old.mp4", "ea-2-s01.mp4", "uncut/session.MOV", "cuts.csv"):
+    for name in ("old.mp4", "ea-2-s01.mp4", "pro09-s01.mp4", "uncut/session.MOV", "cuts.csv"):
         (raw / name).touch()
     monkeypatch.setattr(label, "EVAL", tmp_path)
+    monkeypatch.setattr(label, "AGREED", tmp_path / "labels.csv")
     monkeypatch.setattr(label, "RAW", raw)
+    other = label.answered({"video": "pro09-s01.mp4", "player": "pro09"}, "1", NONE, "claude")
+    label.write(tmp_path / "labels.csv", [other], label.LABEL_COLUMNS)  # at the team's request
     monkeypatch.setattr(label, "playable", lambda name, slowdown: name)
     old = label.answered({"video": "old.mp4", "player": "jc"}, "0", None, "")
     label.write(tmp_path / "labels_a.csv", [old], label.LABEL_COLUMNS)
