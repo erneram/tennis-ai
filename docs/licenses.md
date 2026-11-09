@@ -44,6 +44,7 @@ Checked on 2026-10-19 against the GitHub, Hugging Face, and PyPI metadata. Re-ch
 | [RacketVision](https://github.com/OrcustD/RacketVision/) | MIT (code) | OK. Future work. |
 | Own recordings | Player consent | Written consent required. Never committed (see `data/README.md`). |
 | Federer serves (pro04): public YouTube videos by Essential Tennis, Bob shi and TennisAcademy101 | YouTube terms; no license to redistribute | Downloaded to the ignored `data/raw/roger/` for local training and evaluation only (Final Project, split `new`). Never committed; no frames in the app demo, poster or report. |
+| YouTube serves found on 2026-11-09: amateurs in filmed lessons (yt1: Intuitive Tennis 2LQvpHO59nE; yt2: the 10-Day Tennis Transformation episodes 2EUZpFbAuRU, 2ctN7oKcVlQ and qSilXwJRYhY; yt3: -zEmDTe_KT4) and professionals (pro05: the real-speed scenes of the Slow-Mo Tennis compilation YwBC3QeCnvc, one player each) | YouTube terms; no license to redistribute | Downloaded to the ignored `data/raw/web/` for local training and evaluation only (split `new`). Never committed; no frames in the app demo, poster or report. Adults only: videos where the player looked under 18 were left out. |
 
 ## Published research behind the serve criteria
 
