@@ -1,3 +1,5 @@
+import pytest
+
 from eval import label
 
 DROP, NONE = "toss_arm_drops_early", "no_clear_problem"
@@ -54,3 +56,28 @@ def test_new_clips_in_raw_are_listed_until_labeled(tmp_path, monkeypatch):
     assert [(r["video"], r["player"], r["category"]) for r in rows] == [
         ("old.mp4", "jc", ""), ("ea-2-s01.mp4", "ea", NONE)
     ]  # fmt: skip
+
+
+def test_body_answers_take_players_in_turn_and_need_every_question(tmp_path, monkeypatch):
+    monkeypatch.setattr(label, "EVAL", tmp_path)
+    monkeypatch.setattr(label, "AGREED", tmp_path / "labels.csv")
+    monkeypatch.setattr(label, "playable", lambda name, slowdown: name)
+    videos = [("jc-s1", "jc", "1"), ("jc-s2", "jc", "1"), ("jc-s3", "jc", "0"),
+              ("jc-post1-s01", "jc", "1"), ("pro01_s01", "pro01", "1")]  # fmt: skip
+    rows = [label.answered({"video": f"{v}.mp4", "player": p}, valid, NONE, "")
+            for v, p, valid in videos]  # fmt: skip
+    label.write(tmp_path / "labels.csv", rows, label.LABEL_COLUMNS)
+
+    choices, status = label.aspect_view("a")[:2]
+    assert choices["choices"] == ["jc-s1.mp4", "jc-post1-s01.mp4", "pro01_s01.mp4", "jc-s2.mp4"]
+    assert status.startswith("Faltan 4 de 4")
+    answers = [options[0][1] for *_, options in label.ASPECTS]
+    with pytest.raises(label.gr.Error):
+        label.save_aspects("a", "jc-s1.mp4", *answers[:-1], None, "")
+    out = label.save_aspects("a", "jc-s1.mp4", *answers, " low toss ")
+    assert out[0]["value"] == "jc-post1-s01.mp4" and out[1].startswith("Faltan 3 de 4")
+    [saved] = label.read(tmp_path / "aspects_a.csv")
+    assert (
+        saved["video"] == "jc-s1.mp4" and saved["legs"] == "none" and saved["notes"] == "low toss"
+    )
+    assert label.aspect_view("a", "jc-s1.mp4")[4] == "none"  # the saved answer comes back

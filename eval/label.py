@@ -8,6 +8,11 @@ the serve be judged, and has the tossing hand already dropped to the shoulder wh
 lowest behind the back (toss_arm_drops_early in criteria.yaml). Writes
 eval/serve/labels_<name>.csv (guide in data/README.md); the phase and the drill follow from the
 answer.
+"Cuerpo": the rest of the serve for the judged videos of labels.csv, one multiple-choice question
+per part (ASPECTS: legs, shoulders, the racket when the ball is highest and behind the back, the
+arm and the contact point at impact, the landing), each with what to look at and the ideal. The
+players come in turn, so any number of answers covers all of them. Writes
+eval/serve/aspects_<name>.csv.
 "Decidir juntos": the videos where the members' answers differ, with each member's answer, for
 the members to watch together and answer once. Writes eval/serve/labels.csv: the rows everyone
 agrees on and the decisions taken so far.
@@ -57,6 +62,45 @@ ASK_VALID = ("1. ¿Se ve al jugador de lado y de cuerpo entero, con la mano que 
              "visible?")  # fmt: skip
 ASK_ARM = ("2. En el momento en que la raqueta está más abajo, detrás de la espalda (justo antes "
            "de subir a pegarle), ¿la mano que lanzó la pelota ya bajó?")  # fmt: skip
+# "Cuerpo": (column, question, what to look at and the ideal, options); "unseen" when it cannot be seen
+DEGREE = [("No, casi nada", "none"), ("Poco, hace falta mejorar", "little"), ("Sí, bien", "good")]
+ASPECTS = [
+    ("legs", "1. Piernas: antes de subir a pegarle, ¿dobla las rodillas?",
+     ("Míralo cuando la raqueta va detrás de la espalda. Lo ideal: rodillas dobladas, la cadera "
+      "baja como para saltar."),
+     DEGREE + [("Demasiado, se agacha mucho", "too_much"), ("No se ve", "unseen")]),
+    ("shoulders", ("2. Cuerpo: con la mano que lanza arriba, ¿el hombro de esa mano queda más alto "
+                   "que el otro (el cuerpo se inclina hacia atrás)?"),
+     "Lo ideal: el hombro de la mano que lanza claramente más alto, el cuerpo un poco arqueado.",
+     DEGREE + [("Demasiado, se va hacia atrás", "too_much"), ("No se ve", "unseen")]),
+    ("racket_at_peak", "3. Raqueta: cuando la pelota está en lo más alto, ¿dónde está la raqueta?",
+     ("Lo ideal: arriba detrás de la cabeza, con el codo a la altura del hombro (posición de "
+      "trofeo); cae detrás de la espalda cuando la pelota empieza a bajar."),
+     [("Todavía abajo, cerca de la cadera", "low"), ("Subiendo, a la altura del hombro", "rising"),
+      ("Arriba detrás de la cabeza, codo a la altura del hombro", "trophy"),
+      ("Ya cayó detrás de la espalda", "dropped"), ("Ya está golpeando la pelota", "hitting"),
+      ("No se ve la pelota o la raqueta", "unseen")]),
+    ("racket_drop", ("4. Raqueta: antes de subir a pegarle, ¿cae detrás de la espalda, con la "
+                     "punta hacia el suelo?"),
+     "Lo ideal: sí, como si se rascara la espalda; luego sube hacia la pelota.",
+     [("No, va directo a la pelota", "none"), ("Poco, se queda a medio camino", "little"),
+      ("Sí, bien", "good"), ("No se ve", "unseen")]),
+    ("arm_at_contact", "5. Impacto: al pegarle, ¿el brazo de la raqueta está estirado hacia arriba?",
+     "Lo ideal: el brazo estirado casi vertical, pegándole lo más alto que alcanza.",
+     [("No, doblado o a la altura de la cabeza", "bent"),
+      ("Estirado, pero hacia adelante, no arriba", "forward"),
+      ("Sí, estirado hacia arriba", "up"), ("No se ve", "unseen")]),
+    ("contact_point", "6. Impacto: ¿dónde le pega a la pelota respecto al cuerpo?",
+     "Fíjate hacia dónde está la cancha. Lo ideal: un poco adelante del cuerpo, hacia la cancha.",
+     [("Detrás de la cabeza", "behind"), ("Justo encima de la cabeza", "above"),
+      ("Un poco adelante", "ahead"),
+      ("Muy adelante, tiene que inclinarse para alcanzarla", "far_ahead"), ("No se ve", "unseen")]),
+    ("landing", "7. Final: después de pegarle, ¿cómo cae?",
+     "Lo ideal: hacia adelante, dentro de la cancha, sobre el pie de adelante y en equilibrio.",
+     [("Hacia adelante, en equilibrio", "forward"), ("En el mismo lugar", "in_place"),
+      ("Hacia atrás o de lado, pierde el equilibrio", "off_balance"), ("No se ve", "unseen")]),
+]  # fmt: skip
+ASPECT_COLUMNS = ["video", "player", *(a[0] for a in ASPECTS), "notes"]
 
 
 def read(path: Path) -> list[dict]:
@@ -138,6 +182,47 @@ def save_label(name: str, choice: str, valid: str | None, category: str | None, 
     ]
     write(path, rows, LABEL_COLUMNS)
     return label_view(name)  # the next video without a label
+
+
+def aspect_rows(name: str) -> list[dict]:
+    """The member's answers about the body, one row per judged video of labels.csv, taking the
+    players in turn (JC after the feedback apart) so that a partial pass covers all of them."""
+    saved = {r["video"]: r for r in read(EVAL / f"aspects_{name}.csv")}
+    empty = dict.fromkeys(ASPECT_COLUMNS, "")
+    turns, ranked = {}, []
+    for r in read(AGREED):
+        if r["valid"] == "1":
+            group = "jc-post" if r["video"].startswith("jc-post") else r["player"]
+            turns[group] = turns.get(group, 0) + 1
+            row = saved.get(r["video"], {**empty, "video": r["video"], "player": r["player"]})
+            ranked.append((turns[group], group, row))
+    return [row for *_, row in sorted(ranked, key=lambda t: t[:2])]
+
+
+def aspect_view(name: str, choice: str | None = None):
+    """The videos still to answer (every video once all are answered), `choice` or the next, and
+    its answers."""
+    rows = aspect_rows(name)
+    left = [r["video"] for r in rows if not r[ASPECTS[0][0]]]
+    choice = choice or (left[0] if left else rows[0]["video"])
+    row = next(r for r in rows if r["video"] == choice)
+    status = (f"Faltan {len(left)} de {len(rows)} videos. No hace falta hacerlos todos: van "
+              "alternando jugadores, así que cualquier avance sirve." if left
+              else f"Los {len(rows)} videos tienen respuesta.")  # fmt: skip
+    answers = [row[a[0]] or None for a in ASPECTS]
+    return (gr.update(choices=left or [r["video"] for r in rows], value=choice), status,
+            playable(choice, 1), playable(choice, 4), *answers, row["notes"])  # fmt: skip
+
+
+def save_aspects(name: str, choice: str, *answers):
+    *answers, notes = answers
+    if None in answers:
+        raise gr.Error("Responde todas las preguntas; si algo no se ve, elige «No se ve».")
+    done = dict(zip((a[0] for a in ASPECTS), answers))
+    rows = [{**r, **done, "notes": notes.strip()} if r["video"] == choice else r
+            for r in aspect_rows(name)]  # fmt: skip
+    write(EVAL / f"aspects_{name}.csv", [r for r in rows if r[ASPECTS[0][0]]], ASPECT_COLUMNS)
+    return aspect_view(name)  # the next video without answers
 
 
 def disputes() -> tuple[list[dict], dict[str, list[dict]]]:
@@ -294,6 +379,22 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
         category = gr.Radio(ARM, label=ASK_ARM)
         notes = gr.Textbox(label="Notas (opcional)")
         save = gr.Button("Guardar y siguiente", variant="primary")
+    with gr.Tab("Cuerpo"):
+        gr.Markdown("Siete preguntas sobre el resto del saque: piernas, cuerpo, raqueta, impacto "
+                    "y final. Compáralo con el saque profesional de referencia. Responde lo que "
+                    "ves; debajo de cada pregunta dice qué mirar y cómo sería lo ideal. Si algo "
+                    "no se ve, elige «No se ve».")  # fmt: skip
+        with gr.Row():
+            aspect_choice = gr.Dropdown(label="Video")
+            aspect_status = gr.Markdown()
+        with gr.Row():
+            aspect_normal = gr.Video(label="Velocidad normal", interactive=False)
+            aspect_slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
+            aspect_reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
+                                        interactive=False)  # fmt: skip
+        aspects = [gr.Radio(options, label=ask, info=info) for _, ask, info, options in ASPECTS]
+        aspect_notes = gr.Textbox(label="Notas (opcional)")
+        save_aspect = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Decidir juntos"):
         gr.Markdown("Aquí salen solo los videos en que sus respuestas no coinciden. Véanlos "
                     "juntos, comenten qué ve cada uno y respondan una sola vez entre los dos. "
@@ -340,11 +441,16 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
     review_out = [frame, question, seen_ok, answer_ok, review_notes, item, form]
     agree_out = [agree_choice, agree_status, agree_normal, agree_slow, said, agree_valid,
                  agree_category, agree_notes]  # fmt: skip
+    aspect_out = [aspect_choice, aspect_status, aspect_normal, aspect_slow, *aspects, aspect_notes]
     remember = lambda who, chosen: [who, chosen]
     demo.load(restore, remembered, [name, run]).then(label_view, [name], label_out).then(
-        review_view, [name, run], review_out)  # fmt: skip
+        review_view, [name, run], review_out).then(aspect_view, [name], aspect_out)  # fmt: skip
+    name.input(aspect_view, [name], aspect_out)
+    aspect_choice.input(aspect_view, [name, aspect_choice], aspect_out)
+    save_aspect.click(save_aspects, [name, aspect_choice, *aspects, aspect_notes], aspect_out)
     demo.load(lambda: playable(REFERENCE, 4), None, reference)
     demo.load(lambda: playable(REFERENCE, 4), None, agree_reference)
+    demo.load(lambda: playable(REFERENCE, 4), None, aspect_reference)
     demo.load(agree_view, None, agree_out)
     name.input(label_view, [name], label_out).then(review_view, [name, run], review_out).then(
         remember, [name, run], remembered)  # fmt: skip
