@@ -35,8 +35,10 @@ TEST_VIDEOS = {f"jc-s{i}" for i in range(28, 44)}
 TEST_PLAYERS = {"pro01"}
 # Added after the models were chosen: a new amateur and JC after the feedback (recorded on Nov 7)
 # and a fourth professional (pro04, slow-motion videos found online, Nov 8). Scored by
-# eval/bias.py; trained on only through train.py --more (M1d), never pretrained on.
-NEW = ("ea-", "jc-post", "pro04")
+# eval/bias.py; trained on only through train.py --more (M1d), never pretrained on. YouTube
+# videos found on Nov 9: amateurs in filmed lessons (yt1 to yt3) and the real-speed serves of a
+# compilation of several professionals (pro05).
+NEW = ("ea-", "jc-post", "pro04", "pro05", "yt")
 
 
 def contact(keypoints: np.ndarray, fps: float) -> int:
