@@ -53,29 +53,65 @@ b0,recorded after,JC after feedback,0,,44,0.705
 b0,recorded after,"JC after feedback, kept",0,,44,0.705
 b0,recorded after,pro04 (slowed down),0,,8,0.625
 b0,recorded after,"pro04 (slowed down), kept",0,,8,0.625
+b0,recorded after,pro05,0,,10,1.0
+b0,recorded after,"pro05, kept",0,,10,1.0
+b0,recorded after,yt2,0,,2,1.0
+b0,recorded after,"yt2, kept",0,,2,1.0
+b0,recorded after,yt3,1,0.0,0,
+b0,recorded after,"yt3, kept",0,,0,
 m1c,recorded after,EA,0,,54,0.796
 m1c,recorded after,"EA, kept",0,,51,0.784
 m1c,recorded after,JC after feedback,0,,44,1.0
 m1c,recorded after,"JC after feedback, kept",0,,44,1.0
 m1c,recorded after,pro04 (slowed down),0,,8,0.0
 m1c,recorded after,"pro04 (slowed down), kept",0,,8,0.0
+m1c,recorded after,pro05,0,,10,0.2
+m1c,recorded after,"pro05, kept",0,,10,0.2
+m1c,recorded after,yt2,0,,2,0.5
+m1c,recorded after,"yt2, kept",0,,2,0.5
+m1c,recorded after,yt3,1,1.0,0,
+m1c,recorded after,"yt3, kept",0,,0,
 m2c,recorded after,EA,0,,54,0.574
 m2c,recorded after,"EA, kept",0,,51,0.608
 m2c,recorded after,JC after feedback,0,,44,1.0
 m2c,recorded after,"JC after feedback, kept",0,,44,1.0
 m2c,recorded after,pro04 (slowed down),0,,8,0.0
 m2c,recorded after,"pro04 (slowed down), kept",0,,8,0.0
+m2c,recorded after,pro05,0,,10,0.3
+m2c,recorded after,"pro05, kept",0,,10,0.3
+m2c,recorded after,yt2,0,,2,1.0
+m2c,recorded after,"yt2, kept",0,,2,1.0
+m2c,recorded after,yt3,1,1.0,0,
+m2c,recorded after,"yt3, kept",0,,0,
 m1d,recorded after,EA,0,,54,0.167
 m1d,recorded after,"EA, kept",0,,51,0.137
 m1d,recorded after,pro04 (slowed down),0,,8,0.125
 m1d,recorded after,"pro04 (slowed down), kept",0,,8,0.125
+m1d,recorded after,pro05,0,,10,0.2
+m1d,recorded after,"pro05, kept",0,,10,0.2
+m1d,recorded after,yt2,0,,2,0.5
+m1d,recorded after,"yt2, kept",0,,2,0.5
+m1d,recorded after,yt3,1,0.0,0,
+m1d,recorded after,"yt3, kept",0,,0,
 m1e,recorded after,EA,0,,54,0.019
 m1e,recorded after,"EA, kept",0,,51,0.0
 m1e,recorded after,JC after feedback,0,,44,0.659
 m1e,recorded after,"JC after feedback, kept",0,,44,0.659
 m1e,recorded after,pro04 (slowed down),0,,8,0.0
 m1e,recorded after,"pro04 (slowed down), kept",0,,8,0.0
+m1e,recorded after,pro05,0,,10,0.0
+m1e,recorded after,"pro05, kept",0,,10,0.0
+m1e,recorded after,yt2,0,,2,0.0
+m1e,recorded after,"yt2, kept",0,,2,0.0
+m1e,recorded after,yt3,1,1.0,0,
+m1e,recorded after,"yt3, kept",0,,0,
 m1f,recorded after,EA,0,,54,0.037
 m1f,recorded after,"EA, kept",0,,51,0.02
 m1f,recorded after,pro04 (slowed down),0,,8,0.0
 m1f,recorded after,"pro04 (slowed down), kept",0,,8,0.0
+m1f,recorded after,pro05,0,,10,0.0
+m1f,recorded after,"pro05, kept",0,,10,0.0
+m1f,recorded after,yt2,0,,2,0.0
+m1f,recorded after,"yt2, kept",0,,2,0.0
+m1f,recorded after,yt3,1,0.0,0,
+m1f,recorded after,"yt3, kept",0,,0,

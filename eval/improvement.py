@@ -3,7 +3,7 @@
     uv run python -m eval.improvement
 
 JC's serves before the feedback (train and test splits) against his serves of Nov 7, recorded after
-he was told what to change (split new), with EA and the professionals (pro01 to pro04) as
+he was told what to change (split new), with EA and the professionals (pro01 to pro05) as
 reference, by three measures:
 
 1. Toss height: the labeling question as a number, the height of the tossing wrist above its

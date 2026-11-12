@@ -2,20 +2,20 @@ measure,group,serves,value,low,high
 "toss height (median, torso lengths)",JC before,37,0.377,,
 "toss height (median, torso lengths)",JC after,44,0.691,,
 "toss height (median, torso lengths)",EA,54,0.912,,
-"toss height (median, torso lengths)",professionals,19,1.072,,
-"toss height (median, torso lengths)",gap closed,,0.452,0.286,0.531
+"toss height (median, torso lengths)",professionals,29,1.046,,
+"toss height (median, torso lengths)",gap closed,,0.47,0.307,0.558
 in the professionals' range,JC before,37,0.0,,
-in the professionals' range,JC after,44,0.114,,
-in the professionals' range,EA,54,0.926,,
-in the professionals' range,professionals,19,0.895,,
-in the professionals' range,gap closed,,0.127,0.027,0.243
+in the professionals' range,JC after,44,0.341,,
+in the professionals' range,EA,54,0.963,,
+in the professionals' range,professionals,29,0.897,,
+in the professionals' range,gap closed,,0.38,0.22,0.549
 sent to the drill by M1E,JC before,37,0.973,,
 sent to the drill by M1E,JC after,44,0.659,,
 sent to the drill by M1E,EA,54,0.019,,
-sent to the drill by M1E,professionals,19,0.0,,
-sent to the drill by M1E,gap closed,,0.323,0.182,0.463
+sent to the drill by M1E,professionals,29,0.0,,
+sent to the drill by M1E,gap closed,,0.323,0.182,0.472
 fault in the team's labels,JC before,37,0.622,,
 fault in the team's labels,JC after,44,0.0,,
 fault in the team's labels,EA,54,0.0,,
-fault in the team's labels,professionals,19,0.0,,
+fault in the team's labels,professionals,29,0.0,,
 fault in the team's labels,gap closed,,1.0,1.0,1.0
