@@ -99,9 +99,12 @@ def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, mon
     assert arm["goal"].startswith("Lo ideal: el brazo estirado")
     assert landing["seen"] == "Después de pegarle avanzas poco: caes casi en el mismo lugar."
     assert toss["seen"].startswith("Bajas muy pronto el brazo con el que lanzas la pelota")
-    assert [p["often"] for p in result["points"]] == [
-        "casi siempre", "7 de cada 10 veces", "2 de cada 10 veces"]  # fmt: skip
-    assert toss["trust"] == "Tómalo como una sugerencia, no como un hecho."
+    # The badge says in words how far to trust the point, and `trust` says what the badge means
+    assert [(p["sure"], p["sure_label"]) for p in result["points"]] == [
+        ("high", "Muy probable"), ("medium", "Probable"), ("low", "En duda")]  # fmt: skip
+    assert arm["trust"].startswith("Cuando la app marca esto, casi siempre tiene razón. Sale de")
+    assert toss["trust"] == ("Cuando la app marca esto, se equivoca más veces de las que acierta. "
+                             "Tómalo como una sugerencia, no como un hecho.")  # fmt: skip
     assert not any(
         c.isdigit() for p in result["points"] for c in p["seen"] + p["goal"] + p["trust"]
     )
@@ -117,7 +120,7 @@ def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, mon
     legs, drop = result["others"]
     assert legs["seen"] == "Doblas las rodillas antes de subir a pegarle." and "goal" not in legs
     assert drop["seen"].startswith("Antes de subir a pegarle, tu raqueta casi no cae")
-    assert drop["goal"].startswith("Lo ideal") and "acertó 5 de cada 10 veces" in drop["note"]
+    assert drop["goal"].startswith("Lo ideal") and drop["note"].endswith("se equivoca seguido.")
     assert [(m["id"], m["evidence"]) for m in result["moments"]] == [
         ("bend", False), ("arm_down", True), ("contact", True)]  # fmt: skip
     assert result["moments"][2]["note"] == "En naranja: el brazo de la raqueta."
@@ -144,7 +147,10 @@ def test_of_four_points_past_their_threshold_the_three_surest_are_given(api, mon
     result = analyzed(api, monkeypatch, tmp_path, legs=0.9)
     assert [p["aspect"] for p in result["points"]] == ["arm_at_contact", "landing", "legs"]
     assert result["points"][2]["seen"] == "Doblas poco las rodillas antes de subir a pegarle."
-    assert result["points"][2]["trust"].startswith("Con un jugador que la app nunca ha visto")
+    assert result["points"][2]["trust"] == (
+        "Cuando la app marca esto, suele tener razón, pero no siempre. "
+        "Con un jugador que la app nunca ha visto puede fallar más."
+    )
     assert "Es exploratorio" in result["points"][2]["detail"]
     assert result["points"][2]["drill"]["name"] == "Carga de piernas"
     # The tossing arm is still said, among the other parts

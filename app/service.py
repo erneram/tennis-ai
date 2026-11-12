@@ -115,7 +115,16 @@ PLAIN = {
                 "equilibrio.",
     },
 }  # fmt: skip
-# What each level means for the player, under how often the point was right (often)
+# How far to trust a point, from how often it was right on validation (the precision of
+# points.csv, at least): the key and the words of its badge, and what the badge means. In words,
+# not "7 de cada 10": a player who sees the app for the first time has nothing to read that against
+SURE = (
+    (0.9, "high", "Muy probable", "Cuando la app marca esto, casi siempre tiene razón."),
+    (0.7, "medium", "Probable", "Cuando la app marca esto, suele tener razón, pero no siempre."),
+    (0.4, "low", "En duda", "Cuando la app marca esto, se equivoca seguido."),
+    (0.0, "low", "En duda", "Cuando la app marca esto, se equivoca más veces de las que acierta."),
+)  # fmt: skip
+# What each level means for the player, after what the badge means (SURE)
 TRUST = {"validated": "Pasó todas nuestras pruebas.",
          "trial": "Todavía lo estamos probando con más jugadores.",
          "measure": "Sale de comparar tu video con saques de profesionales; no es un diagnóstico.",
@@ -256,9 +265,10 @@ def compared(answer: dict) -> list[dict]:
         for aspect, row in POINTS.items() if row["described"]]  # fmt: skip
 
 
-def often(precision: float) -> str:
-    """How often a point was right on validation, in plain words."""
-    return "casi siempre" if precision >= 0.95 else f"{round(precision * 10)} de cada 10 veces"
+def sure(precision: float) -> tuple[str, str, str]:
+    """How far to trust a point that was right `precision` of the times on validation: the key
+    and the words of its badge, and what it means (SURE)."""
+    return next(row[1:] for row in SURE if precision >= row[0])
 
 
 def described(aspect: str, status: str, answer: dict) -> str:
@@ -335,8 +345,8 @@ def points(answer: dict) -> list[dict]:
     """Up to MAX_POINTS points to improve: the aspects of POINTS with a level that are past their
     threshold (state), the one that was right most often on validation first (the precision of
     points.csv) and, between two alike, the furthest past. Each says what the app saw and what to
-    aim for in plain words, how often it was right and what its level means (often, TRUST), and
-    keeps the numbers apart (detail)."""
+    aim for in plain words and how far to trust it (SURE, then TRUST for its level), and keeps
+    the numbers apart (detail)."""
     found = []
     for aspect, (name, drill) in ASPECTS.items():
         row = POINTS.get(aspect)
@@ -344,12 +354,13 @@ def points(answer: dict) -> list[dict]:
             continue
         status, margin = state(aspect, answer)
         if status == "improve":
+            key, badge, means = sure(float(row["precision"]))
             found.append((float(row["precision"]), margin, {
                 "aspect": aspect, "label": name, "level": row["level"],
                 "level_label": LEVELS[row["level"]], "precision": float(row["precision"]),
-                "often": often(float(row["precision"])),
+                "sure": key, "sure_label": badge,
                 "seen": described(aspect, status, answer), "goal": PLAIN[aspect]["goal"],
-                "trust": TRUST[row["level"]], "detail": detail(aspect, answer),
+                "trust": f"{means} {TRUST[row['level']]}", "detail": detail(aspect, answer),
                 "drill_id": drill}))  # fmt: skip
     found.sort(key=lambda point: point[:2], reverse=True)
     return [point for *_, point in found[:MAX_POINTS]]
@@ -378,12 +389,11 @@ def others(answer: dict, found: list[dict]) -> list[dict]:
         if status == "inside":
             part["note"] = "Es solo una observación."
         if status == "outside":
-            part["note"] = ("Es solo una observación, sin ejercicio: en los videos con los que "
-                            "probamos la app, esta señal acertó "
-                            f"{often(float(POINTS[aspect]['precision']))}.")  # fmt: skip
+            part["note"] = ("Es solo una observación, sin ejercicio. "
+                            + sure(float(POINTS[aspect]["precision"]))[2])  # fmt: skip
         if status == "improve":
-            part["note"] = (f"También lo marcamos, pero damos {MAX_POINTS} puntos como máximo y en "
-                            "los otros la app acierta más.")  # fmt: skip
+            part["note"] = (f"También lo marcamos, pero damos {MAX_POINTS} puntos como máximo y los "
+                            "otros son más probables.")  # fmt: skip
         out.append(part)
     return out
 
