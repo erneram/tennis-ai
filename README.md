@@ -285,6 +285,45 @@ M1f is M1e trained with JC's 44 serves after the feedback too, as M1d is M1c wit
 
 M1g is M1e trained with synthetic faults too (`--synthetic`). In each fold, each training serve without the fault gets a copy where the tossing arm drops early: its elbow and wrist are warped in time so the wrist goes below its shoulder 0 to 5 frames before the racket wrist is lowest, and the racket arm is left as it was (`train.synthetic`). 11 of the 20 clean training serves give one (the others drop the arm only after contact), from JC, pro02 and pro03; validation and test are scored on real serves only. The aim was serves with the fault that are not only JC's. The rule fixed before training (more value on validation than M1e, and a within-JC validation AUROC no lower than M1e's 0.62) rejects it. Its validation value is higher (Q36.96 against Q36.00), but within JC it ranks no better than chance (0.53). On serves it never trained on it also calls "drops early" more often: JC after the feedback 84 % against 66 %, EA 4 % against 2 %, THETIS 65 to 69 % against 40 to 46 %. The copies teach the drop as the code draws it and push the model toward recommending the drill; they do not stand in for real faults of other players.
 
+**The body: M3 and M3b.** The labeling tool's "Cuerpo" tab asks about six more aspects of the serve (legs, shoulders, the racket at the peak, the racket drop, the arm at contact, the landing). Ernesto answered them on 154 serves; Hugo could not, so there is no second rater. Each answer was checked against a pose measure written beforehand, with no training (`strokes/serve/body.py`, `eval/body.py`, `experiments/serve/body.csv`; AUROC of the measure for "needs work", on all serves and within EA and within JC):
+
+| Aspect | Needs work | All | Within EA | Within JC | Amateurs against pros |
+|---|---|---|---|---|---|
+| Legs: the hips go down before the jump | 32 of 153 | 0.89 | 0.60 | 1.00 | 0.68 |
+| Shoulders: the tossing one above at the trophy | 81 of 152 | 0.64 | 0.55 | 0.64 | 0.78 |
+| Racket at the peak: time from its lowest point to contact | 92 of 154 | 0.71 | 0.33 | 0.39 | 0.89 |
+| Racket drop: how low the racket wrist goes | 56 of 154 | 0.53 | 0.26 | 0.43 | 0.65 |
+| Arm at contact: the racket wrist above its shoulder | 133 of 154 | 0.98 | – | – | 0.99 |
+| Landing: the hips move into the court | 55 of 154 | 0.87 | 0.91 | 0.78 | 0.45 |
+
+Legs, landing and, less clearly, shoulders follow the serve within each player. For the two racket aspects, the answer and the measure disagree within each player (AUROC under 0.5), so the answer follows who serves. Arm at contact is "up" only on professional serves, so it separates amateurs from professionals and nothing else. The racket measures first searched 0.6 s before contact and saturated on every serve; the search was changed to between the trophy and contact before any model was trained. A blind retest of 30 answered serves ("Cuerpo · repetir", same seed, no file names) measures the annotator against themself; it is answered at least a day after the first pass and is still pending. By the rule fixed beforehand, an aspect with a retest kappa under 0.40 is not trained on or shown.
+
+M3 is M1e's network with one output per aspect (`train.network(outputs=6)`), trained on the 17 joints mirrored so the tossing arm is always the left one and measured from each frame's hips, with a masked loss so unanswered aspects do not count, 85 epochs and 5 seeds, nothing tuned. Folds keep each session on one side, thresholds come from validation (best F1). An aspect is adopted, that is shown as the model's answer, only if it passes every line fixed before training: retest kappa 0.40 or more; validation AUROC within EA and within JC of 0.70 or more and no lower than its measure's; AUROC 0.65 or more on a player left out of training (EA, then JC); at most 20 % of the professionals' serves called "needs work"; and moving the aspect's own body part toward "needs work" must raise the probability on 80 % of the serves answered "as it should be", while moving an unrelated part moves it less than 0.05. M3 fails that last check on every aspect (legs 78 %, landing 7 %): measuring every frame from its own hips hides how far the body moves. M3b, the same network on positions measured from the hips at contact, was added after seeing that (post hoc, so it is not a test of the original design) and scored by the same lines (`experiments/serve/m3-checks.csv`, `m3b-checks.csv`):
+
+| M3b | Within EA | Within JC | New player EA | New player JC | Pros called needs work | Own edit raises | Unrelated edit moves |
+|---|---|---|---|---|---|---|---|
+| Legs | 0.39 | 0.97 | 0.66 | 0.95 | 0 % | 100 % | 0.028 |
+| Shoulders | 0.54 | 0.44 | 0.70 | 0.52 | 31 % | 80 % | 0.029 |
+| Racket at the peak | 0.53 | 0.35 | 0.59 | 0.49 | 24 % | 63 % | 0.009 |
+| Racket drop | 0.67 | 0.36 | 0.34 | 0.47 | 3 % | 95 % | 0.051 |
+| Arm at contact | – | – | – | – | 31 % | 0 % | 0.048 |
+| Landing | 0.905 | 0.788 | 0.90 | 0.67 | 7 % | 97 % | 0.028 |
+
+No aspect is adopted, by either model. Landing comes closest: it carries over to a new player, rarely flags professionals and rests on the right part of the body, but within EA and within JC it is 0.003 below its own untrained measure (0.905 against 0.908, 0.788 against 0.790), so the network adds nothing the measure does not already give. M3b also calls most THETIS serves, filmed from the front, "needs work" (77 to 100 % on every aspect but the racket drop), so the camera check would still be needed.
+
+The drill list (`eval/body.py --recommend`, `experiments/serve/recommend.csv`): the toss arm from M1e plus the adopted aspects, at most two drills, the furthest past its threshold first. With none adopted it is M1e alone. Scored on Ernesto's answers and the toss labels (value per amateur analysis with the weights of `configs/value.yaml`, one miss per marked problem without a drill, so every list is negative while the body is not covered):
+
+| List (test, 18 serves) | Precision | Coverage | Pros told no clear problem | Q per amateur analysis |
+|---|---|---|---|---|
+| M1e, the app | 0.81 | 0.19 | 100 % | −95.70 |
+| M1e plus every M3b aspect, not adopted | 0.85 | 0.43 | 50 % | 35.55 |
+| Pose measures alone, no training | 0.47 | 0.24 | 50 % | −142.19 |
+| toss_hold always | 0.72 | 0.19 | 0 % | −95.70 |
+
+Every M3b aspect would cover more than twice the marked problems and is worth the most, but it fails the within-player lines: part of that comes from telling the player, not the serve, which these answers, from one rater who sees the player, reward. On validation (136 serves of JC, EA and the professionals) the same order holds (M1e 0.20 precision, every M3b aspect 0.77, measures 0.62).
+
+So the app (`app/service.py`) still gives M1e's drill alone and, next to it, two things that are not the model's answer: the toss height against the professionals' (median 1.05 torso lengths, 9 in 10 at 0.73 or more, `improvement.csv`) and the body measures that separate amateurs from professionals with AUROC 0.80 or more, racket at the peak and arm at contact, against the professionals' median. On jc-s30 (test split, Nov 1) it reads 0.31 for the toss, 0.83 s against 0.20 s for the racket and 0.77 against 1.02 torso lengths for the arm at contact. What would let the body model answer: the retest kappa, a second rater who does not see the player, and amateurs with and without each problem recorded the same way.
+
 Bias and robustness (`eval/bias.py`, `experiments/serve/bias.csv` and `bias.png`), for B0, M1c, M2c and later M1d, M1e and M1f at their thresholds:
 
 - **Amateur against professional, not the fault.** On JC's serves alone the models rank no better than chance on validation (AUROC B0 0.41, M1c 0.44, M2c 0.36; 10 serves with the fault, 11 without); on test, with only 3 serves without it, B0 0.83, M1c 0.60, M2c 0.36. On validation and test together they call "drops early" on most of JC's serves without the fault (B0 79 %, M1c 97 %, M2c 100 % of 14) and on few professional ones (B0 36 %, M1c 9 %, M2c 4 % of 11). With one amateur who has every serve with the fault, the models mostly learned to tell JC from the professionals, and their value comes from recommending the drill to JC. Frame rate and orientation follow the player, so they cannot be separated from it. The fix is data: more amateurs, with and without the fault, recorded the same way (the improvement study's videos).
