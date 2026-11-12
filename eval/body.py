@@ -267,28 +267,28 @@ def checks(data, y_all: np.ndarray, kappas: dict, model_name: str) -> None:
             kappas[aspect][0] >= MIN_KAPPA if found else None,
             "" if found else "pending: Cuerpo · repetir")  # fmt: skip
         # 1. Within each player, against the measure
-        verdicts = []
+        passed = []
         for who in ("ea", "jc"):
             mine = within(target, score[:, k], pool & (player == who))
             measured = within(target, values[aspect], pool & (player == who))
             if not np.isnan(mine):
-                verdicts.append(mine >= MIN_WITHIN and mine >= measured)
+                passed.append(mine >= MIN_WITHIN and mine >= measured)
             add(aspect, f"1 within {who.upper()}", mine, MIN_WITHIN,
                 None if np.isnan(mine) else mine >= MIN_WITHIN and mine >= measured,
                 f"measure {measured:.3f}")  # fmt: skip
-        add(aspect, "1 within players", float(all(verdicts)) if verdicts else np.nan, None,
-            bool(verdicts) and all(verdicts), "both players" if len(verdicts) == 2 else
-            f"{len(verdicts)} player(s) with {MIN_CLASS}+ serves per class")  # fmt: skip
+        add(aspect, "1 within players", float(all(passed)) if passed else np.nan, None,
+            bool(passed) and all(passed), "both players" if len(passed) == 2 else
+            f"{len(passed)} player(s) with {MIN_CLASS}+ serves per class")  # fmt: skip
         # 2. A player never trained on
-        verdicts = []
+        passed = []
         for who, (held, held_score) in left_out.items():
             area = within(target[held], held_score[:, k], np.ones(held.sum(), bool))
             if not np.isnan(area):
-                verdicts.append(area >= MIN_NEW_PLAYER)
+                passed.append(area >= MIN_NEW_PLAYER)
             add(aspect, f"2 new player {who.upper()}", area, MIN_NEW_PLAYER,
                 None if np.isnan(area) else area >= MIN_NEW_PLAYER)  # fmt: skip
-        add(aspect, "2 new players", float(all(verdicts)) if verdicts else np.nan, None,
-            bool(verdicts) and all(verdicts))  # fmt: skip
+        add(aspect, "2 new players", float(all(passed)) if passed else np.nan, None,
+            bool(passed) and all(passed))  # fmt: skip
         # 3. The professionals
         alarms = (score[pros, k] >= cuts[k]).mean()
         add(aspect, "3 professionals called needs work", alarms, MAX_PROS, alarms <= MAX_PROS,
