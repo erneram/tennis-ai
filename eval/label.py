@@ -30,6 +30,7 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leav
 import csv
 import json
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 import cv2
@@ -101,6 +102,26 @@ ASPECTS = [
       ("Hacia atrás o de lado, pierde el equilibrio", "off_balance"), ("No se ve", "unseen")]),
 ]  # fmt: skip
 ASPECT_COLUMNS = ["video", "player", *(a[0] for a in ASPECTS), "notes"]
+# The videos stay in view while the member scrolls through the questions next to them; Gradio's
+# container hides its overflow, which would turn it into the scroll box that `sticky` follows.
+CSS = """.gradio-container { overflow-x: clip !important; overflow-y: visible !important; }
+.watch { position: sticky; top: 8px; align-self: flex-start; }"""
+
+
+@contextmanager
+def beside_videos():
+    """The serve in slow motion, at normal speed and the professional's on the left, and the
+    questions written inside the `with` block on the right."""
+    with gr.Row():
+        with gr.Column(scale=3, elem_classes="watch"):
+            # Heights fit a laptop screen, with vertical phone videos too
+            slow = gr.Video(label="Cámara lenta (x4)", interactive=False, height=420)
+            with gr.Row():
+                normal = gr.Video(label="Velocidad normal", interactive=False, height=220)
+                reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
+                                     interactive=False, height=220)  # fmt: skip
+        with gr.Column(scale=2):
+            yield normal, slow, reference
 
 
 def read(path: Path) -> list[dict]:
@@ -370,15 +391,11 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
         with gr.Row():
             choice = gr.Dropdown(label="Video")
             status = gr.Markdown()
-        with gr.Row():
-            normal = gr.Video(label="Velocidad normal", interactive=False)
-            slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
-            reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
-                                 interactive=False)  # fmt: skip
-        valid = gr.Radio(VALID, label=ASK_VALID)
-        category = gr.Radio(ARM, label=ASK_ARM)
-        notes = gr.Textbox(label="Notas (opcional)")
-        save = gr.Button("Guardar y siguiente", variant="primary")
+        with beside_videos() as (normal, slow, reference):
+            valid = gr.Radio(VALID, label=ASK_VALID)
+            category = gr.Radio(ARM, label=ASK_ARM)
+            notes = gr.Textbox(label="Notas (opcional)")
+            save = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Cuerpo"):
         gr.Markdown("Siete preguntas sobre el resto del saque: piernas, cuerpo, raqueta, impacto "
                     "y final. Compáralo con el saque profesional de referencia. Responde lo que "
@@ -387,14 +404,10 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
         with gr.Row():
             aspect_choice = gr.Dropdown(label="Video")
             aspect_status = gr.Markdown()
-        with gr.Row():
-            aspect_normal = gr.Video(label="Velocidad normal", interactive=False)
-            aspect_slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
-            aspect_reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
-                                        interactive=False)  # fmt: skip
-        aspects = [gr.Radio(options, label=ask, info=info) for _, ask, info, options in ASPECTS]
-        aspect_notes = gr.Textbox(label="Notas (opcional)")
-        save_aspect = gr.Button("Guardar y siguiente", variant="primary")
+        with beside_videos() as (aspect_normal, aspect_slow, aspect_reference):
+            aspects = [gr.Radio(options, label=ask, info=info) for _, ask, info, options in ASPECTS]
+            aspect_notes = gr.Textbox(label="Notas (opcional)")
+            save_aspect = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Decidir juntos"):
         gr.Markdown("Aquí salen solo los videos en que sus respuestas no coinciden. Véanlos "
                     "juntos, comenten qué ve cada uno y respondan una sola vez entre los dos. "
@@ -402,16 +415,12 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
         with gr.Row():
             agree_choice = gr.Dropdown(label="Video")
             agree_status = gr.Markdown()
-        with gr.Row():
-            agree_normal = gr.Video(label="Velocidad normal", interactive=False)
-            agree_slow = gr.Video(label="Cámara lenta (x4)", interactive=False)
-            agree_reference = gr.Video(label="Referencia: profesional en cámara lenta (x4)",
-                                       interactive=False)  # fmt: skip
-        said = gr.Markdown()
-        agree_valid = gr.Radio(VALID, label=ASK_VALID)
-        agree_category = gr.Radio(ARM, label=ASK_ARM)
-        agree_notes = gr.Textbox(label="Por qué lo decidieron (opcional)")
-        save_agree = gr.Button("Guardar decisión y siguiente", variant="primary")
+        with beside_videos() as (agree_normal, agree_slow, agree_reference):
+            said = gr.Markdown()
+            agree_valid = gr.Radio(VALID, label=ASK_VALID)
+            agree_category = gr.Radio(ARM, label=ASK_ARM)
+            agree_notes = gr.Textbox(label="Por qué lo decidieron (opcional)")
+            save_agree = gr.Button("Guardar decisión y siguiente", variant="primary")
     with gr.Tab("Revisar respuestas"):
         gr.Markdown(
             "Aquí se mide si el modelo de Qwen (proyecto 3) inventa cosas. Cada pantalla es una "
@@ -464,4 +473,4 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="127.0.0.1", server_port=7861)
+    demo.launch(server_name="127.0.0.1", server_port=7861, css=CSS)
