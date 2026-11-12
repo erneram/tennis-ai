@@ -15,7 +15,9 @@ players come in turn, so any number of answers covers all of them. Writes
 eval/serve/aspects_<name>.csv.
 "Decidir juntos": the videos where the members' answers differ, with each member's answer, for
 the members to watch together and answer once. Writes eval/serve/labels.csv: the rows everyone
-agrees on and the decisions taken so far.
+agrees on, the clips of ONE_RATER labeled by a single member and the decisions taken so far.
+`python -m eval.label --merge` writes it without opening the app, for when there is nothing to
+decide.
 "Revisar respuestas": the key frame of each check in the runs of the final Project 3 version
 (REVIEW_RUNS), with what the model said it saw and concluded; the member says whether both match
 the frame. Only videos the member already labeled are shown, so the labels stay blind. Writes
@@ -27,6 +29,7 @@ import os
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leaves the machine
 
+import argparse
 import csv
 import json
 import re
@@ -48,6 +51,9 @@ CATEGORIES = base.load(STROKE, "criteria.yaml")["categories"]
 DRILLS = {d["category"]: d["id"] for d in base.load(STROKE, "drills.yaml")["drills"]}
 NAMES = sorted(p.stem.removeprefix("labels_") for p in EVAL.glob("labels_*.csv"))
 AGREED = EVAL / "labels.csv"  # what strokes/serve/dataset.py trains on
+# Clips one member labeled alone at the team's request (the YouTube videos of Nov 9): that
+# member's label counts without a second one
+ONE_RATER = ("pro05", "yt")
 LABEL_COLUMNS = ["video", "player", "valid", "phase", "category", "drill_id", "notes"]
 REVIEW_COLUMNS = ["run", "video", "category", "seen_ok", "answer_ok", "notes"]
 OK = [("Sí", "yes"), ("No", "no"), ("No se puede saber", "unclear")]
@@ -252,6 +258,11 @@ def disputes() -> tuple[list[dict], dict[str, list[dict]]]:
     agreed, differ = [], {}
     for video_name, first in files[0].items():
         rows = [f.get(video_name) or {"valid": ""} for f in files]
+        if video_name.startswith(ONE_RATER) and sum(bool(r["valid"]) for r in rows) == 1:
+            name, row = next((n, r) for n, r in zip(NAMES, rows) if r["valid"])
+            note = f"one rater: {name}" + (f"; {name}: {row['notes']}" if row["notes"] else "")
+            agreed.append({**row, "notes": note})
+            continue
         if not all(r["valid"] for r in rows):
             continue  # someone has not labeled it yet
         if len({(r["valid"], r["category"]) for r in rows}) > 1:
@@ -294,14 +305,22 @@ def agree_view(choice: str | None = None):
     )
 
 
-def save_agreement(choice: str, valid: str | None, category: str | None, notes: str):
+def merge(decision: dict | None = None) -> None:
+    """Write labels.csv: the agreed rows, the decisions already in it plus `decision`, and its rows
+    that are not the members' labels, in the order of the first member's file."""
     agreed, differ = disputes()
     decided = {r["video"]: r for r in read(AGREED) if r["video"] in differ}
-    decided[choice] = answered(differ[choice][0], valid, category, notes)
+    if decision:
+        decided[decision["video"]] = decision
     order = {r["video"]: i for i, r in enumerate(read(EVAL / f"labels_{NAMES[0]}.csv"))}
     rows = sorted(agreed + list(decided.values()), key=lambda r: order[r["video"]])
     others = [r for r in read(AGREED) if r["video"] not in order]  # not the members' labels
     write(AGREED, rows + others, LABEL_COLUMNS)
+
+
+def save_agreement(choice: str, valid: str | None, category: str | None, notes: str):
+    _, differ = disputes()
+    merge(answered(differ[choice][0], valid, category, notes))
     return agree_view()  # the next video still to decide
 
 
@@ -473,4 +492,9 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="127.0.0.1", server_port=7861, css=CSS)
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--merge", action="store_true", help="write labels.csv and exit")
+    if parser.parse_args().merge:
+        merge()
+    else:
+        demo.launch(server_name="127.0.0.1", server_port=7861, css=CSS)

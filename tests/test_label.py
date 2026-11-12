@@ -81,3 +81,28 @@ def test_body_answers_take_players_in_turn_and_need_every_question(tmp_path, mon
         saved["video"] == "jc-s1.mp4" and saved["legs"] == "none" and saved["notes"] == "low toss"
     )
     assert label.aspect_view("a", "jc-s1.mp4")[4] == "none"  # the saved answer comes back
+
+
+def test_one_rater_clips_count_alone_and_merge_keeps_the_decisions(tmp_path, monkeypatch):
+    monkeypatch.setattr(label, "EVAL", tmp_path)
+    monkeypatch.setattr(label, "NAMES", ["a", "b"])
+    monkeypatch.setattr(label, "AGREED", tmp_path / "labels.csv")
+    a = [("v0.mp4", DROP, ""), ("v1.mp4", NONE, ""), ("yt9-s01.mp4", NONE, "side"),
+         ("v2.mp4", NONE, "")]  # fmt: skip
+    b = [("v0.mp4", DROP, ""), ("v1.mp4", DROP, "")]
+    for name, rows in (("a", a), ("b", b)):
+        rows = [label.answered({"video": v, "player": "jc"}, "1", c, n) for v, c, n in rows]
+        label.write(tmp_path / f"labels_{name}.csv", rows, label.LABEL_COLUMNS)
+
+    agreed, differ = label.disputes()
+    assert [r["video"] for r in agreed] == ["v0.mp4", "yt9-s01.mp4"]  # v2.mp4 waits for b
+    assert agreed[1]["notes"] == "one rater: a; a: side"
+    assert list(differ) == ["v1.mp4"]
+    decision = label.answered(differ["v1.mp4"][0], "1", NONE, "settled")
+    label.write(tmp_path / "labels.csv", [decision], label.LABEL_COLUMNS)
+    label.merge()
+    rows = label.read(tmp_path / "labels.csv")
+    assert [(r["video"], r["category"], r["notes"]) for r in rows] == [
+        ("v0.mp4", DROP, ""), ("v1.mp4", NONE, "settled"),
+        ("yt9-s01.mp4", NONE, "one rater: a; a: side"),
+    ]  # fmt: skip
