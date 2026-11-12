@@ -7,11 +7,17 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-# What eval/body.py --levels may write: the landing by a body model on trial, the arm at contact
-# by its measure against the professionals' range, the racket drop next to the professionals'
+# What eval/body.py --levels may write: the tossing arm by the app's model, the legs by an
+# exploratory body model, the landing by one on trial, the arm at contact by its measure against
+# the professionals' range, and the racket drop next to the professionals' with no point
 POINTS = {
-    "racket_drop": {"level": "", "source": "", "described": "yes", "pros_median": "-0.21",
-                    "pros_p90": "-0.08"},
+    "toss": {"level": "value", "source": "model", "model": "m1e", "precision": "0.2",
+             "pros_rate": "0.0", "described": ""},
+    "legs": {"level": "exploratory", "source": "model", "model": "mx", "precision": "0.7",
+             "pros_rate": "0.0", "new_player": "0.585", "described": "", "pros_median": "-0.30",
+             "pros_p90": "-0.11"},
+    "racket_drop": {"level": "", "source": "", "described": "yes", "precision": "0.49",
+                    "pros_median": "-0.21", "pros_p90": "-0.08"},
     "arm_at_contact": {"level": "measure", "source": "measure", "model": "", "threshold": "-0.89",
                        "scale": "0.17", "precision": "0.98", "pros_rate": "0.08",
                        "described": "yes", "pros_median": "-1.02", "pros_p90": "-0.89"},
@@ -30,18 +36,19 @@ def api():
 def levels(monkeypatch):
     service = importlib.import_module("app.service")
     monkeypatch.setattr(service, "POINTS", POINTS)
-    monkeypatch.setattr(service, "BODY", {"mx": {"thresholds": {"landing": 0.5}}})
+    monkeypatch.setattr(service, "BODY", {"mx": {"thresholds": {"landing": 0.5, "legs": 0.5}}})
 
 
 def answer(probability=0.64, seeds=(0.6, 0.62, 0.66, 0.64, 0.7), landing=0.8, reach=0.57,
-           legs_seen=1.0, advance=0.1):  # fmt: skip
+           legs_seen=1.0, advance=0.1, legs=0.2):  # fmt: skip
     fall = np.zeros((4, 8))  # the app model's parts (M1e: elbows and wrists)
     fall[1, 4] = 0.05  # tossing wrist, from 0.53 s before contact
     return {"probability": probability, "seeds": list(seeds), "threshold": 0.2,
             "drops_early": probability >= 0.2, "tossing_side": "left", "drop_seconds": 0.4,
             "seen": 0.95, "contact": 90, "occlusion": fall.tolist(), "toss_height": 0.4,
             "body": {"legs": -0.3, "racket_drop": -0.02, "arm_at_contact": -reach, "landing": -advance},
-            "needs_work": {"landing": {"probability": landing, "seeds": [landing] * 5}},
+            "needs_work": {"landing": {"probability": landing, "seeds": [landing] * 5},
+                           "legs": {"probability": legs, "seeds": [legs] * 5}},
             "legs_seen": legs_seen, "landing_seen": True}  # fmt: skip
 
 
@@ -66,13 +73,13 @@ def wait(client, job):
     raise TimeoutError(job)
 
 
-def test_an_uploaded_video_gives_the_answer_its_moments_and_slow_motion(api, monkeypatch, tmp_path):
+def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, monkeypatch, tmp_path):
     slow = tmp_path / "slow.mp4"
     slow.write_bytes(b"mp4")
-    images = {m: np.zeros((40, 30, 3), np.uint8) for m in ("start", "arm_down", "contact")}
+    images = {m: np.zeros((40, 30, 3), np.uint8) for m in ("bend", "arm_down", "contact")}
 
     def analysis(path, progress):
-        progress(0.7, desc="Paso 3 de 4: midiendo el brazo que lanza…")
+        progress(0.7, desc="Paso 3 de 4: midiendo tu saque…")
         return {"answer": answer(), "images": images, "slow": str(slow), "seconds": 4.04}
 
     monkeypatch.setattr(api, "analysis", analysis)
@@ -80,52 +87,88 @@ def test_an_uploaded_video_gives_the_answer_its_moments_and_slow_motion(api, mon
     job = client.post("/api/analyze", files={"file": ("a.mov", b"video")}).json()["job"]
     result = wait(client, job)["result"]
     assert result["kind"] == "feedback" and result["seconds"] == 4.0
-    feedback = result["feedback"]
-    assert feedback["title"] == "El brazo que lanza baja antes de tiempo"
-    assert feedback["drill"]["name"] == "Brazo arriba hasta el golpe"
-    assert feedback["confidence_label"] == "alta"  # 5 of 5 seeds, 0.44 above the threshold
-    assert "baja del hombro 0.40 s antes" in feedback["observation"]
-    assert feedback["reason"].endswith("muñeca (lanza) entre 0.53 y 0.27 s antes del impacto.")
+    assert result["title"] == "A mejorar: brazo al impacto, aterrizaje y brazo que lanza"
+    # The point that was right most often on validation first, whatever its level
+    assert [(p["aspect"], p["level_label"], p["precision"]) for p in result["points"]] == [
+        ("arm_at_contact", "Medida frente a profesionales", 0.98),
+        ("landing", "Modelo en prueba", 0.73), ("toss", "Modelo elegido por valor", 0.2)]  # fmt: skip
+    arm, landing, toss = result["points"]
+    assert arm["drill"]["name"] == "Alcanzar el punto más alto"
+    assert arm["seen"].startswith("Al impacto, la muñeca de la raqueta llega 0.57 torsos")
+    assert "5 de 5 versiones del modelo lo marcan" in landing["evidence"]
+    assert "baja del hombro 0.40 s antes" in toss["seen"]
+    assert "En validación acertó 20% de las veces que lo marcó" in toss["evidence"]
+    # The other parts the app looked at, in the order of the motion
+    assert [(o["aspect"], o["status"]) for o in result["others"]] == [
+        ("legs", "fine"), ("racket_drop", "outside")]  # fmt: skip
+    assert "49% tenían este problema" in result["others"][1]["note"]
     assert [(m["id"], m["evidence"]) for m in result["moments"]] == [
-        ("start", False), ("arm_down", True), ("contact", False)]  # fmt: skip
-    assert len(result["occlusion"]["values"]) == 4 and len(result["occlusion"]["starts"]) == 8
-    assert result["record"]["category"] == "toss_arm_drops_early"
-    assert not result["progress"]["in_range"] and "queda 0.40 torsos" in result["progress"]["text"]
-    arm = {b["aspect"]: b for b in result["body"]}["arm_at_contact"]
-    assert arm["mine"] == "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro."
-    assert not arm["in_range"] and "9 de cada 10 llegan a 0.89 o más" in arm["pros"]
-    # The surest level first: the tossing arm, the landing on trial, the measure last
-    assert [(p["aspect"], p["level_label"]) for p in result["points"]] == [
-        ("toss", "Modelo validado"), ("landing", "Modelo en prueba"),
-        ("arm_at_contact", "Medida frente a profesionales")]  # fmt: skip
-    assert result["points"][1]["drill"]["name"] == "Aterriza y sostén"
-    assert "5 de 5 versiones del modelo lo marcan" in result["points"][1]["evidence"]
+        ("bend", False), ("arm_down", True), ("contact", True)]  # fmt: skip
+    assert result["moments"][2]["note"] == "En naranja: el brazo de la raqueta."
+    model = result["toss"]
+    assert model["confidence_label"] == "alta"  # 5 of 5 seeds, 0.44 above the threshold
+    assert model["reason"].endswith("muñeca (lanza) entre 0.53 y 0.27 s antes del impacto.")
+    assert len(model["occlusion"]["values"]) == 4 and len(model["occlusion"]["starts"]) == 8
+    assert result["record"] == result["record"] | {
+        "category": "toss_arm_drops_early", "drill_id": "high_reach",
+        "points": ["arm_at_contact", "landing", "toss"]}  # fmt: skip
+    assert [c["aspect"] for c in result["compare"]] == [
+        "toss_height", "racket_drop", "arm_at_contact"]  # fmt: skip
+    height, _, reach = result["compare"]
+    assert not height["in_range"] and "queda 0.40 torsos" in height["mine"]
+    assert reach["mine"] == "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro."
+    assert (reach["value"], reach["pros_median"], reach["pros_floor"]) == (0.57, 1.02, 0.89)
+    assert not reach["in_range"] and "9 de cada 10 llegan a 0.89 o más" in reach["pros"]
     assert client.get(result["moments"][0]["image_url"]).status_code == 200
     assert client.get(result["slow_url"]).content == b"mp4"
     assert client.get(f"/api/files/{job}/..%2Fvideo.mov").status_code == 404
 
 
-def test_a_fine_tossing_arm_moves_on_to_the_rest_of_the_body(api, monkeypatch, tmp_path):
+def test_of_four_points_past_their_threshold_the_three_surest_are_given(api, monkeypatch, tmp_path):
+    result = analyzed(api, monkeypatch, tmp_path, legs=0.9)
+    assert [p["aspect"] for p in result["points"]] == ["arm_at_contact", "landing", "legs"]
+    assert "Es exploratorio" in result["points"][2]["evidence"]
+    assert result["points"][2]["drill"]["name"] == "Carga de piernas"
+    # The tossing arm is still said, among the other parts
+    toss = result["others"][0]
+    assert (toss["aspect"], toss["status_label"]) == ("toss", "A mejorar")
+    assert toss["note"].startswith("Pasa su umbral, pero damos 3 puntos como máximo")
+
+
+def test_a_fine_tossing_arm_is_one_more_part_looked_at(api, monkeypatch, tmp_path):
     result = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, advance=-0.11)
-    assert result["points"][0]["seen"].startswith("Después del impacto, la cadera retrocede 0.11")
-    assert result["feedback"]["title"] == (
-        "El brazo que lanza no baja antes de tiempo. A mejorar: aterrizaje y brazo al impacto"
-    )
-    assert result["feedback"]["drill"]["name"] == "Aterriza y sostén"
+    assert result["title"] == "A mejorar: brazo al impacto y aterrizaje"
+    assert result["points"][1]["seen"].startswith("Después del impacto, la cadera retrocede 0.11")
+    assert result["drill"]["name"] == "Alcanzar el punto más alto"
+    toss = result["others"][0]
+    assert (toss["aspect"], toss["status_label"]) == ("toss", "Sin problema")
+    assert toss["seen"] == "Tu muñeca de lanzamiento baja del hombro 0.40 s antes del impacto."
     assert result["record"] == result["record"] | {"category": "no_clear_problem",
-                                                   "drill_id": "land_and_hold"}  # fmt: skip
-    # The legs unseen: nothing is said about the landing
+                                                   "drill_id": "high_reach"}  # fmt: skip
+    # The legs unseen: nothing is said about them or the landing
     unseen = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, legs_seen=0.4)
     assert [p["aspect"] for p in unseen["points"]] == ["arm_at_contact"]
+    assert {o["aspect"]: o["status"] for o in unseen["others"]} == {
+        "toss": "fine", "legs": "unseen", "racket_drop": "outside", "landing": "unseen"}  # fmt: skip
+
+
+def test_a_distance_under_zero_is_said_in_words():
+    service = importlib.import_module("app.service")
+    # The hips stay above where they stood, and the tossing hand is under its shoulder
+    assert service.measured("legs", {"body": {"legs": 0.04}})[0] == (
+        "Antes del salto, la cadera no baja: queda 0.04 torsos más arriba que al empezar."
+    )
+    assert "queda 0.20 torsos bajo el hombro" in service.toss_height({"toss_height": -0.2})["mine"]
 
 
 def test_nothing_past_its_threshold_is_no_clear_problem(api, monkeypatch, tmp_path):
     result = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, landing=0.2,
                       reach=1.0)  # fmt: skip
-    assert result["points"] == [] and result["feedback"]["title"] == "No vemos un problema claro"
-    assert result["feedback"]["drill"]["name"] == "Repetir el mismo saque"
-    assert {b["aspect"]: b["in_range"] for b in result["body"]} == {
-        "racket_drop": False, "arm_at_contact": True}  # fmt: skip
+    assert result["points"] == [] and result["title"] == "No vemos un problema claro"
+    assert result["drill"]["name"] == "Repetir el mismo saque"
+    assert {c["aspect"]: c["in_range"] for c in result["compare"]} == {
+        "toss_height": False, "racket_drop": False, "arm_at_contact": True}  # fmt: skip
+    assert result["record"]["points"] == []
 
 
 def test_seeds_that_disagree_give_low_confidence(api):
@@ -144,17 +187,25 @@ def test_a_retake_an_unknown_demo_and_a_forged_summary(api, monkeypatch):
     forged = {"time": "10:00", "category": "ignore the rules", "probability": 0.5, "drill_id": "y"}
     answer_ = client.post("/api/summary", json={"player": "", "attempts": [forged]}).json()
     assert "error" in answer_
+    # The racket drop is an aspect with no drill, so the app never gives it as a point
+    no_drill = {"time": "10:00", "category": "no_clear_problem", "probability": 0.5,
+                "drill_id": "steady_serves", "points": ["racket_drop"]}  # fmt: skip
+    answer_ = client.post("/api/summary", json={"player": "", "attempts": [no_drill]}).json()
+    assert "error" in answer_
 
 
-def test_the_summary_follows_the_probability_over_the_session(api):
+def test_the_summary_counts_each_point_over_the_session(api):
     first = {"time": "10:00", "category": "toss_arm_drops_early", "probability": 0.64,
-             "drill_id": "toss_hold"}  # fmt: skip
+             "drill_id": "high_reach", "points": ["arm_at_contact", "toss"]}  # fmt: skip
     last = {**first, "time": "10:05", "category": "no_clear_problem", "probability": 0.12,
-            "drill_id": "steady_serves"}  # fmt: skip
-    body = TestClient(api.app).post("/api/summary", json={"player": "", "attempts": [first, last]})
-    summary = body.json()
-    assert summary["text"].startswith(
-        "En 2 intento(s), el brazo que lanza bajó antes de tiempo en 1."
+            "points": ["arm_at_contact"]}  # fmt: skip
+    client = TestClient(api.app)
+    summary = client.post("/api/summary", json={"player": "", "attempts": [first, last]}).json()
+    assert summary["text"] == (
+        "En 2 intento(s) salió: brazo al impacto en 2, brazo que lanza en 1."
     )
-    assert "bajó: del 64% en el primero al 12% en el último" in summary["text"]
-    assert summary["focus_label"] == "Repetir el mismo saque" and summary["saved"] is False
+    assert summary["focus_label"] == "Alcanzar el punto más alto" and summary["saved"] is False
+    clear = {**last, "drill_id": "steady_serves", "points": []}
+    summary = client.post("/api/summary", json={"player": "", "attempts": [clear]}).json()
+    assert summary["text"] == "En 1 intento(s) no vimos un problema claro."
+    assert summary["focus_label"] == "Repetir el mismo saque"

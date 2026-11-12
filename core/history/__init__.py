@@ -35,11 +35,13 @@ def save_session(player: str, attempts: list[dict]) -> list[dict]:
     return sessions
 
 
-def attempt(category: str, probability: float, drill_id: str) -> dict:
-    """One analyzed serve of a session: the model's answer and the drill it led to."""
+def attempt(category: str, probability: float, drill_id: str, points: list[str]) -> dict:
+    """One analyzed serve of a session: the model's answer for the tossing arm, the points to
+    improve it got and the drill of the first."""
     return {
         "time": f"{datetime.now():%H:%M}",
         "category": category,
         "probability": round(probability, 3),
         "drill_id": drill_id,
+        "points": points,
     }

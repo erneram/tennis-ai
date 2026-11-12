@@ -9,6 +9,7 @@ import re
 import shutil
 import threading
 import uuid
+from collections import Counter
 from pathlib import Path
 
 import cv2
@@ -19,24 +20,25 @@ from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import UploadFile
 
 from app.service import (
+    ASPECTS,
     CONFIDENCE,
     DEMO_VIDEOS,
     DRILLS,
     MODEL,
     MOMENTS,
+    ORANGE,
     OUTPUT_DIR,
     PARTS,
     RECORDING_TIPS,
-    STROKE,
+    UNCHECKED,
     analysis,
-    body_measures,
     certainty,
+    compared,
     confidence,
-    observation,
+    others,
     points,
     prepare_demo,
     reason,
-    toss_progress,
 )
 from core import ROOT, history
 from strokes.serve import baseline, model
@@ -147,84 +149,86 @@ def to_json(job: str, result: dict) -> dict:
     drops = answer["drops_early"]
     category = baseline.POSITIVE if drops else baseline.NEGATIVE
     found = points(answer)
+    said = [p["aspect"] for p in found]
     drill_id = found[0]["drill_id"] if found else "steady_serves"
     drill = DRILLS[drill_id]
     level = confidence(answer)
-    others = [p["label"].lower() for p in found]
+    names = [p["label"].lower() for p in found]
+    title = "No vemos un problema claro"
+    if found:
+        title = "A mejorar: " + " y ".join(filter(None, [", ".join(names[:-1]), names[-1]]))
     return {
         "kind": "feedback",
         "seconds": round(result["seconds"], 1),
         "cached": result.get("cached", False),
-        "feedback": {
+        "title": title,
+        "points": [
+            {k: v for k, v in point.items() if k != "drill_id"}
+            | {"drill": {k: DRILLS[point["drill_id"]][k] for k in ("name", "instructions")}}
+            for point in found
+        ],
+        "others": others(answer, found),
+        "unchecked": UNCHECKED,
+        "drill": {"name": drill["name"], "instructions": drill["instructions"]},
+        "moments": [
+            {
+                "id": name,
+                "label": MOMENTS[name][0],
+                "note": f"En naranja: {ORANGE[MOMENTS[name][2]]}.",
+                "evidence": MOMENTS[name][1] in said,
+                "image_url": f"/api/files/{job}/{name}.jpg",
+            }
+            for name in result["images"]
+        ],
+        "compare": compared(answer),
+        # How the model of the tossing arm decided: its probability, seeds and occlusion map
+        "toss": {
             "drops_early": drops,
-            "title": (
-                "El brazo que lanza baja antes de tiempo"
-                if drops
-                else "El brazo que lanza no baja antes de tiempo. A mejorar: "
-                + " y ".join(filter(None, [", ".join(others[:-1]), others[-1]]))
-                if found
-                else "No vemos un problema claro"
-            ),
-            "phase_label": STROKE.LABELS["trophy"],
-            "observation": observation(answer),
             "reason": reason(answer),
-            "drill": {"name": drill["name"], "instructions": drill["instructions"]},
             "probability": round(answer["probability"], 3),
             "threshold": round(answer["threshold"], 3),
             "seeds": answer["seeds"],
             "confidence": level,
             "confidence_label": CONFIDENCE[level],
             "certainty": certainty(answer),
+            "occlusion": {
+                "parts": PARTS,
+                "starts": [round(model.seconds(s), 2) for s in model.STARTS],
+                "values": answer["occlusion"],
+            },
         },
-        "moments": [
-            {
-                "id": name,
-                "label": MOMENTS[name],
-                "evidence": drops and name == "arm_down",
-                "image_url": f"/api/files/{job}/{name}.jpg",
-            }
-            for name in MOMENTS
-            if name in result["images"]
-        ],
-        "occlusion": {
-            "parts": PARTS,
-            "starts": [round(model.seconds(s), 2) for s in model.STARTS],
-            "values": answer["occlusion"],
-        },
-        "points": [
-            {k: v for k, v in point.items() if k != "drill_id"}
-            | {"drill": {k: DRILLS[point["drill_id"]][k] for k in ("name", "instructions")}}
-            for point in found
-        ],
-        "progress": toss_progress(answer),
-        "body": body_measures(answer),
         "slow_url": f"/api/files/{job}/slow.mp4",
-        "record": history.attempt(category, answer["probability"], drill_id),
+        "record": history.attempt(category, answer["probability"], drill_id, said),
     }
 
 
 def valid_attempt(attempt) -> bool:
-    """Attempts come back from the page and go into the history and the summary."""
+    """Attempts come back from the page and go into the history and the summary. A point is an
+    aspect the app gives a drill for."""
     return (isinstance(attempt, dict) and set(attempt) == {"time", "category", "probability",
-                                                           "drill_id"}
+                                                           "drill_id", "points"}
             and re.fullmatch(r"\d\d:\d\d", str(attempt["time"])) is not None
             and attempt["category"] in (baseline.POSITIVE, baseline.NEGATIVE)
             and isinstance(attempt["probability"], (int, float))
             and 0 <= attempt["probability"] <= 1
-            and attempt["drill_id"] in DRILLS)  # fmt: skip
+            and attempt["drill_id"] in DRILLS
+            and isinstance(attempt["points"], list)
+            and all(isinstance(p, str) and ASPECTS.get(p, ("", None))[1]
+                    for p in attempt["points"]))  # fmt: skip
 
 
 def session_summary(attempts: list[dict]) -> dict:
-    """What the session showed, from the attempts alone: how often the arm dropped early and how
-    the probability moved, and the drill of the last attempt."""
-    drops = sum(a["category"] == baseline.POSITIVE for a in attempts)
-    text = f"En {len(attempts)} intento(s), el brazo que lanza bajó antes de tiempo en {drops}."
-    if len(attempts) > 1:
-        first, last = attempts[0]["probability"], attempts[-1]["probability"]
-        trend = "bajó" if last < first else "subió" if last > first else "no cambió"
-        text += (f" La probabilidad de que baje antes {trend}: del {first:.0%} en el primero al "
-                 f"{last:.0%} en el último.")  # fmt: skip
-    drill = DRILLS[attempts[-1]["drill_id"]]
+    """What the session showed, from the attempts alone: in how many of them each point came up,
+    and the drill of the one that came up most (of the last attempt when none did)."""
+    count = Counter(point for a in attempts for point in a["points"])
+    text = f"En {len(attempts)} intento(s) "
+    if count:
+        text += "salió: " + ", ".join(f"{ASPECTS[point][0].lower()} en {n}"
+                                      for point, n in count.most_common()) + "."  # fmt: skip
+        drill = DRILLS[ASPECTS[count.most_common(1)[0][0]][1]]
+    else:
+        text += "no vimos un problema claro."
+        drill = DRILLS[attempts[-1]["drill_id"]]
     return {"text": text, "focus_label": drill["name"], "next_focus": drill["instructions"]}
 
 

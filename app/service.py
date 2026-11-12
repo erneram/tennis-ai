@@ -6,9 +6,9 @@ the tossing arm drops early and which joints and moments the answer rests on
 (strokes/serve/model.py), and the frames around contact become key moments and a slow motion with
 the skeleton drawn. The answer is a list of up to MAX_POINTS points to improve (points): the
 tossing arm and the aspects of the body in experiments/serve/points.csv (eval/body.py --levels),
-each with how far it can be trusted (LEVELS) and its drill. The toss height and the body measures
-that separate amateurs from professionals are shown next to the professionals'. No language model
-and no internet.
+each with how often it was right on validation, its level (LEVELS) and its drill; and the other
+parts the app looked at (others). The toss height and the body measures that separate amateurs
+from professionals are shown next to the professionals'. No language model and no internet.
 """
 
 import csv
@@ -18,6 +18,7 @@ import shutil
 import sys
 import tempfile
 import time
+import unicodedata
 from itertools import pairwise
 from pathlib import Path
 
@@ -48,35 +49,64 @@ IMAGE_SIDE = 720  # longest side of the key moments and the slow motion
 SPANISH = {"tossing": "lanza", "racket": "raqueta", "shoulder": "Hombro", "elbow": "Codo",
            "wrist": "Muñeca"}  # fmt: skip
 PARTS = [f"{SPANISH[joint]} ({SPANISH[arm]})" for arm, joint in map(str.split, MODEL["parts"])]
-# The professionals' toss height (eval/improvement.py), and what the app says about each aspect of
-# the body (eval/body.py --levels): a point to improve from a body model or from its measure
-# against the professionals' range, or the measure next to the professionals' and no point
+# The professionals' toss height (eval/improvement.py), and what the app says about the tossing
+# arm and each aspect of the body (eval/body.py --levels): a point to improve from a model or from
+# its measure against the professionals' range, or the measure next to the professionals' and no
+# point
 _RESULTS = model.baseline.RESULTS
 PROS_TOSS = {r["measure"]: float(r["value"]) for r in csv.DictReader((_RESULTS / "improvement.csv").open())
              if r["group"] == "professionals"}  # fmt: skip
 POINTS = {r["aspect"]: r for r in csv.DictReader((_RESULTS / "points.csv").open())
           if r["level"] or r["described"]}  # fmt: skip
-BODY = {name: body.load(name) for name in {r["model"] for r in POINTS.values()} - {""}}
+BODY = {
+    name: body.load(name)
+    for name in {r["model"] for aspect, r in POINTS.items() if aspect != "toss"} - {""}
+}
 BODY_WEIGHTS = b"".join((_RESULTS / name).read_bytes()
                         for name in ["points.csv", *(f"{m}.pt" for m in sorted(BODY))])  # fmt: skip
 LEVELS = {"validated": "Modelo validado", "trial": "Modelo en prueba",
-          "measure": "Medida frente a profesionales"}  # fmt: skip
-RANK = {"validated": 2, "trial": 1, "measure": 0}  # the order of the points: the surest first
+          "measure": "Medida frente a profesionales", "exploratory": "Modelo exploratorio",
+          "value": "Modelo elegido por valor"}  # fmt: skip
 MAX_POINTS = 3  # points to improve one analysis gives at most
-# Each aspect in the words of the "Cuerpo" form: its audited measure (body.measures: higher means
-# more to improve; negated here it is a distance where more is better) and its drill
+# The parts of the serve the app speaks of, in the order of the motion: name and drill
+ASPECTS = {"toss": ("Brazo que lanza", "toss_hold"), "legs": ("Piernas", "knee_load"),
+           "racket_drop": ("Caída de la raqueta", None),
+           "arm_at_contact": ("Brazo al impacto", "high_reach"),
+           "landing": ("Aterrizaje", "land_and_hold")}  # fmt: skip
+# Each aspect of the body in the words of the "Cuerpo" form: its audited measure (body.measures:
+# higher means more to improve; negated here it is a distance where more is better)
 BODY_TEXT = {
-    "legs": ("Piernas", "la cadera baja {:.2f} torsos antes del salto", "knee_load"),
-    "racket_drop": ("Caída de la raqueta", ("antes de subir a pegarle, la muñeca de la raqueta "
-                                             "cae {:.2f} torsos"), None),
-    "arm_at_contact": ("Brazo al impacto", ("al impacto, la muñeca de la raqueta llega {:.2f} "
-                                             "torsos sobre su hombro"), "high_reach"),
-    "landing": ("Aterrizaje", "después del impacto, la cadera avanza {:.2f} torsos", "land_and_hold"),
-}  # fmt: skip
+    "legs": "la cadera baja {:.2f} torsos antes del salto",
+    "racket_drop": "antes de subir a pegarle, la muñeca de la raqueta cae {:.2f} torsos",
+    "arm_at_contact": "al impacto, la muñeca de la raqueta llega {:.2f} torsos sobre su hombro",
+    "landing": "después del impacto, la cadera avanza {:.2f} torsos",
+}
+# The same when the distance comes out under zero: the hips never go under where they stood, or
+# end behind where they were at contact
+UNDER_ZERO = {
+    "legs": "antes del salto, la cadera no baja: queda {:.2f} torsos más arriba que al empezar",
+    "landing": "después del impacto, la cadera retrocede {:.2f} torsos",
+}
+# What a part can be on one serve (state): a point to improve, fine, or for a measure with no
+# point, outside or inside the professionals' range; or not seen in the video
+STATES = {"improve": "A mejorar", "fine": "Sin problema",
+          "outside": "Fuera del rango de los profesionales",
+          "inside": "Dentro del rango de los profesionales", "unseen": "No se ve en el video"}  # fmt: skip
+# The aspects of the "Cuerpo" form the app says nothing about, unless points.csv has them
+UNCHECKED = [text for aspect, text in {
+    "legs": "las piernas", "shoulders": "los hombros",
+    "racket_at_peak": "dónde está la raqueta cuando la pelota llega arriba",
+    "racket_drop": "la caída de la raqueta", "arm_at_contact": "el brazo al impacto",
+    "landing": "el aterrizaje"}.items() if aspect not in POINTS]  # fmt: skip
 LEGS = ("legs", "landing")  # aspects read from the legs: they need them seen
-ANSWER = 3  # what a saved answer holds (3: the body points); a new one makes the demo cache again
-MOMENTS = {"start": "Inicio", "arm_up": "Brazo más arriba", "arm_down": "La muñeca baja del hombro",
-           "contact": "Impacto"}  # fmt: skip
+ANSWER = 4  # what a saved answer holds (4: the moments of the body); a new one remakes the cache
+# Each key moment: its name, the aspect it shows and the part of the body drawn in orange
+MOMENTS = {"bend": ("Piernas flexionadas", "legs", "legs"),
+           "arm_up": ("Brazo que lanza arriba", None, "toss"),
+           "arm_down": ("La muñeca baja del hombro", "toss", "toss"),
+           "contact": ("Impacto", "arm_at_contact", "racket"),
+           "landing": ("Aterrizaje", "landing", "legs")}  # fmt: skip
+ORANGE = {"toss": "el brazo que lanza", "racket": "el brazo de la raqueta", "legs": "las piernas"}
 
 # Demo mode (uv run python -m app.api --demo): the videos in data/demo/ are analyzed once at start
 # and their answers saved in data/processed/demo_cache/, so at the presentation they show at once.
@@ -136,83 +166,144 @@ def reason(answer: dict) -> str:
     return f"Lo que más se parece a un saque sin el problema: {PARTS[j].lower()} {when}."
 
 
-def toss_progress(answer: dict) -> dict:
-    """The serve's toss height against the professionals' median and 10th percentile."""
+def toss_height(answer: dict) -> dict:
+    """The serve's toss height next to the professionals' median and 10th percentile."""
     height = answer["toss_height"]
     median = PROS_TOSS["toss height (median, torso lengths)"]
     floor = PROS_TOSS["toss height (10th percentile, torso lengths)"]
-    return {
-        "height": round(height, 2), "pros_median": round(median, 2), "pros_floor": round(floor, 2),
-        "in_range": height >= floor,
-        "text": f"Cuando la raqueta está más baja, tu mano de lanzamiento queda {height:.2f} torsos "
-                f"sobre el hombro. En los profesionales, la mediana es {median:.2f} y 9 de cada 10 "
-                f"llegan a {floor:.2f} o más.",
-    }  # fmt: skip
+    where = f"{height:.2f} torsos sobre" if height >= 0 else f"{-height:.2f} torsos bajo"
+    return {"aspect": "toss_height", "label": "Altura de la mano que lanza",
+            "mine": f"Cuando la raqueta está más baja, tu mano de lanzamiento queda {where} el "
+                    "hombro.",
+            "pros": f"En los profesionales, la mediana es {median:.2f} y 9 de cada 10 llegan a "
+                    f"{floor:.2f} o más.",
+            "value": round(height, 2), "pros_median": round(median, 2),
+            "pros_floor": round(floor, 2), "in_range": height >= floor}  # fmt: skip
 
 
 def measured(aspect: str, answer: dict) -> tuple[str, str]:
     """An aspect's measure of the serve and the professionals', in Spanish."""
-    _, sentence, _ = BODY_TEXT[aspect]
-    row = POINTS[aspect]
+    sentence, row = BODY_TEXT[aspect], POINTS[aspect]
     pros = (f"En los profesionales, la mediana es {-float(row['pros_median']):.2f} y 9 de cada 10 "
             f"llegan a {-float(row['pros_p90']):.2f} o más.")  # fmt: skip
     value = -answer["body"][aspect]
-    if aspect == "landing" and value < 0:  # the hips end behind where they were at contact
-        sentence, value = "después del impacto, la cadera retrocede {:.2f} torsos", -value
+    if value < 0 and aspect in UNDER_ZERO:
+        sentence, value = UNDER_ZERO[aspect], -value
     return sentence.format(value).capitalize() + ".", pros
 
 
-def body_measures(answer: dict) -> list[dict]:
-    """The measures that separate amateurs from professionals next to the professionals'."""
-    return [{"aspect": aspect, "label": BODY_TEXT[aspect][0], "mine": measured(aspect, answer)[0],
-             "pros": measured(aspect, answer)[1],
-             "in_range": answer["body"][aspect] <= float(row["pros_p90"])}
-            for aspect, row in POINTS.items() if row["described"]]  # fmt: skip
+def compared(answer: dict) -> list[dict]:
+    """The measures that separate amateurs from professionals next to the professionals', in
+    the order of the motion: the toss height and those of the body (`described` in POINTS)."""
+    return [toss_height(answer)] + [
+        {"aspect": aspect, "label": ASPECTS[aspect][0], "mine": measured(aspect, answer)[0],
+         "pros": measured(aspect, answer)[1], "value": round(-answer["body"][aspect], 2),
+         "pros_median": round(-float(row["pros_median"]), 2),
+         "pros_floor": round(-float(row["pros_p90"]), 2),
+         "in_range": answer["body"][aspect] <= float(row["pros_p90"])}
+        for aspect, row in POINTS.items() if row["described"]]  # fmt: skip
 
 
-def body_evidence(aspect: str, answer: dict) -> str:
-    """How far a body point can be trusted, in Spanish: its level and its rates on our videos."""
+def evidence(aspect: str, answer: dict) -> str:
+    """How far a point can be trusted, in Spanish: its rates on our videos and its level."""
     row = POINTS[aspect]
+    rates = (f"En validación acertó {float(row['precision']):.0%} de las veces que lo marcó y lo "
+             f"marcó en {float(row['pros_rate']):.0%} de los saques profesionales.")  # fmt: skip
+    if aspect == "toss":
+        agree = sum((s >= answer["threshold"]) == answer["drops_early"] for s in answer["seeds"])
+        return (f"{agree} de {len(answer['seeds'])} versiones del modelo coinciden. {rates} En "
+                f"los videos de prueba encontró el problema en {MODEL['test_tpr']:.0%} de los "
+                f"saques que lo tenían y lo marcó de más en {MODEL['test_fpr']:.0%} de los que no. "
+                "El modelo se eligió por su valor; con las reglas de los demás puntos no tendría "
+                "nivel.")  # fmt: skip
     if row["source"] == "measure":
         return ("Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 "
                 f"profesionales. De los saques amateur fuera de ese rango, {float(row['precision']):.0%} "
                 "tenían este problema según quien los etiquetó. No es un diagnóstico.")  # fmt: skip
     mine = answer["needs_work"][aspect]
     cut = BODY[row["model"]]["thresholds"][aspect]
-    return (f"{sum(s >= cut for s in mine['seeds'])} de {len(mine['seeds'])} versiones del modelo "
-            f"lo marcan. En validación acertó {float(row['precision']):.0%} de las veces que lo "
-            f"marcó y lo marcó en {float(row['pros_rate']):.0%} de los saques profesionales. Está "
-            "en prueba: falta probarlo con jugadores nuevos.")  # fmt: skip
+    marks = (f"{sum(s >= cut for s in mine['seeds'])} de {len(mine['seeds'])} versiones del "
+             f"modelo lo marcan. {rates} ")  # fmt: skip
+    if row["level"] == "exploratory":
+        return marks + ("Es exploratorio: entrenado sin un jugador y probado en él, no llegó a la "
+                        f"regla ({float(row['new_player']):.2f}). Puede fallar con jugadores "
+                        "nuevos.")  # fmt: skip
+    return marks + "Está en prueba: falta probarlo con más jugadores nuevos."
+
+
+def state(aspect: str, answer: dict) -> tuple[str, float]:
+    """What one aspect of POINTS is on this serve (STATES), and for an aspect with a level how far
+    past its threshold: the tossing arm by the app's model, an aspect of the body by its body
+    model or by its measure past the professionals' range. An aspect read from the legs is unseen
+    when MediaPipe did not see them, and the landing when the video ends before it."""
+    row = POINTS[aspect]
+    if aspect in LEGS and (answer["legs_seen"] < MIN_SEEN
+                           or (aspect == "landing" and not answer["landing_seen"])):  # fmt: skip
+        return "unseen", 0.0
+    if not row["level"]:  # next to the professionals' range only
+        return ("outside" if answer["body"][aspect] > float(row["pros_p90"]) else "inside"), 0.0
+    if aspect == "toss":
+        margin = answer["probability"] - answer["threshold"]
+    elif row["source"] == "model":
+        margin = (answer["needs_work"][aspect]["probability"]
+                  - BODY[row["model"]]["thresholds"][aspect])  # fmt: skip
+    else:
+        margin = (answer["body"][aspect] - float(row["threshold"])) / float(row["scale"])
+    return ("improve" if margin >= 0 else "fine"), margin
+
+
+def seen(aspect: str, answer: dict) -> str:
+    """What the landmarks show of one aspect, in Spanish."""
+    return observation(answer) if aspect == "toss" else " ".join(measured(aspect, answer))
 
 
 def points(answer: dict) -> list[dict]:
-    """Up to MAX_POINTS points to improve, the surest level first and within a level the furthest
-    past its threshold: the tossing arm (validated) and the aspects of POINTS with a level, by
-    their body model or by their measure past the professionals' range. An aspect read from the
-    legs is left out when MediaPipe did not see them, and the landing when the video ends before
-    it."""
+    """Up to MAX_POINTS points to improve: the aspects of POINTS with a level that are past their
+    threshold (state), the one that was right most often on validation first (the precision of
+    points.csv) and, between two alike, the furthest past."""
     found = []
-    if answer["drops_early"]:
-        found.append((RANK["validated"], answer["probability"] - answer["threshold"], {
-            "aspect": "toss", "label": "Brazo que lanza", "level": "validated",
-            "seen": observation(answer), "evidence": certainty(answer), "drill_id": "toss_hold"}))  # fmt: skip
-    for aspect, row in POINTS.items():
-        unseen = aspect in LEGS and (answer["legs_seen"] < MIN_SEEN
-                                     or (aspect == "landing" and not answer["landing_seen"]))  # fmt: skip
-        if not row["level"] or unseen:
+    for aspect, (name, drill) in ASPECTS.items():
+        row = POINTS.get(aspect)
+        if not row or not row["level"]:
             continue
-        if row["source"] == "model":
-            margin = (answer["needs_work"][aspect]["probability"]
-                      - BODY[row["model"]]["thresholds"][aspect])  # fmt: skip
-        else:
-            margin = (answer["body"][aspect] - float(row["threshold"])) / float(row["scale"])
-        if margin >= 0:
-            found.append((RANK[row["level"]], margin, {
-                "aspect": aspect, "label": BODY_TEXT[aspect][0], "level": row["level"],
-                "seen": " ".join(measured(aspect, answer)),
-                "evidence": body_evidence(aspect, answer), "drill_id": BODY_TEXT[aspect][2]}))  # fmt: skip
+        status, margin = state(aspect, answer)
+        if status == "improve":
+            found.append((float(row["precision"]), margin, {
+                "aspect": aspect, "label": name, "level": row["level"],
+                "level_label": LEVELS[row["level"]], "precision": float(row["precision"]),
+                "seen": seen(aspect, answer), "evidence": evidence(aspect, answer),
+                "drill_id": drill}))  # fmt: skip
     found.sort(key=lambda point: point[:2], reverse=True)
-    return [point | {"level_label": LEVELS[point["level"]]} for *_, point in found[:MAX_POINTS]]
+    return [point for *_, point in found[:MAX_POINTS]]
+
+
+def others(answer: dict, found: list[dict]) -> list[dict]:
+    """The parts the app looked at that are not among the points `found`, in the order of the
+    motion: fine, next to the professionals' range (a measure with no point, with how often the
+    amateur serves outside it were marked), not seen, or past its threshold with MAX_POINTS surer
+    points before it."""
+    out = []
+    for aspect, (name, _) in ASPECTS.items():
+        if aspect not in POINTS or aspect in {point["aspect"] for point in found}:
+            continue
+        status, _ = state(aspect, answer)
+        part = {"aspect": aspect, "label": name, "status": status, "status_label": STATES[status]}
+        if status == "unseen":
+            part["seen"] = ("No vimos bien tus piernas: graba con todo el cuerpo dentro del cuadro."
+                            if answer["legs_seen"] < MIN_SEEN else
+                            "El video termina antes de que aterrices: deja medio segundo después "
+                            "del golpe.")  # fmt: skip
+        else:
+            part["seen"] = seen(aspect, answer)
+        if status in ("outside", "inside"):
+            part["note"] = ("Solo es una comparación, sin ejercicio: de los saques amateur fuera "
+                            f"de ese rango, {float(POINTS[aspect]['precision']):.0%} tenían este "
+                            "problema según quien los etiquetó.")  # fmt: skip
+        if status == "improve":
+            part["note"] = (f"Pasa su umbral, pero damos {MAX_POINTS} puntos como máximo y los "
+                            "otros acertaron más veces en validación.")  # fmt: skip
+        out.append(part)
+    return out
 
 
 def stretch_text(start: float, stop: float) -> str:
@@ -224,55 +315,98 @@ def stretch_text(start: float, stop: float) -> str:
 
 
 def moments(keypoints: np.ndarray, fps: float, answer: dict) -> dict[str, int]:
-    """Source frame of each key moment: the window start, the tossing wrist at its highest, the
-    last frame with it above the shoulder (absent when never above) and contact."""
+    """Source frame of each key moment (MOMENTS), in the order they happen: the knees most bent,
+    the tossing wrist at its highest, the last frame with it above the shoulder when the arm
+    drops early, contact where the racket wrist is highest (body.instants) and, when the video
+    goes on, the landing 0.5 s after the contact the window was cut at."""
     contact = answer["contact"]
-    start = max(contact - round(dataset.BEFORE / dataset.FPS * fps), 0)
+    at = lambda frames: contact + round(frames / dataset.FPS * fps)  # frames of the window
+    start = max(at(-dataset.BEFORE), 0)
     wrist = keypoints[
         start : contact + 1, pose.LANDMARKS.index(f"{answer['tossing_side']}_wrist"), 1
     ]
-    frames = {"start": start}
+    frames = {"bend": max(at(answer["frames"]["bend"]), start)}
     if not np.isnan(wrist).all():
         frames["arm_up"] = start + int(np.nanargmin(wrist))  # image y grows downward
-    if answer["drop_seconds"] <= dataset.BEFORE / dataset.FPS:
+    if answer["drops_early"] and answer["drop_seconds"] <= dataset.BEFORE / dataset.FPS:
         frames["arm_down"] = contact - round(answer["drop_seconds"] * fps)
-    frames["contact"] = contact
-    return frames
+    frames["contact"] = max(at(answer["frames"]["contact"]), start)
+    if answer["landing_seen"]:
+        frames["landing"] = at(dataset.AFTER)
+    return dict(sorted(frames.items(), key=lambda moment: moment[1]))
 
 
-def drawn(frame: np.ndarray, keypoints: np.ndarray, side: str, box) -> np.ndarray:
-    """The frame with the skeleton, the tossing arm thicker in orange, cropped to the player."""
+def chains(moment: str | None, side: str) -> list[list[str]]:
+    """The landmarks joined in orange at a key moment (MOMENTS): the tossing arm, the racket arm
+    or both legs."""
+    part = MOMENTS[moment][2] if moment else None
+    if part == "legs":
+        return [[f"{s}_{joint}" for joint in ("hip", "knee", "ankle")] for s in ("left", "right")]
+    arm = {"toss": side, "racket": "left" if side == "right" else "right"}.get(part)
+    return [[f"{arm}_{joint}" for joint in ("shoulder", "elbow", "wrist")]] if arm else []
+
+
+def close_up(keypoints: np.ndarray, box) -> tuple[int, ...]:
+    """A square around every point MediaPipe saw in these frames, with room above for the racket
+    and the ball, so the key moments and the slow motion show the player and not the court;
+    `box` when it saw none."""
+    seen = keypoints[..., 3] >= 0.5  # NaN compares False
+    if not seen.any():
+        return tuple(box)
+    x, y = keypoints[..., 0][seen], keypoints[..., 1][seen]
+    tall = y.max() - y.min()
+    top, bottom = y.min() - 0.45 * tall, y.max() + 0.1 * tall
+    side = max(bottom - top, x.max() - x.min() + 0.4 * tall)
+    middle = (x.min() + x.max()) / 2
+    return tuple(
+        int(v) for v in (max(middle - side / 2, 0), max(top, 0), middle + side / 2, bottom)
+    )
+
+
+def drawn(frame: np.ndarray, keypoints: np.ndarray, orange: list[list[str]], box) -> np.ndarray:
+    """The frame with the skeleton, the chains of landmarks in `orange` thicker and in orange,
+    cropped to the player."""
     out = pose.draw(frame, keypoints)
-    arm = [keypoints[pose.LANDMARKS.index(f"{side}_{j}")] for j in ("shoulder", "elbow", "wrist")]
-    points = [tuple(int(v) for v in p[:2]) if p[3] >= 0.5 else None for p in arm]  # NaN: False
     thickness = max(4, round(frame.shape[0] / 150))
-    for a, b in pairwise(points):
-        if a and b:
-            cv2.line(out, a, b, (0, 140, 255), thickness, cv2.LINE_AA)
+    for chain in orange:
+        joints = [keypoints[pose.LANDMARKS.index(name)] for name in chain]
+        points = [tuple(int(v) for v in p[:2]) if p[3] >= 0.5 else None for p in joints]  # NaN: no
+        for a, b in pairwise(points):
+            if a and b:
+                cv2.line(out, a, b, (0, 140, 255), thickness, cv2.LINE_AA)
     x0, y0, x1, y1 = box
     return resize(out[max(y0, 0) : y1, max(x0, 0) : x1], IMAGE_SIDE)
 
 
 def render(path, poses: dict, answer: dict, out: Path):
-    """Key moment images and the slow motion from the window start to 0.5 s after contact, each
-    frame labeled with its time from contact and the latest key moment."""
+    """Key moment images and the slow motion from the window start to 0.5 s after contact. Each
+    key moment has its part of the body in orange; each frame of the slow motion is labeled with
+    its time from the contact shown and the latest key moment, with that moment's part in orange."""
     fps, keypoints, side = poses["fps"], poses["keypoints"], answer["tossing_side"]
     frames = moments(keypoints, fps, answer)
-    first, last = frames["start"], answer["contact"] + round(dataset.AFTER / dataset.FPS * fps)
-    images = {}
+    first = max(answer["contact"] - round(dataset.BEFORE / dataset.FPS * fps), 0)
+    last = answer["contact"] + round(dataset.AFTER / dataset.FPS * fps)
+    box, images = close_up(keypoints[first : last + 1], poses["box"]), {}
 
     def labeled():
+        latest = None
         for index, frame in video.iter_frames(path):
             if index > last:
                 break
             if index < first:
                 continue
-            image = drawn(frame, keypoints[index], side, poses["box"])
+            past = [(at, name) for name, at in frames.items() if at <= index]
+            latest = max(past)[1] if past else None
+            image = drawn(frame, keypoints[index], chains(latest, side), box)
             for name, at in frames.items():
                 if at == index:
-                    images[name] = image
-            latest = MOMENTS[max((at, n) for n, at in frames.items() if at <= index)[1]]
-            yield label(image, f"{(index - answer['contact']) / fps:+.2f} s  {latest}", 0.045)
+                    images[name] = (image if name == latest else
+                                    drawn(frame, keypoints[index], chains(name, side), box))  # fmt: skip
+            text = f"{(index - frames['contact']) / fps:+.2f} s"
+            if latest:  # OpenCV's font has no accents
+                name = unicodedata.normalize("NFD", MOMENTS[latest][0])
+                text += "  " + name.encode("ascii", "ignore").decode()
+            yield label(image, text, 0.045)
 
     video.write_video(out, labeled(), fps / CONFIG["app"]["slowdown"])
     return {n: images[n] for n in frames if n in images}
@@ -293,7 +427,7 @@ def run_analysis(video_path, progress) -> dict:
     if np.isnan(poses["keypoints"][:, 0, 0]).mean() > 1 - MIN_FOUND:
         return {"retake": "No encontramos a una persona en la mayor parte del video. Graba de lado, "
                           "con todo tu cuerpo dentro del cuadro."}  # fmt: skip
-    progress(0.7, desc="Paso 3 de 4: midiendo el brazo que lanza…")
+    progress(0.7, desc="Paso 3 de 4: midiendo tu saque…")
     try:
         answer = model.predict(MODEL, poses["keypoints"], poses["fps"])
     except ValueError:
@@ -309,9 +443,12 @@ def run_analysis(video_path, progress) -> dict:
     values = body.measures(x[None], mask[None], audited=True)
     answer["toss_height"] = float(body.toss_height(x[None], mask[None])[0])
     answer["body"] = {aspect: float(values[aspect][0]) for aspect in BODY_TEXT}
+    # Where the body measures read the knees and contact, in frames of the window from its contact
+    answer["frames"] = {name: int(frame[0]) - dataset.BEFORE
+                        for name, frame in body.instants(x[None], mask[None]).items()}  # fmt: skip
     answer["needs_work"] = {}
     for aspect, row in POINTS.items():
-        if row["source"] == "model":
+        if row["source"] == "model" and aspect != "toss":
             m3 = BODY[row["model"]]
             o, k = (
                 body.oriented(x[None], mask[None], m3["at_reach"])[0],
