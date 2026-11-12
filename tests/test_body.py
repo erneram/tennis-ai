@@ -100,3 +100,13 @@ def test_each_edit_moves_only_its_part_toward_needs_work():
         assert len(changed) and all(j in joints and a == axis for j, a in changed), part
         if part != "toss":
             assert body.measures(edited, mask)[part] > before[part], part
+
+
+def test_drill_list_keeps_the_two_furthest_allowed_problems_past_their_threshold():
+    from eval import body as checks
+
+    margin = np.array([[0.3, 0.1, 0.5, -0.2], [-0.1, -0.3, np.nan, -0.5]])
+    allowed = np.array([True, True, False, True])
+    said, first = checks.pick(margin, allowed)
+    assert said.tolist() == [[True, True, False, False], [False, False, False, False]]
+    assert first[0] == 0  # the disallowed 0.5 never comes first

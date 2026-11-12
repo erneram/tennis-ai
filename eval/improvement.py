@@ -37,13 +37,19 @@ def toss_height(x: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return up[np.arange(len(up)), low, 1]
 
 
+def toss_probability(data) -> np.ndarray:
+    """The model's mean probability over its seeds per serve: its validation or test score where
+    it has one, else the frozen model's (on the serves it was never trained on)."""
+    loaded = model.load(MODEL)
+    frozen = model.probabilities(loaded, *model.inputs(loaded, data["x"], data["mask"])).T
+    scored = {video: score for (_, video), score in bias.scores(MODEL).items()}
+    return np.array([scored.get(v, f).mean() for v, f in zip(data["video"], frozen)])
+
+
 def drills(data) -> np.ndarray:
     """Whether the model sends each serve to the drill, as the app does: the mean probability over
     its seeds at or above its threshold."""
-    loaded, cut = model.load(MODEL), bias.thresholds()[MODEL]
-    frozen = model.probabilities(loaded, *model.inputs(loaded, data["x"], data["mask"])).T
-    scored = {video: score for (_, video), score in bias.scores(MODEL).items()}
-    return np.array([scored.get(v, f).mean() >= cut for v, f in zip(data["video"], frozen)])
+    return toss_probability(data) >= bias.thresholds()[MODEL]
 
 
 def gap_closed(before: np.ndarray, after: np.ndarray, pros: np.ndarray, stat) -> float:

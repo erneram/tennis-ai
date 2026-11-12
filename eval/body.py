@@ -1,6 +1,6 @@
 """How far the team's answers about the body can be trusted, with no second annotator.
 
-    uv run python -m eval.body [--name ernesto] [--checks [--model m3b]]
+    uv run python -m eval.body [--name ernesto] [--checks | --recommend] [--model m3b]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset) and the answers of the
 "Cuerpo" tab, eval/serve/aspects_<name>.csv. For each aspect of strokes/serve/body.ANSWERS:
@@ -16,7 +16,8 @@ Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset) and the
    (aspects_<name>_retest.csv), Cohen's kappa between both passes on the needs-work answer, and
    on the raw answer. An aspect with a kappa under MIN_KAPPA is not used to train or shown.
 
-Writes experiments/serve/body.csv.
+Writes experiments/serve/body.csv, with each measure's AUROC for amateurs against professionals
+(auroc_pros): an aspect M3 does not get to answer is shown as its measure only from MIN_SEPARATES.
 
 --checks scores M3 (python -m strokes.serve.body), or M3b with --model m3b, each aspect on its
 own, and writes experiments/serve/<model>-checks.csv, -occlusion.png and -calibration.png:
@@ -39,6 +40,16 @@ classes have MIN_CLASS serves) AUROC MIN_WITHIN or more and no lower than its me
 player left out, AUROC MIN_NEW_PLAYER or more; at most MAX_PROS of the professionals called
 "needs work"; and its own edit raising the probability on MIN_RAISED of the serves while the
 unrelated edit moves it less than MAX_MOVED on average. Checks 5 to 8 are reported, not lines.
+
+--recommend scores the drill list of the app (the toss arm, M1e, and the adopted aspects; at most
+MAX_DRILLS, the furthest past its threshold first; none means "no clear problem") against the
+annotator's answers, next to the list of the pose measures alone, every aspect of the model
+whether adopted or not, M1e alone (the app today) and toss_hold always. Per list, on validation
+and test: precision (the recommended problems the annotator marked), coverage (the amateurs'
+marked problems that got a drill), professional serves told "no clear problem", how often the
+first drill is the marked problem the measures find clearest, and the value per amateur analysis
+in quetzales (configs/value.yaml: one hit per right drill, one false alarm per wrong one, one miss
+per marked problem left out). Writes experiments/serve/recommend.csv.
 """
 
 import argparse
@@ -49,9 +60,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 
 from core import ROOT
-from eval import bias
+from eval import bias, improvement, value
 from eval.run_eval import kappa
 from strokes.serve import baseline, body, dataset, model, pretrain, train
 
@@ -71,6 +83,10 @@ OWN = {"legs": "legs", "shoulders": "head and shoulders", "racket_at_peak": "rac
 UNRELATED = {"legs": "toss", "shoulders": "toss", "landing": "toss", "racket_at_peak": "legs",
              "racket_drop": "legs", "arm_at_contact": "legs"}  # fmt: skip
 EARLY = 6  # frames the racket arm moves early in the racket_at_peak edit: 0.2 s
+SUMMARY = ("0 retest kappa", "1 within players", "2 new players",
+           "3 professionals called needs work", "4 counterfactual")  # fmt: skip
+MAX_DRILLS = 2  # drills one analysis recommends at most
+MIN_SEPARATES = 0.80
 
 
 def within(positive: np.ndarray, score: np.ndarray, chosen: np.ndarray) -> float:
@@ -103,6 +119,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--name", default="ernesto", help="whose answers: aspects_<name>.csv")
     parser.add_argument("--checks", action="store_true", help="score M3 aspect by aspect")
+    parser.add_argument("--recommend", action="store_true", help="score the drill lists")
     parser.add_argument("--model", default="m3", help="m3 or m3b")
     args = parser.parse_args()
     data = np.load(dataset.OUT)
@@ -130,6 +147,7 @@ def main() -> None:
             "pros_like_needs_work": float(
                 (score[pros] >= np.median(score[needs & amateurs])).mean()
             ),
+            "auroc_pros": baseline.auroc(amateurs, score),
             "retest_kappa": kappas.get(aspect, (np.nan,) * 3)[0],
             "retest_kappa_raw": kappas.get(aspect, (np.nan,) * 3)[1],
             "retest_serves": kappas.get(aspect, (0,) * 3)[2],
@@ -139,15 +157,18 @@ def main() -> None:
               f"{row['auroc']:.2f}, within EA {row['auroc_ea']:.2f}, within JC "
               f"{row['auroc_jc']:.2f}; medians needs work {row['median_needs_work']:+.2f}, fine "
               f"{row['median_fine']:+.2f}, pros {row['median_pros']:+.2f} "
-              f"({row['pros_like_needs_work']:.0%} of the pros as far as the needs-work median)")  # fmt: skip
+              f"({row['pros_like_needs_work']:.0%} of the pros as far as the needs-work median); "
+              f"amateurs against pros {row['auroc_pros']:.2f}")  # fmt: skip
         if aspect in kappas:
             print(f"    retest on {row['retest_serves']} serves: kappa {row['retest_kappa']:.2f} "
                   f"(raw answer {row['retest_kappa_raw']:.2f})"
                   + (" under the line, not used" if row["retest_kappa"] < MIN_KAPPA else ""))  # fmt: skip
     baseline.save("body", rows)
+    every = body.targets(body.answers(EVAL / f"aspects_{args.name}.csv"), data["video"])
     if args.checks:
-        checks(data, body.targets(body.answers(EVAL / f"aspects_{args.name}.csv"),
-                                  data["video"]), kappas, args.model)  # fmt: skip
+        checks(data, every, kappas, args.model)
+    if args.recommend:
+        recommend(data, every, args.model, {r["aspect"]: r["auroc_pros"] for r in rows})
 
 
 def edited(part: str, x: np.ndarray) -> np.ndarray:
@@ -309,14 +330,94 @@ def checks(data, y_all: np.ndarray, kappas: dict, model_name: str) -> None:
         print(f"  {r['aspect']:15} {r['check']:38} {r['value']:7.3f}  line {r['line']!s:5} "
               f"{r['passes']:3} {r['note']}")  # fmt: skip
     print("Adopted (every line passes; the retest kappa is needed too):")
-    for aspect in names:
-        lines = [r for r in rows if r["aspect"] == aspect and r["check"] in (
-            "0 retest kappa", "1 within players", "2 new players",
-            "3 professionals called needs work", "4 counterfactual")]  # fmt: skip
-        failed = [r["check"] for r in lines if r["passes"] == "no"]
-        pending = [r["check"] for r in lines if r["passes"] == ""]
-        verdict = "no" if failed else "pending" if pending else "yes"
+    for aspect, (verdict, failed) in verdicts(rows).items():
         print(f"  {aspect}: {verdict}" + (f" (fails {', '.join(failed)})" if failed else ""))
+
+
+def verdicts(rows: list[dict]) -> dict[str, tuple[str, list[str]]]:
+    """Per aspect of a checks table: "yes", "no" or "pending" by the SUMMARY lines, and the lines
+    it fails."""
+    out = {}
+    for aspect in dict.fromkeys(r["aspect"] for r in rows):
+        lines = [r for r in rows if r["aspect"] == aspect and r["check"] in SUMMARY]
+        failed = [r["check"] for r in lines if r["passes"] == "no"]
+        pending = any(r["passes"] == "" for r in lines)
+        out[aspect] = ("no" if failed else "pending" if pending else "yes", failed)
+    return out
+
+
+def pick(margin: np.ndarray, allowed: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Which problems each serve gets a drill for, at most MAX_DRILLS of the allowed ones with a
+    margin past 0, and the column of the first."""
+    margin = np.where(allowed & ~np.isnan(margin), margin, -np.inf)
+    order = np.argsort(-margin, 1, kind="stable")[:, :MAX_DRILLS]
+    said = np.zeros(margin.shape, bool)
+    said[np.arange(len(margin))[:, None], order] = np.take_along_axis(margin, order, 1) >= 0
+    return said, order[:, 0]
+
+
+def recommend(data, y_all: np.ndarray, model_name: str, separates: dict) -> None:
+    m3 = body.load(model_name)
+    names = m3["aspects"]
+    with open(baseline.RESULTS / f"{model_name}-checks.csv", newline="") as file:
+        adopted = [a for a, (v, _) in verdicts(list(csv.DictReader(file))).items() if v == "yes"]
+    y = y_all[:, [list(body.ANSWERS).index(a) for a in names]]
+    toss = np.where(data["valid"] == 1, data["category"] == baseline.POSITIVE, np.nan)
+    truth = np.column_stack([toss, y])  # the toss arm, then each aspect: 1 marked, NaN unanswered
+    chosen = body.splits(data, y)
+    pool, amateurs = chosen["pool"], ~np.char.startswith(data["player"], "pro")
+    scored = oos(model_name, names)
+    score = np.array([scored.get(v, np.full(len(names), np.nan)) for v in data["video"]])
+    probability = np.column_stack([improvement.toss_probability(data) - bias.thresholds()["m1e"],
+                                   score - [m3["thresholds"][a] for a in names]])  # fmt: skip
+    values = body.measures(data["x"], data["mask"])
+    measured = np.column_stack([-improvement.toss_height(data["x"], data["mask"]),
+                                *[values[a] for a in names]])  # fmt: skip
+    cuts = [0.0] + [body.threshold(y[pool, k], values[a][pool]) for k, a in enumerate(names)]
+    measured = (measured - cuts) / np.nanstd(measured[pool], 0)  # comparable across aspects
+    clearest = np.where(truth == 1, measured, -np.inf).argmax(1)
+    only = lambda *columns: np.isin(np.arange(truth.shape[1]), columns)
+    lists = {
+        "M1e (the app today)": (probability, only(0)),
+        f"M1e + adopted {model_name.upper()}": (probability, only(0, *(1 + names.index(a)
+                                                                     for a in adopted))),
+        f"M1e + every {model_name.upper()} aspect": (probability, only(*range(truth.shape[1]))),
+        "pose measures only": (measured, only(*range(truth.shape[1]))),
+        "toss_hold always": (np.ones_like(probability), only(0)),
+    }  # fmt: skip
+    config = yaml.safe_load(value.CONFIG.read_text())
+    block = config["coach_per_hour"] * config["drill_minutes"] / 60
+    rows = []
+    for title, (margin, allowed) in lists.items():
+        said, first = pick(margin, allowed)
+        right, wrong, missed = said & (truth == 1), said & (truth == 0), ~said & (truth == 1)
+        for split in ("pool", "test"):
+            mine, ama = chosen[split], chosen[split] & amateurs
+            told = mine & said.any(1) & (truth == 1).any(1)
+            gain = (config["hit"] * right - config["false_alarm"] * wrong
+                    - config["miss"] * missed)[ama].sum(1)  # fmt: skip
+            rows.append({
+                "list": title, "split": "validation" if split == "pool" else split,
+                "serves": int(mine.sum()), "drills": int(said[mine].sum()),
+                "precision": right[mine].sum() / max((right | wrong)[mine].sum(), 1),
+                "coverage": right[ama].sum() / max((truth[ama] == 1).sum(), 1),
+                "pros_clear": float((~said[mine & ~amateurs].any(1)).mean()),
+                "first_is_clearest": float((first[told] == clearest[told]).mean()),
+                "value": block * gain.mean() - value.compute_cost(config, config["pose_seconds"]),
+            })  # fmt: skip
+    baseline.save("recommend", rows)
+    print(f"Drill lists, at most {MAX_DRILLS} per serve (experiments/serve/recommend.csv); "
+          f"adopted aspects of {model_name.upper()}: {', '.join(adopted) or 'none'}")  # fmt: skip
+    for r in rows:
+        print(f"  {r['list']:28} {r['split']:10} {r['serves']:3} serves, {r['drills']:3} drills: "
+              f"precision {r['precision']:.2f}, coverage {r['coverage']:.2f}, pros told no "
+              f"problem {r['pros_clear']:.2f}, first is the clearest {r['first_is_clearest']:.2f}, "
+              f"Q{r['value']:.2f} per amateur analysis")  # fmt: skip
+    shown = [a for a in names if a not in adopted and separates[a] >= MIN_SEPARATES]
+    print(
+        f"Shown as a measure against the professionals instead (AUROC {MIN_SEPARATES}+): "
+        f"{', '.join(shown) or 'none'}"
+    )
 
 
 def occlusion(m3: dict, x: np.ndarray, score) -> np.ndarray:
