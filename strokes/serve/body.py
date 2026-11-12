@@ -43,6 +43,7 @@ ANSWERED = ROOT / "eval" / "serve"  # aspects_<name>.csv
 SESSION = re.compile(r"[-_]s\d+$")  # jc-post2-s07 is session jc-post2, pro02_s01 is pro02
 FRESH = ("pro05", "yt")  # the YouTube clips of Nov 9: scored, never trained on
 MIN_KAPPA = 0.40  # agreement of an annotator with themself under which an aspect is left out
+MIN_SEPARATES = 0.80  # amateurs-against-pros AUROC from which a measure is shown next to the pros'
 # Answers that mean "needs work" (1) and "as it should be" (0); the rest ("unseen", "too_much")
 # are left out. Where the ball and contact point are cannot be read from the pose, so
 # contact_point has no target (its ideal, "ahead", is also not what the professionals got).
@@ -71,6 +72,15 @@ def oriented(x: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     hips = x[:, :, dataset.HIPS, 0].mean(2)
     x[..., 0] *= np.where(hips[:, -1] >= hips[:, 0], 1, -1)[:, None, None]
     return x, mask
+
+
+def toss_height(x: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """Height of the tossing wrist above its shoulder when the racket wrist is lowest, per window:
+    the labeling question as a number (eval/improvement.py)."""
+    up = train.heights(x, mask)[0][..., 0]  # tossing elbow, wrist, racket elbow, wrist
+    look = dataset.BEFORE - train.LOOK
+    low = look + up[:, look : dataset.BEFORE, 3].argmin(1)
+    return up[np.arange(len(up)), low, 1]
 
 
 def measures(x: np.ndarray, mask: np.ndarray) -> dict[str, np.ndarray]:

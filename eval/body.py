@@ -86,7 +86,7 @@ EARLY = 6  # frames the racket arm moves early in the racket_at_peak edit: 0.2 s
 SUMMARY = ("0 retest kappa", "1 within players", "2 new players",
            "3 professionals called needs work", "4 counterfactual")  # fmt: skip
 MAX_DRILLS = 2  # drills one analysis recommends at most
-MIN_SEPARATES = 0.80
+MIN_SEPARATES = body.MIN_SEPARATES
 
 
 def within(positive: np.ndarray, score: np.ndarray, chosen: np.ndarray) -> float:
@@ -371,7 +371,7 @@ def recommend(data, y_all: np.ndarray, model_name: str, separates: dict) -> None
     probability = np.column_stack([improvement.toss_probability(data) - bias.thresholds()["m1e"],
                                    score - [m3["thresholds"][a] for a in names]])  # fmt: skip
     values = body.measures(data["x"], data["mask"])
-    measured = np.column_stack([-improvement.toss_height(data["x"], data["mask"]),
+    measured = np.column_stack([-body.toss_height(data["x"], data["mask"]),
                                 *[values[a] for a in names]])  # fmt: skip
     cuts = [0.0] + [body.threshold(y[pool, k], values[a][pool]) for k, a in enumerate(names)]
     measured = (measured - cuts) / np.nanstd(measured[pool], 0)  # comparable across aspects

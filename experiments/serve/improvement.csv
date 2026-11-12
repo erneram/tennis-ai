@@ -4,16 +4,21 @@ measure,group,serves,value,low,high
 "toss height (median, torso lengths)",EA,54,0.912,,
 "toss height (median, torso lengths)",professionals,29,1.046,,
 "toss height (median, torso lengths)",gap closed,,0.47,0.307,0.558
+"toss height (10th percentile, torso lengths)",JC before,37,0.023,,
+"toss height (10th percentile, torso lengths)",JC after,44,0.448,,
+"toss height (10th percentile, torso lengths)",EA,54,0.834,,
+"toss height (10th percentile, torso lengths)",professionals,29,0.735,,
+"toss height (10th percentile, torso lengths)",gap closed,,0.597,0.15,2.033
 in the professionals' range,JC before,37,0.0,,
 in the professionals' range,JC after,44,0.341,,
 in the professionals' range,EA,54,0.963,,
 in the professionals' range,professionals,29,0.897,,
-in the professionals' range,gap closed,,0.38,0.22,0.549
+in the professionals' range,gap closed,,0.38,0.228,0.569
 sent to the drill by M1E,JC before,37,0.973,,
 sent to the drill by M1E,JC after,44,0.659,,
 sent to the drill by M1E,EA,54,0.019,,
 sent to the drill by M1E,professionals,29,0.0,,
-sent to the drill by M1E,gap closed,,0.323,0.182,0.472
+sent to the drill by M1E,gap closed,,0.323,0.182,0.465
 fault in the team's labels,JC before,37,0.622,,
 fault in the team's labels,JC after,44,0.0,,
 fault in the team's labels,EA,54,0.0,,

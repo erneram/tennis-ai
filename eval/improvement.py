@@ -22,19 +22,12 @@ session, so it is too narrow. Writes experiments/serve/improvement.csv.
 import numpy as np
 
 from eval import bias
-from strokes.serve import baseline, dataset, model, train
+from strokes.serve import baseline, dataset, model
+from strokes.serve.body import toss_height
 
 MODEL = "m1e"  # the app's model (configs/default.yaml)
-LOOK = train.LOOK  # frames before contact the racket wrist is searched at its lowest
 ROUNDS = 2000
 GROUPS = ["JC before", "JC after", "EA", "professionals"]
-
-
-def toss_height(x: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    """Height of the tossing wrist above its shoulder when the racket wrist is lowest, per window."""
-    up = train.heights(x, mask)[0][..., 0]  # tossing elbow, wrist, racket elbow, wrist
-    low = dataset.BEFORE - LOOK + up[:, dataset.BEFORE - LOOK : dataset.BEFORE, 3].argmin(1)
-    return up[np.arange(len(up)), low, 1]
 
 
 def toss_probability(data) -> np.ndarray:
@@ -72,6 +65,7 @@ def main() -> None:
     floor = np.percentile(height[groups == "professionals"], 10)
     measures = {
         "toss height (median, torso lengths)": (height, np.median),
+        "toss height (10th percentile, torso lengths)": (height, lambda v: np.percentile(v, 10)),
         "in the professionals' range": (height >= floor, np.mean),
         f"sent to the drill by {MODEL.upper()}": (drills(data)[judged], np.mean),
         "fault in the team's labels": (data["category"][judged] == baseline.POSITIVE, np.mean),
