@@ -1,0 +1,96 @@
+aspect,check,value,line,passes,note
+legs,0 retest kappa,0.672,0.4,yes,
+legs,1 within EA,0.533,0.7,no,"measure 0.598, audited 0.557"
+legs,1 within JC,0.965,0.7,no,"measure 1.000, audited 1.000"
+legs,1 within players,0.0,,no,both players
+legs,2 new player EA,0.58,0.65,no,
+legs,2 new player JC,0.996,0.65,yes,
+legs,2 new players,0.0,,no,
+legs,3 professionals called needs work,0.0,0.2,yes,29 serves
+legs,4 own edit raises,1.0,0.8,,"121 serves, mean change +0.026"
+legs,4 unrelated edit (toss) moves,0.024,0.05,,
+legs,4 counterfactual,1.0,,yes,
+legs,5 occlusion on its own part,0.392,,,legs: 10 of 17 joints
+legs,7 Brier on validation,0.162,,,
+legs,8 test AUROC,nan,,,18 answered
+legs,8 fresh AUROC,nan,,,"13 answered, 0% called needs work"
+legs,9 precision among amateurs,0.667,0.7,no,24 serves called needs work
+racket_at_peak,0 retest kappa,0.769,0.4,yes,
+racket_at_peak,1 within EA,0.482,0.7,no,"measure 0.331, audited nan"
+racket_at_peak,1 within JC,0.39,0.7,no,"measure 0.415, audited nan"
+racket_at_peak,1 within players,0.0,,no,both players
+racket_at_peak,2 new player EA,0.591,0.65,no,
+racket_at_peak,2 new player JC,0.529,0.65,no,
+racket_at_peak,2 new players,0.0,,no,
+racket_at_peak,3 professionals called needs work,0.345,0.2,no,29 serves
+racket_at_peak,4 own edit raises,0.968,0.8,,"62 serves, mean change +0.003"
+racket_at_peak,4 unrelated edit (legs) moves,0.008,0.05,,
+racket_at_peak,4 counterfactual,1.0,,yes,
+racket_at_peak,5 occlusion on its own part,0.119,,,racket arm: 2 of 17 joints
+racket_at_peak,7 Brier on validation,0.242,,,
+racket_at_peak,8 test AUROC,nan,,,18 answered
+racket_at_peak,8 fresh AUROC,nan,,,"13 answered, 38% called needs work"
+racket_at_peak,9 precision among amateurs,0.653,0.7,no,118 serves called needs work
+racket_drop,0 retest kappa,0.701,0.4,yes,
+racket_drop,1 within EA,0.269,0.7,no,"measure 0.261, audited 0.502"
+racket_drop,1 within JC,0.382,0.7,no,"measure 0.419, audited 0.527"
+racket_drop,1 within players,0.0,,no,both players
+racket_drop,2 new player EA,0.359,0.65,no,
+racket_drop,2 new player JC,0.436,0.65,no,
+racket_drop,2 new players,0.0,,no,
+racket_drop,3 professionals called needs work,0.0,0.2,yes,29 serves
+racket_drop,4 own edit raises,0.939,0.8,,"98 serves, mean change +0.001"
+racket_drop,4 unrelated edit (legs) moves,0.012,0.05,,
+racket_drop,4 counterfactual,1.0,,yes,
+racket_drop,5 occlusion on its own part,0.108,,,racket arm: 2 of 17 joints
+racket_drop,7 Brier on validation,0.191,,,
+racket_drop,8 test AUROC,nan,,,18 answered
+racket_drop,8 fresh AUROC,nan,,,"12 answered, 8% called needs work"
+racket_drop,9 precision among amateurs,0.602,0.7,no,83 serves called needs work
+arm_at_contact,0 retest kappa,1.0,0.4,yes,
+arm_at_contact,1 within EA,nan,0.7,,"measure nan, audited nan"
+arm_at_contact,1 within JC,nan,0.7,,"measure nan, audited nan"
+arm_at_contact,1 within players,nan,,no,0 player(s) with 5+ serves per class
+arm_at_contact,2 new player EA,nan,0.65,,
+arm_at_contact,2 new player JC,nan,0.65,,
+arm_at_contact,2 new players,nan,,no,
+arm_at_contact,3 professionals called needs work,0.207,0.2,no,29 serves
+arm_at_contact,4 own edit raises,0.0,0.8,,"21 serves, mean change -0.002"
+arm_at_contact,4 unrelated edit (legs) moves,0.023,0.05,,
+arm_at_contact,4 counterfactual,0.0,,no,
+arm_at_contact,5 occlusion on its own part,0.121,,,racket arm: 2 of 17 joints
+arm_at_contact,7 Brier on validation,0.087,,,
+arm_at_contact,8 test AUROC,nan,,,18 answered
+arm_at_contact,8 fresh AUROC,nan,,,"12 answered, 38% called needs work"
+arm_at_contact,9 precision among amateurs,0.983,0.7,yes,117 serves called needs work
+landing,0 retest kappa,0.537,0.4,yes,
+landing,1 within EA,0.897,0.7,no,"measure 0.908, audited 0.924"
+landing,1 within JC,0.801,0.7,yes,"measure 0.790, audited 0.795"
+landing,1 within players,0.0,,no,both players
+landing,2 new player EA,0.617,0.65,no,
+landing,2 new player JC,0.598,0.65,no,
+landing,2 new players,0.0,,no,
+landing,3 professionals called needs work,0.034,0.2,yes,29 serves
+landing,4 own edit raises,0.98,0.8,,"99 serves, mean change +0.162"
+landing,4 unrelated edit (toss) moves,0.029,0.05,,
+landing,4 counterfactual,1.0,,yes,
+landing,5 occlusion on its own part,0.346,,,legs: 10 of 17 joints
+landing,7 Brier on validation,0.137,,,
+landing,8 test AUROC,0.935,,,18 answered
+landing,8 fresh AUROC,nan,,,"12 answered, 8% called needs work"
+landing,9 precision among amateurs,0.842,0.7,yes,38 serves called needs work
+legs,"6 mirrored, largest change",0.0,,,
+legs,"6 points unseen, largest mean change",0.042,,,at 40% unseen
+legs,6 THETIS (front) called needs work,0.773,,,49% of the 103 the app keeps
+racket_at_peak,"6 mirrored, largest change",0.0,,,
+racket_at_peak,"6 points unseen, largest mean change",0.029,,,at 40% unseen
+racket_at_peak,6 THETIS (front) called needs work,1.0,,,100% of the 103 the app keeps
+racket_drop,"6 mirrored, largest change",0.0,,,
+racket_drop,"6 points unseen, largest mean change",0.022,,,at 40% unseen
+racket_drop,6 THETIS (front) called needs work,0.967,,,91% of the 103 the app keeps
+arm_at_contact,"6 mirrored, largest change",0.0,,,
+arm_at_contact,"6 points unseen, largest mean change",0.044,,,at 40% unseen
+arm_at_contact,6 THETIS (front) called needs work,0.992,,,97% of the 103 the app keeps
+landing,"6 mirrored, largest change",0.0,,,
+landing,"6 points unseen, largest mean change",0.024,,,at 40% unseen
+landing,6 THETIS (front) called needs work,0.961,,,91% of the 103 the app keeps
