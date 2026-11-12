@@ -110,3 +110,71 @@ def test_drill_list_keeps_the_two_furthest_allowed_problems_past_their_threshold
     said, first = checks.pick(margin, allowed)
     assert said.tolist() == [[True, True, False, False], [False, False, False, False]]
     assert first[0] == 0  # the disallowed 0.5 never comes first
+
+
+def test_contact_moves_to_where_the_racket_wrist_is_highest():
+    x, mask = full_serve(), np.ones((1, T, len(dataset.JOINTS)), bool)
+    late = x[:, np.clip(np.arange(T) + 4, 0, T - 1)]  # contact was found 4 frames late
+    assert body.reach(body.oriented(late, mask)[0])[0] == dataset.BEFORE - 4
+    moved, right = body.oriented(late, mask, at_reach=True)[0], body.oriented(x, mask, True)[0]
+    assert body.reach(moved)[0] == dataset.BEFORE
+    assert np.allclose(moved[:, 4:], right[:, 4:])
+    assert np.allclose(moved[:, dataset.BEFORE, dataset.HIPS].mean(1), 0)
+
+
+def test_the_audited_racket_drop_is_how_far_the_racket_wrist_falls():
+    x, mask = full_serve(), np.ones((1, T, len(dataset.JOINTS)), bool)
+    assert np.isclose(body.measures(x, mask, audited=True)["racket_drop"], -1)  # from 1.5 to 0.5
+    rising = x.copy()  # the racket wrist only goes up from the trophy to contact: no drop
+    rising[0, :, J("right_wrist"), 1] = np.interp(np.arange(T), [0, dataset.BEFORE], [-0.5, -2])
+    assert np.isclose(body.measures(rising, mask, audited=True)["racket_drop"], 0)
+    assert np.isnan(body.measures(x, mask, audited=True)["racket_at_peak"]).all()
+
+
+def test_every_player_and_answer_cell_weighs_the_same():
+    player = np.array(["jc"] * 12 + ["ea"] * 12 + ["pro02"] * 3 + ["pro03"] * 3)
+    y = np.array([0] * 6 + [1] * 6 + [1] * 10 + [0] * 2 + [0] * 5 + [np.nan], np.float32)[:, None]
+    weight = body.cell_weights(y, player)[:, 0]
+    cells = [weight[:6], weight[6:12], weight[12:22], weight[24:29]]
+    assert np.allclose([c.sum() for c in cells], 1)  # the professionals are one player
+    assert np.allclose(weight[22:24], 1 / body.MIN_CELL)  # two serves do not stand for a cell
+    assert weight[-1] == 0  # no answer
+
+
+def test_m4_shows_each_aspect_only_its_part_of_the_body():
+    rng = np.random.default_rng(0)
+    o = rng.normal(size=(8, T, len(dataset.JOINTS), 2)).astype(np.float32)
+    aspects = ["legs", "racket_at_peak", "racket_drop", "arm_at_contact", "landing"]
+    spec = {"aspects": aspects, "travel": True, "parts": True, "balanced": True}
+    y = rng.integers(0, 2, (8, len(aspects))).astype(np.float32)
+    inputs = body.prepared(o, travel=True, parts=True)
+    assert inputs["lower"][0].shape == (8, T, 10, 2) and inputs["racket"][0].shape == (8, T, 4, 1)
+    networks, curve = body.fit_heads(o, y, 0, 2, spec, np.array(["jc"] * 4 + ["ea"] * 4))
+    said = body.probabilities(networks, o, spec)
+    assert said.shape == (8, len(aspects)) and np.isfinite(curve).all()
+    arms, legs = o.copy(), o.copy()
+    arms[:, :, train.ARMS] += 1
+    legs[:, :, body.LOWER] += 1
+    assert np.allclose(body.probabilities(networks, arms, spec)[:, [0, 4]], said[:, [0, 4]])
+    assert np.allclose(body.probabilities(networks, legs, spec)[:, 1:4], said[:, 1:4])
+
+
+def test_an_aspect_is_validated_on_trial_or_neither():
+    from eval import body as checks
+
+    def table(within_ea=0.75, **changed):
+        passes = {"0 retest kappa": "yes", "1 within players": "yes", "2 new players": "yes",
+                  "3 professionals called needs work": "yes", "4 counterfactual": "yes",
+                  "9 precision among amateurs": "yes", "1 within EA": "", "1 within JC": ""}  # fmt: skip
+        value = {"1 within EA": within_ea, "1 within JC": 0.6}
+        return [{"aspect": "landing", "check": check, "passes": changed.get(check, said),
+                 "value": value.get(check, 1)} for check, said in passes.items()]  # fmt: skip
+
+    assert checks.level(table(), "landing") == "validated"
+    # Under its measure within a player, but it ranks EA's serves: on trial
+    assert checks.level(table(**{"1 within players": "no"}), "landing") == "trial"
+    assert checks.level(table(**{"1 within players": "no", "2 new players": "no"}), "landing") == ""
+    wrong = table(**{"1 within players": "no", "9 precision among amateurs": "no"})
+    assert checks.level(wrong, "landing") == ""
+    # It ranks the serves of neither player: it may only tell the players apart
+    assert checks.level(table(0.6, **{"1 within players": "no"}), "landing") == ""
