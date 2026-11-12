@@ -36,8 +36,6 @@ interface Props {
 
 const CONFIDENCE = { high: "success", medium: "warning", low: "outline" } as const
 const STATUS = { improve: "warning", fine: "success", outside: "outline", inside: "success", unseen: "outline" } as const
-/** How often a point was right on validation, as a badge: green from 90 %, amber from 70 %. */
-const sure = (precision: number) => (precision >= 0.9 ? "success" : precision >= 0.7 ? "warning" : "outline")
 const percent = (p: number) => `${Math.round(p * 100)} %`
 /** "a, b y c", or "a, b ni c" for what was not done. */
 const list = (items: string[], last = "y") =>
@@ -175,8 +173,8 @@ function Points({ points }: { points: ImprovementPoint[] }) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className="font-display font-bold text-2xl text-ink leading-none">{i + 1}</span>
               <h4 className="font-bold text-2xl leading-tight">{p.label}</h4>
-              <Badge variant={sure(p.precision)} size="md" dot>
-                Acierta {p.often}
+              <Badge variant={CONFIDENCE[p.sure]} size="md" dot>
+                {p.sure_label}
               </Badge>
             </div>
             <div className="flex max-w-[68ch] flex-col gap-1 text-lg leading-normal">
@@ -196,9 +194,8 @@ function Points({ points }: { points: ImprovementPoint[] }) {
         ))}
       </ol>
       <p className="max-w-[68ch] text-muted-foreground">
-        Van del punto en que la app acierta más al que menos. «Acierta» dice, de las veces que la app marcó ese punto
-        en los videos con los que la probamos, cuántas lo había marcado también una persona que revisó el mismo
-        video.
+        Van del punto más probable al menos. La etiqueta de cada uno («Muy probable», «Probable» o «En duda») dice
+        cuánto confiar en él: la sacamos de probar la app con videos que también revisó una persona.
       </p>
     </section>
   )

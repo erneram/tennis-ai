@@ -54,15 +54,16 @@ export interface Compared {
   in_range: boolean
 }
 
-/** One point to improve, in plain words: what the app saw, what to aim for, how often it was
- * right on validation and what its level means; the numbers are in `detail`. */
+/** One point to improve, in plain words: what the app saw, what to aim for and how far to trust
+ * it (the badge `sure_label`, explained in `trust`); the numbers are in `detail`. */
 export interface ImprovementPoint {
   aspect: string
   label: string
   level: "validated" | "trial" | "measure" | "exploratory" | "value"
   level_label: string
   precision: number
-  often: string
+  sure: "high" | "medium" | "low"
+  sure_label: string
   seen: string
   goal: string
   trust: string

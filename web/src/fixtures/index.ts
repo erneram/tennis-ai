@@ -120,10 +120,12 @@ const points: ImprovementPoint[] = [
     level: "measure",
     level_label: "Medida frente a profesionales",
     precision: 0.983,
-    often: "casi siempre",
+    sure: "high",
+    sure_label: "Muy probable",
     seen: "Le pegas a la pelota más abajo de lo que alcanzas: al pegarle, tu brazo no llega estirado hacia arriba.",
     goal: "Lo ideal: el brazo estirado, casi vertical, pegándole lo más alto que alcanzas.",
-    trust: "Sale de comparar tu video con saques de profesionales; no es un diagnóstico.",
+    trust:
+      "Cuando la app marca esto, casi siempre tiene razón. Sale de comparar tu video con saques de profesionales; no es un diagnóstico.",
     detail:
       "Medida frente a profesionales. Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro. En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más. Las distancias van en largos de torso. Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 profesionales. De los saques amateur fuera de ese rango, 98% tenían este problema según quien los etiquetó. No es un diagnóstico.",
     drill: {
@@ -138,10 +140,11 @@ const points: ImprovementPoint[] = [
     level: "trial",
     level_label: "Modelo en prueba",
     precision: 0.732,
-    often: "7 de cada 10 veces",
+    sure: "medium",
+    sure_label: "Probable",
     seen: "Después de pegarle avanzas poco: caes casi en el mismo lugar.",
     goal: "Lo ideal: caer hacia adelante, dentro de la cancha, sobre el pie de adelante y en equilibrio.",
-    trust: "Todavía lo estamos probando con más jugadores.",
+    trust: "Cuando la app marca esto, suele tener razón, pero no siempre. Todavía lo estamos probando con más jugadores.",
     detail:
       "Modelo en prueba. Después del impacto, la cadera avanza 0.10 torsos. En los profesionales, la mediana es 0.46 y 9 de cada 10 llegan a 0.26 o más. Las distancias van en largos de torso. 5 de 5 versiones del modelo lo marcan. En validación acertó 73% de las veces que lo marcó y lo marcó en 7% de los saques profesionales. Está en prueba: falta probarlo con más jugadores nuevos.",
     drill: {
@@ -156,10 +159,11 @@ const points: ImprovementPoint[] = [
     level: "value",
     level_label: "Modelo elegido por valor",
     precision: 0.2,
-    often: "2 de cada 10 veces",
+    sure: "low",
+    sure_label: "En duda",
     seen: "Bajas muy pronto el brazo con el que lanzas la pelota: cuando la raqueta va a subir a pegarle, esa mano ya está a la altura del hombro o más abajo.",
     goal: "Lo ideal: que siga arriba, apuntando a la pelota, hasta que la raqueta empiece a subir.",
-    trust: "Tómalo como una sugerencia, no como un hecho.",
+    trust: "Cuando la app marca esto, se equivoca más veces de las que acierta. Tómalo como una sugerencia, no como un hecho.",
     detail:
       "Modelo elegido por valor. Tu muñeca de lanzamiento baja del hombro 0.37 s antes del impacto. 5 de 5 versiones del modelo coinciden. En validación acertó 20% de las veces que lo marcó y lo marcó en 0% de los saques profesionales. En los videos de prueba encontró el problema en 94% de los saques que lo tenían y lo marcó de más en 56% de los que no. El modelo se eligió por su valor; con las reglas de los demás puntos no tendría nivel.",
     drill: {
@@ -205,7 +209,7 @@ const others = (toss: boolean, fall: number): OtherPart[] => [
         status_label: "Distinto a los profesionales",
         seen: "Antes de subir a pegarle, tu raqueta casi no cae detrás de la espalda.",
         goal: "Lo ideal: que caiga detrás de la espalda, como si te rascaras, y luego suba hacia la pelota.",
-        note: "Es solo una observación, sin ejercicio: en los videos con los que probamos la app, esta señal acertó 5 de cada 10 veces.",
+        note: "Es solo una observación, sin ejercicio. Cuando la app marca esto, se equivoca seguido.",
       },
 ]
 
