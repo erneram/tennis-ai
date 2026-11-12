@@ -1,0 +1,168 @@
+video,player,split,answer,points,right,wrong
+ea-1-s01,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-1-s02,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s03,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s04,ea,validation,points,arm_at_contact landing legs,arm_at_contact landing,legs
+ea-1-s05,ea,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+ea-1-s06,ea,validation,points,arm_at_contact landing,arm_at_contact,landing
+ea-1-s07,ea,validation,points,arm_at_contact legs,arm_at_contact,legs
+ea-1-s08,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-1-s09,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s10,ea,validation,retake,,,
+ea-1-s11,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s12,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s13,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-1-s14,ea,validation,retake,,,
+ea-1-s15,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s16,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-1-s17,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-1-s18,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-2-s01,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-2-s02,ea,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+ea-2-s03,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-2-s04,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-2-s05,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-2-s06,ea,validation,retake,,,
+ea-2-s07,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-2-s08,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-3-s01,ea,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+ea-3-s02,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-3-s03,ea,validation,points,arm_at_contact legs,arm_at_contact,legs
+ea-3-s04,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-3-s05,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-3-s06,ea,validation,points,arm_at_contact landing legs,arm_at_contact landing,legs
+ea-4-s01,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-4-s02,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-4-s03,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-4-s04,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-4-s05,ea,validation,points,arm_at_contact legs,arm_at_contact legs,
+ea-4-s06,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-4-s07,ea,validation,points,arm_at_contact legs,arm_at_contact,legs
+ea-4-s08,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-5-s01,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-5-s02,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-5-s03,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-5-s04,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s01,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s02,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s03,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s04,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s05,ea,validation,points,,,
+ea-6-s06,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s07,ea,validation,points,arm_at_contact,,arm_at_contact
+ea-6-s08,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s09,ea,validation,points,arm_at_contact,arm_at_contact,
+ea-6-s10,ea,validation,points,arm_at_contact,arm_at_contact,
+jc-post1-s01,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post1-s02,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post1-s03,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post1-s04,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-post1-s05,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post1-s06,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post1-s07,jc,validation,points,arm_at_contact landing,arm_at_contact,landing
+jc-post1-s08,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post1-s09,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post1-s10,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post1-s11,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post1-s12,jc,validation,points,arm_at_contact landing,arm_at_contact,landing
+jc-post1-s13,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-post1-s14,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post1-s16,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post1-s18,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post1-s19,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post1-s20,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post2-s01,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post2-s02,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post2-s03,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post2-s04,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post3-s01,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post3-s02,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post3-s04,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post3-s05,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post3-s07,jc,validation,points,arm_at_contact landing,landing,arm_at_contact
+jc-post3-s08,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post3-s09,jc,validation,points,arm_at_contact landing,arm_at_contact,landing
+jc-post3-s10,jc,validation,points,arm_at_contact landing legs,arm_at_contact legs,landing
+jc-post3-s11,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post3-s12,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post3-s13,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing,legs
+jc-post4-s01,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post4-s02,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-post4-s03,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post4-s04,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post4-s05,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post4-s06,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-post4-s07,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-post4-s08,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post4-s09,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-post4-s10,jc,validation,points,arm_at_contact landing,arm_at_contact landing,
+jc-post4-s11,jc,validation,points,arm_at_contact landing legs,arm_at_contact landing legs,
+jc-s10,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s11,jc,validation,points,arm_at_contact toss,arm_at_contact toss,
+jc-s12,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-s13,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s14,jc,validation,points,arm_at_contact landing toss,arm_at_contact toss,landing
+jc-s15,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-s16,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s17,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s18,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s19,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s20,jc,validation,points,arm_at_contact landing toss,arm_at_contact toss,landing
+jc-s21,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s22,jc,validation,points,arm_at_contact toss,arm_at_contact toss,
+jc-s23,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s24,jc,validation,points,arm_at_contact toss,arm_at_contact toss,
+jc-s25,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-s26,jc,validation,points,arm_at_contact toss,arm_at_contact,toss
+jc-s27a,jc,validation,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-s27b,jc,validation,points,arm_at_contact toss,arm_at_contact toss,
+jc-s8,jc,validation,points,arm_at_contact toss,arm_at_contact toss,
+jc-s9,jc,validation,points,arm_at_contact landing toss,arm_at_contact landing toss,
+pro02_s01,pros,validation,points,,,
+pro03_s01,pros,validation,points,arm_at_contact,,arm_at_contact
+pro03_s02,pros,validation,points,,,
+pro03_s03,pros,validation,points,,,
+pro03_s04,pros,validation,points,arm_at_contact,,arm_at_contact
+pro03_s05,pros,validation,points,,,
+pro03_s06,pros,validation,points,,,
+pro03_s07,pros,validation,points,,,
+pro03_s08,pros,validation,points,,,
+pro04-s01,pros,validation,points,,,
+pro04-s02,pros,validation,points,,,
+pro04-s03,pros,validation,points,,,
+pro04-s04,pros,validation,points,,,
+pro04-s05,pros,validation,points,,,
+pro04-s06,pros,validation,points,,,
+pro04-s07,pros,validation,points,,,
+pro04-s08,pros,validation,points,,,
+jc-s28,jc,test,points,arm_at_contact landing toss,arm_at_contact toss,landing
+jc-s29,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s30,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s31,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s32,jc,test,points,arm_at_contact toss,arm_at_contact toss,
+jc-s33,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s34,jc,test,points,arm_at_contact toss,arm_at_contact toss,
+jc-s35,jc,test,points,arm_at_contact toss,arm_at_contact toss,
+jc-s36,jc,test,points,arm_at_contact landing toss,arm_at_contact,landing toss
+jc-s37,jc,test,points,arm_at_contact toss,arm_at_contact toss,
+jc-s38,jc,test,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-s39,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s40,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s41,jc,test,points,arm_at_contact landing toss,arm_at_contact landing toss,
+jc-s42,jc,test,points,arm_at_contact landing toss,arm_at_contact landing,toss
+jc-s43,jc,test,points,arm_at_contact toss,arm_at_contact toss,
+pro01_s01,pros,test,points,,,
+pro01_s02,pros,test,points,arm_at_contact,,arm_at_contact
+pro05-s01,pros,fresh,points,,,
+pro05-s02,pros,fresh,points,,,
+pro05-s03,pros,fresh,points,landing,,landing
+pro05-s04,pros,fresh,points,,,
+pro05-s05,pros,fresh,points,,,
+pro05-s06,pros,fresh,points,,,
+pro05-s07,pros,fresh,points,,,
+pro05-s08,pros,fresh,points,,,
+pro05-s09,pros,fresh,points,,,
+pro05-s10,pros,fresh,points,,,
+yt2-a-s01,yt2,fresh,points,,,
+yt2-a-s02,yt2,fresh,points,arm_at_contact,,arm_at_contact
+yt3-s07,yt3,fresh,retake,,,

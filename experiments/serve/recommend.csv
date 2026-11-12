@@ -8,24 +8,33 @@ M1e alone (the app before),test,jc,16,16,0.8125,0.23636363636363636,nan,16,0,0.0
 M1e alone (the app before),test,pros,2,0,0.0,0.0,1.0,0,0,nan,nan
 M1e alone (the app before),fresh,all,13,1,1.0,1.0,1.0,0,0,1.0,29.166527777777777
 M1e alone (the app before),fresh,pros,10,0,0.0,0.0,1.0,0,0,nan,nan
-the app: M1e and the aspects of points.csv,validation,all,136,227,0.73568281938326,0.49702380952380953,0.8235294117647058,117,0,0.3949579831932773,18.749861111111112
-the app: M1e and the aspects of points.csv,validation,jc,65,164,0.6707317073170732,0.5882352941176471,nan,63,0,0.03076923076923077,23.55755341880342
-the app: M1e and the aspects of points.csv,validation,ea,54,60,0.95,0.3825503355704698,nan,54,0,0.8333333333333334,12.962824074074073
+the app: M1e and the aspects of points.csv,validation,all,136,249,0.7550200803212851,0.5595238095238095,0.8235294117647058,117,0,0.957983193277311,41.176331699346406
+the app: M1e and the aspects of points.csv,validation,jc,65,166,0.7168674698795181,0.6363636363636364,nan,63,0,0.9846153846153847,51.15370726495726
+the app: M1e and the aspects of points.csv,validation,ea,54,80,0.8625,0.46308724832214765,nan,54,0,0.9259259259259259,29.166527777777777
 the app: M1e and the aspects of points.csv,validation,pros,17,3,0.0,0.0,0.8235294117647058,0,0,nan,nan
-the app: M1e and the aspects of points.csv,test,all,18,44,0.8636363636363636,0.6909090909090909,0.5,16,0,0.0625,133.9842361111111
-the app: M1e and the aspects of points.csv,test,jc,16,43,0.8837209302325582,0.6909090909090909,nan,16,0,0.0625,133.9842361111111
+the app: M1e and the aspects of points.csv,test,all,18,44,0.8636363636363636,0.6909090909090909,0.5,16,0,0.875,133.9842361111111
+the app: M1e and the aspects of points.csv,test,jc,16,43,0.8837209302325582,0.6909090909090909,nan,16,0,0.875,133.9842361111111
 the app: M1e and the aspects of points.csv,test,pros,2,1,0.0,0.0,0.5,0,0,nan,nan
-the app: M1e and the aspects of points.csv,fresh,all,13,5,0.3333333333333333,1.0,0.9,0,0,1.0,-0.0001388888888888889
+the app: M1e and the aspects of points.csv,fresh,all,13,5,0.0,0.0,0.9,0,0,0.0,-72.91680555555556
 the app: M1e and the aspects of points.csv,fresh,pros,10,1,0.0,0.0,0.9,0,0,nan,nan
-"the app, EA and JC by models that never saw them",validation,all,136,223,0.7174887892376681,0.47619047619047616,0.8235294117647058,117,1,0.4067796610169492,8.823390522875817
-"the app, EA and JC by models that never saw them",validation,jc,65,164,0.6585365853658537,0.5775401069518716,nan,63,0,0.03076923076923077,16.82678418803419
-"the app, EA and JC by models that never saw them",validation,ea,54,56,0.9285714285714286,0.348993288590604,nan,54,1,0.8679245283018868,-0.810324074074074
+"the app, EA and JC by models that never saw them",validation,all,136,253,0.6877470355731226,0.5178571428571429,0.8235294117647058,117,1,0.9576271186440678,12.49986111111111
+"the app, EA and JC by models that never saw them",validation,jc,65,164,0.6585365853658537,0.5775401069518716,nan,63,0,0.9846153846153847,16.82678418803419
+"the app, EA and JC by models that never saw them",validation,ea,54,86,0.7674418604651163,0.4429530201342282,nan,54,1,0.9245283018867925,7.291527777777778
 "the app, EA and JC by models that never saw them",validation,pros,17,3,0.0,0.0,0.8235294117647058,0,0,nan,nan
-"the app, EA and JC by models that never saw them",test,all,18,44,0.8636363636363636,0.6909090909090909,0.5,16,0,0.0625,133.9842361111111
-"the app, EA and JC by models that never saw them",test,jc,16,43,0.8837209302325582,0.6909090909090909,nan,16,0,0.0625,133.9842361111111
+"the app, EA and JC by models that never saw them",test,all,18,44,0.8636363636363636,0.6909090909090909,0.5,16,0,0.875,133.9842361111111
+"the app, EA and JC by models that never saw them",test,jc,16,43,0.8837209302325582,0.6909090909090909,nan,16,0,0.875,133.9842361111111
 "the app, EA and JC by models that never saw them",test,pros,2,1,0.0,0.0,0.5,0,0,nan,nan
-"the app, EA and JC by models that never saw them",fresh,all,13,5,0.3333333333333333,1.0,0.9,0,0,1.0,-0.0001388888888888889
+"the app, EA and JC by models that never saw them",fresh,all,13,5,0.0,0.0,0.9,0,0,0.0,-72.91680555555556
 "the app, EA and JC by models that never saw them",fresh,pros,10,1,0.0,0.0,0.9,0,0,nan,nan
+what if: the app and the racket drop by its measure,validation,all,136,326,0.7208588957055214,0.6994047619047619,0.7058823529411765,117,0,0.957983193277311,72.4263316993464
+what if: the app and the racket drop by its measure,validation,jc,65,193,0.6321243523316062,0.6524064171122995,nan,63,0,0.9846153846153847,24.903707264957266
+what if: the app and the racket drop by its measure,validation,ea,54,128,0.8828125,0.7583892617449665,nan,54,0,0.9259259259259259,129.62949074074072
+what if: the app and the racket drop by its measure,validation,pros,17,5,0.0,0.0,0.7058823529411765,0,0,nan,nan
+what if: the app and the racket drop by its measure,test,all,18,48,0.7083333333333334,0.6181818181818182,0.5,16,0,0.875,57.42173611111111
+what if: the app and the racket drop by its measure,test,jc,16,47,0.723404255319149,0.6181818181818182,nan,16,0,0.875,57.42173611111111
+what if: the app and the racket drop by its measure,test,pros,2,1,0.0,0.0,0.5,0,0,nan,nan
+what if: the app and the racket drop by its measure,fresh,all,13,5,0.0,0.0,0.9,0,0,0.0,-72.91680555555556
+what if: the app and the racket drop by its measure,fresh,pros,10,1,0.0,0.0,0.9,0,0,nan,nan
 M1e and every M3 aspect,validation,all,136,369,0.7262872628726287,0.7976190476190477,0.0,117,0,0.6050420168067226,122.05868464052287
 M1e and every M3 aspect,validation,jc,65,194,0.8247422680412371,0.8556149732620321,nan,63,0,0.7846153846153846,151.4421688034188
 M1e and every M3 aspect,validation,ea,54,142,0.7605633802816901,0.7248322147651006,nan,54,0,0.3888888888888889,86.68967592592593

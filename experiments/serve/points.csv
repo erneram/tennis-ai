@@ -1,7 +1,8 @@
-aspect,level,source,model,threshold,precision,pros_rate,new_player,described,pros_median,pros_p90,scale,measure_fails
-legs,,,,,,,,,-0.297817200422287,-0.10866544395685196,0.14918985962867737,amateurs against pros; precision
-shoulders,,,,,,,,,-0.25103560090065,-0.08863978087902069,0.05472653731703758,retest kappa; amateurs against pros; precision
-racket_at_peak,,,,,,,,,nan,nan,nan,no measure
-racket_drop,,,,,,,,yes,-0.21102473139762878,-0.08309724181890488,0.12716984748840332,precision
-arm_at_contact,measure,measure,,-0.8933799862861633,0.983,0.083,,yes,-1.0193713903427124,-0.8933799862861633,0.16996847093105316,
-landing,trial,model,m3b,,0.732,0.069,0.723,,-0.45983999967575073,-0.25645196437835693,0.4028472602367401,amateurs against pros; pros held out
+aspect,level,source,model,threshold,precision,pros_rate,new_player,fails,described,pros_median,pros_p90,scale,measure_fails
+toss,value,model,m1e,,0.2,0.0,,9 precision among amateurs; 2 new players,,,,,
+legs,exploratory,model,m4,,0.7,0.0,0.585,2 new players,,-0.297817200422287,-0.10866544395685196,0.14918985962867737,amateurs against pros; precision
+shoulders,,,,,,,,,,-0.25103560090065,-0.08863978087902069,0.05472653731703758,retest kappa; amateurs against pros; precision
+racket_at_peak,,,,,,,,,,nan,nan,nan,no measure
+racket_drop,,,,,0.486,0.0,,,yes,-0.21102473139762878,-0.08309724181890488,0.12716984748840332,precision
+arm_at_contact,measure,measure,,-0.8933799862861633,0.983,0.083,,,yes,-1.0193713903427124,-0.8933799862861633,0.16996847093105316,
+landing,trial,model,m3b,,0.732,0.069,0.723,,,-0.45983999967575073,-0.25645196437835693,0.4028472602367401,amateurs against pros; pros held out

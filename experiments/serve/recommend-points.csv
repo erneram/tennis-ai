@@ -1,0 +1,217 @@
+list,split,player,point,serves,marked,said,right,wrong
+M1e alone (the app before),validation,all,toss,136,10,50,10,40
+M1e alone (the app before),validation,all,legs,136,32,0,0,0
+M1e alone (the app before),validation,all,racket_at_peak,136,77,0,0,0
+M1e alone (the app before),validation,all,racket_drop,136,56,0,0,0
+M1e alone (the app before),validation,all,arm_at_contact,136,117,0,0,0
+M1e alone (the app before),validation,all,landing,136,44,0,0,0
+M1e alone (the app before),validation,jc,toss,65,10,49,10,39
+M1e alone (the app before),validation,jc,legs,65,10,0,0,0
+M1e alone (the app before),validation,jc,racket_at_peak,65,60,0,0,0
+M1e alone (the app before),validation,jc,racket_drop,65,7,0,0,0
+M1e alone (the app before),validation,jc,arm_at_contact,65,64,0,0,0
+M1e alone (the app before),validation,jc,landing,65,36,0,0,0
+M1e alone (the app before),validation,ea,toss,54,0,1,0,1
+M1e alone (the app before),validation,ea,legs,54,22,0,0,0
+M1e alone (the app before),validation,ea,racket_at_peak,54,17,0,0,0
+M1e alone (the app before),validation,ea,racket_drop,54,49,0,0,0
+M1e alone (the app before),validation,ea,arm_at_contact,54,53,0,0,0
+M1e alone (the app before),validation,ea,landing,54,8,0,0,0
+M1e alone (the app before),validation,pros,toss,17,0,0,0,0
+M1e alone (the app before),validation,pros,legs,17,0,0,0,0
+M1e alone (the app before),validation,pros,racket_at_peak,17,0,0,0,0
+M1e alone (the app before),validation,pros,racket_drop,17,0,0,0,0
+M1e alone (the app before),validation,pros,arm_at_contact,17,0,0,0,0
+M1e alone (the app before),validation,pros,landing,17,0,0,0,0
+M1e alone (the app before),test,all,toss,18,13,16,13,3
+M1e alone (the app before),test,all,legs,18,0,0,0,0
+M1e alone (the app before),test,all,racket_at_peak,18,15,0,0,0
+M1e alone (the app before),test,all,racket_drop,18,0,0,0,0
+M1e alone (the app before),test,all,arm_at_contact,18,16,0,0,0
+M1e alone (the app before),test,all,landing,18,11,0,0,0
+M1e alone (the app before),test,jc,toss,16,13,16,13,3
+M1e alone (the app before),test,jc,legs,16,0,0,0,0
+M1e alone (the app before),test,jc,racket_at_peak,16,15,0,0,0
+M1e alone (the app before),test,jc,racket_drop,16,0,0,0,0
+M1e alone (the app before),test,jc,arm_at_contact,16,16,0,0,0
+M1e alone (the app before),test,jc,landing,16,11,0,0,0
+M1e alone (the app before),test,pros,toss,2,0,0,0,0
+M1e alone (the app before),test,pros,legs,2,0,0,0,0
+M1e alone (the app before),test,pros,racket_at_peak,2,0,0,0,0
+M1e alone (the app before),test,pros,racket_drop,2,0,0,0,0
+M1e alone (the app before),test,pros,arm_at_contact,2,0,0,0,0
+M1e alone (the app before),test,pros,landing,2,0,0,0,0
+M1e alone (the app before),fresh,all,toss,13,1,1,1,0
+M1e alone (the app before),fresh,all,legs,13,0,0,0,0
+M1e alone (the app before),fresh,all,racket_at_peak,13,0,0,0,0
+M1e alone (the app before),fresh,all,racket_drop,13,0,0,0,0
+M1e alone (the app before),fresh,all,arm_at_contact,13,0,0,0,0
+M1e alone (the app before),fresh,all,landing,13,0,0,0,0
+M1e alone (the app before),fresh,pros,toss,10,0,0,0,0
+M1e alone (the app before),fresh,pros,legs,10,0,0,0,0
+M1e alone (the app before),fresh,pros,racket_at_peak,10,0,0,0,0
+M1e alone (the app before),fresh,pros,racket_drop,10,0,0,0,0
+M1e alone (the app before),fresh,pros,arm_at_contact,10,0,0,0,0
+M1e alone (the app before),fresh,pros,landing,10,0,0,0,0
+the app: M1e and the aspects of points.csv,validation,all,toss,136,10,42,10,32
+the app: M1e and the aspects of points.csv,validation,all,legs,136,32,30,21,9
+the app: M1e and the aspects of points.csv,validation,all,racket_at_peak,136,77,0,0,0
+the app: M1e and the aspects of points.csv,validation,all,racket_drop,136,56,0,0,0
+the app: M1e and the aspects of points.csv,validation,all,arm_at_contact,136,117,120,116,4
+the app: M1e and the aspects of points.csv,validation,all,landing,136,44,57,41,16
+the app: M1e and the aspects of points.csv,validation,jc,toss,65,10,41,10,31
+the app: M1e and the aspects of points.csv,validation,jc,legs,65,10,10,9,1
+the app: M1e and the aspects of points.csv,validation,jc,racket_at_peak,65,60,0,0,0
+the app: M1e and the aspects of points.csv,validation,jc,racket_drop,65,7,0,0,0
+the app: M1e and the aspects of points.csv,validation,jc,arm_at_contact,65,64,65,64,1
+the app: M1e and the aspects of points.csv,validation,jc,landing,65,36,50,36,14
+the app: M1e and the aspects of points.csv,validation,ea,toss,54,0,1,0,1
+the app: M1e and the aspects of points.csv,validation,ea,legs,54,22,20,12,8
+the app: M1e and the aspects of points.csv,validation,ea,racket_at_peak,54,17,0,0,0
+the app: M1e and the aspects of points.csv,validation,ea,racket_drop,54,49,0,0,0
+the app: M1e and the aspects of points.csv,validation,ea,arm_at_contact,54,53,53,52,1
+the app: M1e and the aspects of points.csv,validation,ea,landing,54,8,6,5,1
+the app: M1e and the aspects of points.csv,validation,pros,toss,17,0,0,0,0
+the app: M1e and the aspects of points.csv,validation,pros,legs,17,0,0,0,0
+the app: M1e and the aspects of points.csv,validation,pros,racket_at_peak,17,0,0,0,0
+the app: M1e and the aspects of points.csv,validation,pros,racket_drop,17,0,0,0,0
+the app: M1e and the aspects of points.csv,validation,pros,arm_at_contact,17,0,2,0,2
+the app: M1e and the aspects of points.csv,validation,pros,landing,17,0,1,0,1
+the app: M1e and the aspects of points.csv,test,all,toss,18,13,16,13,3
+the app: M1e and the aspects of points.csv,test,all,legs,18,0,0,0,0
+the app: M1e and the aspects of points.csv,test,all,racket_at_peak,18,15,0,0,0
+the app: M1e and the aspects of points.csv,test,all,racket_drop,18,0,0,0,0
+the app: M1e and the aspects of points.csv,test,all,arm_at_contact,18,16,17,16,1
+the app: M1e and the aspects of points.csv,test,all,landing,18,11,11,9,2
+the app: M1e and the aspects of points.csv,test,jc,toss,16,13,16,13,3
+the app: M1e and the aspects of points.csv,test,jc,legs,16,0,0,0,0
+the app: M1e and the aspects of points.csv,test,jc,racket_at_peak,16,15,0,0,0
+the app: M1e and the aspects of points.csv,test,jc,racket_drop,16,0,0,0,0
+the app: M1e and the aspects of points.csv,test,jc,arm_at_contact,16,16,16,16,0
+the app: M1e and the aspects of points.csv,test,jc,landing,16,11,11,9,2
+the app: M1e and the aspects of points.csv,test,pros,toss,2,0,0,0,0
+the app: M1e and the aspects of points.csv,test,pros,legs,2,0,0,0,0
+the app: M1e and the aspects of points.csv,test,pros,racket_at_peak,2,0,0,0,0
+the app: M1e and the aspects of points.csv,test,pros,racket_drop,2,0,0,0,0
+the app: M1e and the aspects of points.csv,test,pros,arm_at_contact,2,0,1,0,1
+the app: M1e and the aspects of points.csv,test,pros,landing,2,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,all,toss,13,1,0,0,0
+the app: M1e and the aspects of points.csv,fresh,all,legs,13,0,1,0,1
+the app: M1e and the aspects of points.csv,fresh,all,racket_at_peak,13,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,all,racket_drop,13,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,all,arm_at_contact,13,0,2,0,1
+the app: M1e and the aspects of points.csv,fresh,all,landing,13,0,2,0,1
+the app: M1e and the aspects of points.csv,fresh,pros,toss,10,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,pros,legs,10,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,pros,racket_at_peak,10,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,pros,racket_drop,10,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,pros,arm_at_contact,10,0,0,0,0
+the app: M1e and the aspects of points.csv,fresh,pros,landing,10,0,1,0,1
+"the app, EA and JC by models that never saw them",validation,all,toss,136,10,50,10,40
+"the app, EA and JC by models that never saw them",validation,all,legs,136,32,30,14,16
+"the app, EA and JC by models that never saw them",validation,all,racket_at_peak,136,77,0,0,0
+"the app, EA and JC by models that never saw them",validation,all,racket_drop,136,56,0,0,0
+"the app, EA and JC by models that never saw them",validation,all,arm_at_contact,136,117,120,116,4
+"the app, EA and JC by models that never saw them",validation,all,landing,136,44,53,34,19
+"the app, EA and JC by models that never saw them",validation,jc,toss,65,10,49,10,39
+"the app, EA and JC by models that never saw them",validation,jc,legs,65,10,0,0,0
+"the app, EA and JC by models that never saw them",validation,jc,racket_at_peak,65,60,0,0,0
+"the app, EA and JC by models that never saw them",validation,jc,racket_drop,65,7,0,0,0
+"the app, EA and JC by models that never saw them",validation,jc,arm_at_contact,65,64,65,64,1
+"the app, EA and JC by models that never saw them",validation,jc,landing,65,36,50,34,16
+"the app, EA and JC by models that never saw them",validation,ea,toss,54,0,1,0,1
+"the app, EA and JC by models that never saw them",validation,ea,legs,54,22,30,14,16
+"the app, EA and JC by models that never saw them",validation,ea,racket_at_peak,54,17,0,0,0
+"the app, EA and JC by models that never saw them",validation,ea,racket_drop,54,49,0,0,0
+"the app, EA and JC by models that never saw them",validation,ea,arm_at_contact,54,53,53,52,1
+"the app, EA and JC by models that never saw them",validation,ea,landing,54,8,2,0,2
+"the app, EA and JC by models that never saw them",validation,pros,toss,17,0,0,0,0
+"the app, EA and JC by models that never saw them",validation,pros,legs,17,0,0,0,0
+"the app, EA and JC by models that never saw them",validation,pros,racket_at_peak,17,0,0,0,0
+"the app, EA and JC by models that never saw them",validation,pros,racket_drop,17,0,0,0,0
+"the app, EA and JC by models that never saw them",validation,pros,arm_at_contact,17,0,2,0,2
+"the app, EA and JC by models that never saw them",validation,pros,landing,17,0,1,0,1
+"the app, EA and JC by models that never saw them",test,all,toss,18,13,16,13,3
+"the app, EA and JC by models that never saw them",test,all,legs,18,0,0,0,0
+"the app, EA and JC by models that never saw them",test,all,racket_at_peak,18,15,0,0,0
+"the app, EA and JC by models that never saw them",test,all,racket_drop,18,0,0,0,0
+"the app, EA and JC by models that never saw them",test,all,arm_at_contact,18,16,17,16,1
+"the app, EA and JC by models that never saw them",test,all,landing,18,11,11,9,2
+"the app, EA and JC by models that never saw them",test,jc,toss,16,13,16,13,3
+"the app, EA and JC by models that never saw them",test,jc,legs,16,0,0,0,0
+"the app, EA and JC by models that never saw them",test,jc,racket_at_peak,16,15,0,0,0
+"the app, EA and JC by models that never saw them",test,jc,racket_drop,16,0,0,0,0
+"the app, EA and JC by models that never saw them",test,jc,arm_at_contact,16,16,16,16,0
+"the app, EA and JC by models that never saw them",test,jc,landing,16,11,11,9,2
+"the app, EA and JC by models that never saw them",test,pros,toss,2,0,0,0,0
+"the app, EA and JC by models that never saw them",test,pros,legs,2,0,0,0,0
+"the app, EA and JC by models that never saw them",test,pros,racket_at_peak,2,0,0,0,0
+"the app, EA and JC by models that never saw them",test,pros,racket_drop,2,0,0,0,0
+"the app, EA and JC by models that never saw them",test,pros,arm_at_contact,2,0,1,0,1
+"the app, EA and JC by models that never saw them",test,pros,landing,2,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,all,toss,13,1,0,0,0
+"the app, EA and JC by models that never saw them",fresh,all,legs,13,0,1,0,1
+"the app, EA and JC by models that never saw them",fresh,all,racket_at_peak,13,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,all,racket_drop,13,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,all,arm_at_contact,13,0,2,0,1
+"the app, EA and JC by models that never saw them",fresh,all,landing,13,0,2,0,1
+"the app, EA and JC by models that never saw them",fresh,pros,toss,10,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,pros,legs,10,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,pros,racket_at_peak,10,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,pros,racket_drop,10,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,pros,arm_at_contact,10,0,0,0,0
+"the app, EA and JC by models that never saw them",fresh,pros,landing,10,0,1,0,1
+what if: the app and the racket drop by its measure,validation,all,toss,136,10,20,8,12
+what if: the app and the racket drop by its measure,validation,all,legs,136,32,30,21,9
+what if: the app and the racket drop by its measure,validation,all,racket_at_peak,136,77,0,0,0
+what if: the app and the racket drop by its measure,validation,all,racket_drop,136,56,99,49,50
+what if: the app and the racket drop by its measure,validation,all,arm_at_contact,136,117,120,116,4
+what if: the app and the racket drop by its measure,validation,all,landing,136,44,57,41,16
+what if: the app and the racket drop by its measure,validation,jc,toss,65,10,19,8,11
+what if: the app and the racket drop by its measure,validation,jc,legs,65,10,10,9,1
+what if: the app and the racket drop by its measure,validation,jc,racket_at_peak,65,60,0,0,0
+what if: the app and the racket drop by its measure,validation,jc,racket_drop,65,7,49,5,44
+what if: the app and the racket drop by its measure,validation,jc,arm_at_contact,65,64,65,64,1
+what if: the app and the racket drop by its measure,validation,jc,landing,65,36,50,36,14
+what if: the app and the racket drop by its measure,validation,ea,toss,54,0,1,0,1
+what if: the app and the racket drop by its measure,validation,ea,legs,54,22,20,12,8
+what if: the app and the racket drop by its measure,validation,ea,racket_at_peak,54,17,0,0,0
+what if: the app and the racket drop by its measure,validation,ea,racket_drop,54,49,48,44,4
+what if: the app and the racket drop by its measure,validation,ea,arm_at_contact,54,53,53,52,1
+what if: the app and the racket drop by its measure,validation,ea,landing,54,8,6,5,1
+what if: the app and the racket drop by its measure,validation,pros,toss,17,0,0,0,0
+what if: the app and the racket drop by its measure,validation,pros,legs,17,0,0,0,0
+what if: the app and the racket drop by its measure,validation,pros,racket_at_peak,17,0,0,0,0
+what if: the app and the racket drop by its measure,validation,pros,racket_drop,17,0,2,0,2
+what if: the app and the racket drop by its measure,validation,pros,arm_at_contact,17,0,2,0,2
+what if: the app and the racket drop by its measure,validation,pros,landing,17,0,1,0,1
+what if: the app and the racket drop by its measure,test,all,toss,18,13,11,9,2
+what if: the app and the racket drop by its measure,test,all,legs,18,0,0,0,0
+what if: the app and the racket drop by its measure,test,all,racket_at_peak,18,15,0,0,0
+what if: the app and the racket drop by its measure,test,all,racket_drop,18,0,9,0,9
+what if: the app and the racket drop by its measure,test,all,arm_at_contact,18,16,17,16,1
+what if: the app and the racket drop by its measure,test,all,landing,18,11,11,9,2
+what if: the app and the racket drop by its measure,test,jc,toss,16,13,11,9,2
+what if: the app and the racket drop by its measure,test,jc,legs,16,0,0,0,0
+what if: the app and the racket drop by its measure,test,jc,racket_at_peak,16,15,0,0,0
+what if: the app and the racket drop by its measure,test,jc,racket_drop,16,0,9,0,9
+what if: the app and the racket drop by its measure,test,jc,arm_at_contact,16,16,16,16,0
+what if: the app and the racket drop by its measure,test,jc,landing,16,11,11,9,2
+what if: the app and the racket drop by its measure,test,pros,toss,2,0,0,0,0
+what if: the app and the racket drop by its measure,test,pros,legs,2,0,0,0,0
+what if: the app and the racket drop by its measure,test,pros,racket_at_peak,2,0,0,0,0
+what if: the app and the racket drop by its measure,test,pros,racket_drop,2,0,0,0,0
+what if: the app and the racket drop by its measure,test,pros,arm_at_contact,2,0,1,0,1
+what if: the app and the racket drop by its measure,test,pros,landing,2,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,all,toss,13,1,0,0,0
+what if: the app and the racket drop by its measure,fresh,all,legs,13,0,1,0,1
+what if: the app and the racket drop by its measure,fresh,all,racket_at_peak,13,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,all,racket_drop,13,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,all,arm_at_contact,13,0,2,0,1
+what if: the app and the racket drop by its measure,fresh,all,landing,13,0,2,0,1
+what if: the app and the racket drop by its measure,fresh,pros,toss,10,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,pros,legs,10,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,pros,racket_at_peak,10,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,pros,racket_drop,10,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,pros,arm_at_contact,10,0,0,0,0
+what if: the app and the racket drop by its measure,fresh,pros,landing,10,0,1,0,1
