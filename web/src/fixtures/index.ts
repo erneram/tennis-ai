@@ -87,8 +87,7 @@ const compare = (height: number, fall: number, reach: number): Compared[] => [
   {
     aspect: "toss_height",
     label: "Altura de la mano que lanza",
-    mine: `Cuando la raqueta está más baja, tu mano de lanzamiento queda ${height.toFixed(2)} torsos sobre el hombro.`,
-    pros: "En los profesionales, la mediana es 1.05 y 9 de cada 10 llegan a 0.73 o más.",
+    caption: "Qué tan arriba sigue tu mano de lanzamiento cuando la raqueta está atrás.",
     value: height,
     pros_median: 1.05,
     pros_floor: 0.73,
@@ -97,8 +96,7 @@ const compare = (height: number, fall: number, reach: number): Compared[] => [
   {
     aspect: "racket_drop",
     label: "Caída de la raqueta",
-    mine: `Antes de subir a pegarle, la muñeca de la raqueta cae ${fall.toFixed(2)} torsos.`,
-    pros: "En los profesionales, la mediana es 0.21 y 9 de cada 10 llegan a 0.08 o más.",
+    caption: "Cuánto cae tu raqueta detrás de la espalda antes de subir a pegarle.",
     value: fall,
     pros_median: 0.21,
     pros_floor: 0.08,
@@ -107,8 +105,7 @@ const compare = (height: number, fall: number, reach: number): Compared[] => [
   {
     aspect: "arm_at_contact",
     label: "Brazo al impacto",
-    mine: `Al impacto, la muñeca de la raqueta llega ${reach.toFixed(2)} torsos sobre su hombro.`,
-    pros: "En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más.",
+    caption: "Qué tan arriba le pegas a la pelota.",
     value: reach,
     pros_median: 1.02,
     pros_floor: 0.89,
@@ -123,9 +120,12 @@ const points: ImprovementPoint[] = [
     level: "measure",
     level_label: "Medida frente a profesionales",
     precision: 0.983,
-    seen: "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro. En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más.",
-    evidence:
-      "Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 profesionales. De los saques amateur fuera de ese rango, 98% tenían este problema según quien los etiquetó. No es un diagnóstico.",
+    often: "casi siempre",
+    seen: "Le pegas a la pelota más abajo de lo que alcanzas: al pegarle, tu brazo no llega estirado hacia arriba.",
+    goal: "Lo ideal: el brazo estirado, casi vertical, pegándole lo más alto que alcanzas.",
+    trust: "Sale de comparar tu video con saques de profesionales; no es un diagnóstico.",
+    detail:
+      "Medida frente a profesionales. Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro. En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más. Las distancias van en largos de torso. Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 profesionales. De los saques amateur fuera de ese rango, 98% tenían este problema según quien los etiquetó. No es un diagnóstico.",
     drill: {
       name: "Alcanzar el punto más alto",
       instructions:
@@ -138,9 +138,12 @@ const points: ImprovementPoint[] = [
     level: "trial",
     level_label: "Modelo en prueba",
     precision: 0.732,
-    seen: "Después del impacto, la cadera avanza 0.10 torsos. En los profesionales, la mediana es 0.46 y 9 de cada 10 llegan a 0.26 o más.",
-    evidence:
-      "5 de 5 versiones del modelo lo marcan. En validación acertó 73% de las veces que lo marcó y lo marcó en 7% de los saques profesionales. Está en prueba: falta probarlo con más jugadores nuevos.",
+    often: "7 de cada 10 veces",
+    seen: "Después de pegarle avanzas poco: caes casi en el mismo lugar.",
+    goal: "Lo ideal: caer hacia adelante, dentro de la cancha, sobre el pie de adelante y en equilibrio.",
+    trust: "Todavía lo estamos probando con más jugadores.",
+    detail:
+      "Modelo en prueba. Después del impacto, la cadera avanza 0.10 torsos. En los profesionales, la mediana es 0.46 y 9 de cada 10 llegan a 0.26 o más. Las distancias van en largos de torso. 5 de 5 versiones del modelo lo marcan. En validación acertó 73% de las veces que lo marcó y lo marcó en 7% de los saques profesionales. Está en prueba: falta probarlo con más jugadores nuevos.",
     drill: {
       name: "Aterriza y sostén",
       instructions:
@@ -153,9 +156,12 @@ const points: ImprovementPoint[] = [
     level: "value",
     level_label: "Modelo elegido por valor",
     precision: 0.2,
-    seen: "Tu muñeca de lanzamiento baja del hombro 0.37 s antes del impacto.",
-    evidence:
-      "5 de 5 versiones del modelo coinciden. En validación acertó 20% de las veces que lo marcó y lo marcó en 0% de los saques profesionales. En los videos de prueba encontró el problema en 94% de los saques que lo tenían y lo marcó de más en 56% de los que no. El modelo se eligió por su valor; con las reglas de los demás puntos no tendría nivel.",
+    often: "2 de cada 10 veces",
+    seen: "Bajas muy pronto el brazo con el que lanzas la pelota: cuando la raqueta va a subir a pegarle, esa mano ya está a la altura del hombro o más abajo.",
+    goal: "Lo ideal: que siga arriba, apuntando a la pelota, hasta que la raqueta empiece a subir.",
+    trust: "Tómalo como una sugerencia, no como un hecho.",
+    detail:
+      "Modelo elegido por valor. Tu muñeca de lanzamiento baja del hombro 0.37 s antes del impacto. 5 de 5 versiones del modelo coinciden. En validación acertó 20% de las veces que lo marcó y lo marcó en 0% de los saques profesionales. En los videos de prueba encontró el problema en 94% de los saques que lo tenían y lo marcó de más en 56% de los que no. El modelo se eligió por su valor; con las reglas de los demás puntos no tendría nivel.",
     drill: {
       name: "Brazo arriba hasta el golpe",
       instructions:
@@ -172,7 +178,7 @@ const others = (toss: boolean, fall: number): OtherPart[] => [
           label: "Brazo que lanza",
           status: "fine" as const,
           status_label: "Sin problema",
-          seen: "Tu muñeca de lanzamiento baja del hombro 0.10 s antes del impacto.",
+          seen: "Mantienes arriba el brazo con el que lanzas la pelota hasta que la raqueta sube a pegarle.",
         },
       ]
     : []),
@@ -181,16 +187,26 @@ const others = (toss: boolean, fall: number): OtherPart[] => [
     label: "Piernas",
     status: "fine",
     status_label: "Sin problema",
-    seen: "La cadera baja 0.28 torsos antes del salto. En los profesionales, la mediana es 0.30 y 9 de cada 10 llegan a 0.11 o más.",
+    seen: "Doblas las rodillas antes de subir a pegarle.",
   },
-  {
-    aspect: "racket_drop",
-    label: "Caída de la raqueta",
-    status: fall >= 0.08 ? "inside" : "outside",
-    status_label: fall >= 0.08 ? "Dentro del rango de los profesionales" : "Fuera del rango de los profesionales",
-    seen: `Antes de subir a pegarle, la muñeca de la raqueta cae ${fall.toFixed(2)} torsos. En los profesionales, la mediana es 0.21 y 9 de cada 10 llegan a 0.08 o más.`,
-    note: "Solo es una comparación, sin ejercicio: de los saques amateur fuera de ese rango, 49% tenían este problema según quien los etiquetó.",
-  },
+  fall >= 0.08
+    ? {
+        aspect: "racket_drop",
+        label: "Caída de la raqueta",
+        status: "inside",
+        status_label: "Parecido a los profesionales",
+        seen: "Antes de subir a pegarle, tu raqueta cae detrás de la espalda.",
+        note: "Es solo una observación.",
+      }
+    : {
+        aspect: "racket_drop",
+        label: "Caída de la raqueta",
+        status: "outside",
+        status_label: "Distinto a los profesionales",
+        seen: "Antes de subir a pegarle, tu raqueta casi no cae detrás de la espalda.",
+        goal: "Lo ideal: que caiga detrás de la espalda, como si te rascaras, y luego suba hacia la pelota.",
+        note: "Es solo una observación, sin ejercicio: en los videos con los que probamos la app, esta señal acertó 5 de cada 10 veces.",
+      },
 ]
 
 const UNCHECKED = ["los hombros", "dónde está la raqueta cuando la pelota llega arriba"]
@@ -245,14 +261,14 @@ const proResult: Result = {
       label: "Brazo al impacto",
       status: "fine",
       status_label: "Sin problema",
-      seen: "Al impacto, la muñeca de la raqueta llega 1.02 torsos sobre su hombro. En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más.",
+      seen: "Le pegas a la pelota arriba, con el brazo estirado.",
     },
     {
       aspect: "landing",
       label: "Aterrizaje",
       status: "fine",
       status_label: "Sin problema",
-      seen: "Después del impacto, la cadera avanza 0.52 torsos. En los profesionales, la mediana es 0.46 y 9 de cada 10 llegan a 0.26 o más.",
+      seen: "Después de pegarle caes hacia adelante, dentro de la cancha.",
     },
   ],
   unchecked: UNCHECKED,

@@ -42,27 +42,31 @@ export interface TossModel {
   occlusion: Occlusion
 }
 
-/** A pose measure (torso lengths) that separates amateurs from professionals, next to theirs. */
+/** A pose measure (torso lengths) that separates amateurs from professionals, next to theirs:
+ * a bar, with what it shows in plain words. */
 export interface Compared {
   aspect: string
   label: string
-  mine: string
-  pros: string
+  caption: string
   value: number
   pros_median: number
   pros_floor: number
   in_range: boolean
 }
 
-/** One point to improve: how often it was right on validation, its level and its drill. */
+/** One point to improve, in plain words: what the app saw, what to aim for, how often it was
+ * right on validation and what its level means; the numbers are in `detail`. */
 export interface ImprovementPoint {
   aspect: string
   label: string
   level: "validated" | "trial" | "measure" | "exploratory" | "value"
   level_label: string
   precision: number
+  often: string
   seen: string
-  evidence: string
+  goal: string
+  trust: string
+  detail: string
   drill: Drill
 }
 
@@ -73,6 +77,7 @@ export interface OtherPart {
   status: "improve" | "fine" | "outside" | "inside" | "unseen"
   status_label: string
   seen: string
+  goal?: string
   note?: string
 }
 

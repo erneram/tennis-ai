@@ -121,7 +121,7 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
             Revisamos {points.length + others.length} partes de tu saque
             {points.length
               ? `: ${points.length} ${points.length > 1 ? "tienen" : "tiene"} algo que mejorar.`
-              : " y ninguna pasa su umbral."}
+              : " y no vimos nada claro que mejorar."}
           </p>
         </header>
 
@@ -176,22 +176,29 @@ function Points({ points }: { points: ImprovementPoint[] }) {
               <span className="font-display font-bold text-2xl text-ink leading-none">{i + 1}</span>
               <h4 className="font-bold text-2xl leading-tight">{p.label}</h4>
               <Badge variant={sure(p.precision)} size="md" dot>
-                Acertó {percent(p.precision)} en validación
+                Acierta {p.often}
               </Badge>
-              <span className="label-hud text-muted-foreground">{p.level_label}</span>
             </div>
-            <p className="max-w-[68ch] text-lg leading-normal">{p.seen}</p>
+            <div className="flex max-w-[68ch] flex-col gap-1 text-lg leading-normal">
+              <p>{p.seen}</p>
+              <p className="text-muted-foreground">{p.goal}</p>
+            </div>
             <div className="rounded-sm border border-primary/20 bg-muted/40 p-4">
               <p className="label-hud text-muted-foreground">Ejercicio · {p.drill.name}</p>
               <p className="mt-1 text-lg leading-normal">{p.drill.instructions}</p>
             </div>
-            <p className="max-w-[68ch] text-muted-foreground text-sm">{p.evidence}</p>
+            <p className="max-w-[68ch] text-muted-foreground text-sm">{p.trust}</p>
+            <details className="max-w-[68ch] text-muted-foreground text-sm">
+              <summary className="w-fit cursor-pointer">Detalle técnico</summary>
+              <p className="mt-1">{p.detail}</p>
+            </details>
           </li>
         ))}
       </ol>
       <p className="max-w-[68ch] text-muted-foreground">
-        Van del que más veces acertó al que menos. El porcentaje dice, de las veces que la app marcó ese punto en los
-        saques de validación, cuántas lo había marcado también la persona que los etiquetó.
+        Van del punto en que la app acierta más al que menos. «Acierta» dice, de las veces que la app marcó ese punto
+        en los videos con los que la probamos, cuántas lo había marcado también una persona que revisó el mismo
+        video.
       </p>
     </section>
   )
@@ -212,20 +219,22 @@ function Others({ others, unchecked }: { others: OtherPart[]; unchecked: string[
               </Badge>
             </p>
             <p className="mt-1 text-lg">{o.seen}</p>
+            {o.goal ? <p className="mt-1 text-muted-foreground">{o.goal}</p> : null}
             {o.note ? <p className="mt-1 text-muted-foreground text-sm">{o.note}</p> : null}
           </li>
         ))}
       </ul>
       {unchecked.length ? (
         <p className="max-w-[68ch] text-muted-foreground text-sm">
-          Todavía no evaluamos {list(unchecked, "ni")}: sus modelos no pasaron las pruebas.
+          Todavía no revisamos {list(unchecked, "ni")}: la app aún no es confiable en eso.
         </p>
       ) : null}
     </section>
   )
 }
 
-/** Pose measures that separate amateurs from professionals, each on a line with their range. */
+/** Pose measures that separate amateurs from professionals, each on a line with their range and
+ * what it shows in plain words; the numbers are in the bar's tooltip. */
 function Professionals({ measures }: { measures: Compared[] }) {
   return (
     <section aria-labelledby="pros-title" className="flex flex-col gap-3">
@@ -236,18 +245,18 @@ function Professionals({ measures }: { measures: Compared[] }) {
             <p className="flex flex-wrap items-center gap-2 font-bold text-lg">
               {m.label}
               <Badge variant={m.in_range ? "success" : "outline"} size="sm">
-                {m.in_range ? "Dentro del rango" : "Fuera del rango"}
+                {m.in_range ? "Parecido a los profesionales" : "Por debajo de los profesionales"}
               </Badge>
             </p>
             <RangeMeter measure={m} />
-            <p>{m.mine}</p>
-            <p className="text-muted-foreground text-sm">{m.pros}</p>
+            <p className="text-muted-foreground">{m.caption}</p>
           </li>
         ))}
       </ul>
       <p className="max-w-[68ch] text-muted-foreground text-sm">
-        Son medidas de la pose, sin entrenar, en largos de torso. La zona verde es donde están 9 de cada 10 saques
-        profesionales y la raya es su mediana. Sirven para seguir tu avance entre sesiones, no son un diagnóstico.
+        La raya de color es tu saque: más a la derecha es mejor. La zona verde es donde están 9 de cada 10 saques de
+        jugadores profesionales, que medimos en video igual que el tuyo, y la raya negra es su saque típico. Sirve
+        para ver tu avance entre sesiones; no es un diagnóstico.
       </p>
     </section>
   )
@@ -264,6 +273,7 @@ function RangeMeter({ measure: m }: { measure: Compared }) {
       aria-valuemax={Math.round(top * 100) / 100}
       aria-valuenow={m.value}
       aria-label={`${m.label}, en largos de torso`}
+      title={`Tú: ${m.value}. Profesionales: típico ${m.pros_median}, 9 de cada 10 desde ${m.pros_floor} (largos de torso).`}
       className="relative h-3 w-full rounded-sm border border-primary/40 bg-muted"
     >
       <span className="absolute inset-y-0 rounded-sm bg-success/30" style={{ left: at(m.pros_floor), right: 0 }} />
