@@ -13,6 +13,10 @@ per part (ASPECTS: legs, shoulders, the racket when the ball is highest and behi
 arm and the contact point at impact, the landing), each with what to look at and the ideal. The
 players come in turn, so any number of answers covers all of them. Writes
 eval/serve/aspects_<name>.csv.
+"Cuerpo · repetir": the same questions again for RETEST serves the member already answered, drawn
+at random once, without the file name and without the first answers, to measure how much the
+member agrees with themself (`python -m eval.body --retest`). Writes
+eval/serve/aspects_<name>_retest.csv.
 "Decidir juntos": the videos where the members' answers differ, with each member's answer, for
 the members to watch together and answer once. Writes eval/serve/labels.csv: the rows everyone
 agrees on, the clips of ONE_RATER labeled by a single member and the decisions taken so far.
@@ -31,8 +35,11 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")  # no usage data leav
 
 import argparse
 import csv
+import hashlib
 import json
+import random
 import re
+import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -108,6 +115,7 @@ ASPECTS = [
       ("Hacia atrás o de lado, pierde el equilibrio", "off_balance"), ("No se ve", "unseen")]),
 ]  # fmt: skip
 ASPECT_COLUMNS = ["video", "player", *(a[0] for a in ASPECTS), "notes"]
+RETEST, RETEST_SEED = 30, 0  # serves of "Cuerpo · repetir"
 # The videos stay in view while the member scrolls through the questions next to them; Gradio's
 # container hides its overflow, which would turn it into the scroll box that `sticky` follows.
 CSS = """.gradio-container { overflow-x: clip !important; overflow-y: visible !important; }
@@ -250,6 +258,56 @@ def save_aspects(name: str, choice: str, *answers):
             for r in aspect_rows(name)]  # fmt: skip
     write(EVAL / f"aspects_{name}.csv", [r for r in rows if r[ASPECTS[0][0]]], ASPECT_COLUMNS)
     return aspect_view(name)  # the next video without answers
+
+
+def retest_rows(name: str) -> list[dict]:
+    """The member's second answers about the body: RETEST of the serves they answered in "Cuerpo",
+    drawn at random the first time and saved, so the draw and its order stay the same."""
+    path = EVAL / f"aspects_{name}_retest.csv"
+    if path.exists():
+        return read(path)
+    first = {r["video"]: r for r in read(EVAL / f"aspects_{name}.csv") if r[ASPECTS[0][0]]}
+    drawn = random.Random(RETEST_SEED).sample(sorted(first), min(RETEST, len(first)))
+    rows = [{**dict.fromkeys(ASPECT_COLUMNS, ""), "video": v, "player": first[v]["player"]}
+            for v in drawn]  # fmt: skip
+    if rows:
+        write(path, rows, ASPECT_COLUMNS)
+    return rows
+
+
+def blind(name: str, slowdown: int) -> str:
+    """playable() under a name that does not say whose serve it is."""
+    out = CACHE / "retest" / f"{hashlib.sha256(name.encode()).hexdigest()[:12]}-x{slowdown}.mp4"
+    if not out.exists():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(playable(name, slowdown), out)
+    return str(out)
+
+
+def retest_view(name: str, choice: str | None = None):
+    """The next serve still to answer again (or `choice`, its number), with its second answers."""
+    rows = retest_rows(name)
+    if not rows:
+        empty = [None] * (2 + len(ASPECTS))
+        return gr.update(choices=[], value=None), "Primero contesta «Cuerpo».", *empty, ""
+    left = [i for i, r in enumerate(rows) if not r[ASPECTS[0][0]]]
+    index = int(choice) if choice else (left[0] if left else 0)
+    row = rows[index]
+    status = (f"Faltan {len(left)} de {len(rows)} saques." if left
+              else f"Los {len(rows)} saques tienen respuesta.")  # fmt: skip
+    choices = [(f"Saque {i + 1}", str(i)) for i in range(len(rows))]
+    return (gr.update(choices=choices, value=str(index)), status, blind(row["video"], 1),
+            blind(row["video"], 4), *(row[a[0]] or None for a in ASPECTS), row["notes"])  # fmt: skip
+
+
+def save_retest(name: str, choice: str, *answers):
+    *answers, notes = answers
+    if None in answers:
+        raise gr.Error("Responde todas las preguntas; si algo no se ve, elige «No se ve».")
+    rows = retest_rows(name)
+    rows[int(choice)] |= {**dict(zip((a[0] for a in ASPECTS), answers)), "notes": notes.strip()}
+    write(EVAL / f"aspects_{name}_retest.csv", rows, ASPECT_COLUMNS)
+    return retest_view(name)  # the next serve without answers
 
 
 def disputes() -> tuple[list[dict], dict[str, list[dict]]]:
@@ -427,6 +485,18 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
             aspects = [gr.Radio(options, label=ask, info=info) for _, ask, info, options in ASPECTS]
             aspect_notes = gr.Textbox(label="Notas (opcional)")
             save_aspect = gr.Button("Guardar y siguiente", variant="primary")
+    with gr.Tab("Cuerpo · repetir"):
+        gr.Markdown(f"Las mismas siete preguntas otra vez, en {RETEST} saques que ya contestaste, "
+                    "al azar y sin el nombre del video. Sirve para medir qué tan seguras son las "
+                    "respuestas, no para corregirlas. Hazlo al menos un día después de «Cuerpo» "
+                    "y sin mirar lo que respondiste.")  # fmt: skip
+        with gr.Row():
+            retest_choice = gr.Dropdown(label="Saque")
+            retest_status = gr.Markdown()
+        with beside_videos() as (retest_normal, retest_slow, retest_reference):
+            retests = [gr.Radio(options, label=ask, info=info) for _, ask, info, options in ASPECTS]
+            retest_notes = gr.Textbox(label="Notas (opcional)")
+            save_again = gr.Button("Guardar y siguiente", variant="primary")
     with gr.Tab("Decidir juntos"):
         gr.Markdown("Aquí salen solo los videos en que sus respuestas no coinciden. Véanlos "
                     "juntos, comenten qué ve cada uno y respondan una sola vez entre los dos. "
@@ -470,15 +540,20 @@ with gr.Blocks(title="Serve Lab: etiquetas", analytics_enabled=False) as demo:
     agree_out = [agree_choice, agree_status, agree_normal, agree_slow, said, agree_valid,
                  agree_category, agree_notes]  # fmt: skip
     aspect_out = [aspect_choice, aspect_status, aspect_normal, aspect_slow, *aspects, aspect_notes]
+    retest_out = [retest_choice, retest_status, retest_normal, retest_slow, *retests, retest_notes]
     remember = lambda who, chosen: [who, chosen]
     demo.load(restore, remembered, [name, run]).then(label_view, [name], label_out).then(
-        review_view, [name, run], review_out).then(aspect_view, [name], aspect_out)  # fmt: skip
-    name.input(aspect_view, [name], aspect_out)
+        review_view, [name, run], review_out).then(aspect_view, [name], aspect_out).then(
+        retest_view, [name], retest_out)  # fmt: skip
+    name.input(aspect_view, [name], aspect_out).then(retest_view, [name], retest_out)
+    retest_choice.input(retest_view, [name, retest_choice], retest_out)
+    save_again.click(save_retest, [name, retest_choice, *retests, retest_notes], retest_out)
     aspect_choice.input(aspect_view, [name, aspect_choice], aspect_out)
     save_aspect.click(save_aspects, [name, aspect_choice, *aspects, aspect_notes], aspect_out)
     demo.load(lambda: playable(REFERENCE, 4), None, reference)
     demo.load(lambda: playable(REFERENCE, 4), None, agree_reference)
     demo.load(lambda: playable(REFERENCE, 4), None, aspect_reference)
+    demo.load(lambda: playable(REFERENCE, 4), None, retest_reference)
     demo.load(agree_view, None, agree_out)
     name.input(label_view, [name], label_out).then(review_view, [name, run], review_out).then(
         remember, [name, run], remembered)  # fmt: skip

@@ -106,3 +106,35 @@ def test_one_rater_clips_count_alone_and_merge_keeps_the_decisions(tmp_path, mon
         ("v0.mp4", DROP, ""), ("v1.mp4", NONE, "settled"),
         ("yt9-s01.mp4", NONE, "one rater: a; a: side"),
     ]  # fmt: skip
+
+
+def test_retest_draws_answered_serves_once_and_hides_their_names(tmp_path, monkeypatch):
+    monkeypatch.setattr(label, "EVAL", tmp_path)
+    monkeypatch.setattr(label, "CACHE", tmp_path / "cache")
+    monkeypatch.setattr(label, "RETEST", 3)
+    monkeypatch.setattr(label, "playable", lambda name, slowdown: str(_clip(tmp_path, name)))
+    answers = [options[0][1] for *_, options in label.ASPECTS]
+    first = [{"video": f"jc-s{i}.mp4", "player": "jc",
+              **dict(zip((a[0] for a in label.ASPECTS), answers if i < 5 else [""] * 7)),
+              "notes": ""} for i in range(7)]  # fmt: skip
+    label.write(tmp_path / "aspects_a.csv", first, label.ASPECT_COLUMNS)
+    assert label.retest_view("b")[1] == "Primero contesta «Cuerpo»."
+
+    drawn = [r["video"] for r in label.retest_rows("a")]
+    assert len(drawn) == 3 and set(drawn) <= {f"jc-s{i}.mp4" for i in range(5)}
+    (tmp_path / "aspects_a_retest.csv").unlink()
+    assert [r["video"] for r in label.retest_rows("a")] == drawn  # same seed, same draw
+    choices, status, normal, slow, *rest = label.retest_view("a")
+    assert [c[0] for c in choices["choices"]] == ["Saque 1", "Saque 2", "Saque 3"]
+    assert status == "Faltan 3 de 3 saques." and rest[:-1] == [None] * 7  # no first answers
+    assert "jc-s" not in normal and "jc-s" not in slow
+    out = label.save_retest("a", "0", *answers, "")
+    assert out[0]["value"] == "1" and out[1] == "Faltan 2 de 3 saques."
+    saved = label.read(tmp_path / "aspects_a_retest.csv")
+    assert [r["video"] for r in saved] == drawn and saved[0]["legs"] == answers[0]
+
+
+def _clip(folder, name):
+    path = folder / name
+    path.touch()
+    return path
