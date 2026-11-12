@@ -3,6 +3,7 @@ import type {
   AttemptRecord,
   BodyMeasure,
   Config,
+  ImprovementPoint,
   Job,
   Moment,
   Occlusion,
@@ -85,18 +86,67 @@ const progress = (height: number): TossProgress => ({
   text: `Cuando la raqueta está más baja, tu mano de lanzamiento queda ${height.toFixed(2)} torsos sobre el hombro. En los profesionales, la mediana es 1.05 y 9 de cada 10 llegan a 0.73 o más.`,
 })
 
-const body = (peak: number, reach: number): BodyMeasure[] => [
+const body = (fall: number, reach: number): BodyMeasure[] => [
   {
-    aspect: "racket_at_peak",
-    label: "Raqueta en el pico",
-    mine: `De la raqueta más baja al impacto pasan ${peak.toFixed(2)} s.`,
-    pros: "Profesionales (mediana): de la raqueta más baja al impacto pasan 0.20 s.",
+    aspect: "racket_drop",
+    label: "Caída de la raqueta",
+    mine: `Antes de subir a pegarle, la muñeca de la raqueta cae ${fall.toFixed(2)} torsos.`,
+    pros: "En los profesionales, la mediana es 0.21 y 9 de cada 10 llegan a 0.08 o más.",
+    in_range: fall >= 0.08,
   },
   {
     aspect: "arm_at_contact",
     label: "Brazo al impacto",
     mine: `Al impacto, la muñeca de la raqueta llega ${reach.toFixed(2)} torsos sobre su hombro.`,
-    pros: "Profesionales (mediana): al impacto, la muñeca de la raqueta llega 1.02 torsos sobre su hombro.",
+    pros: "En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más.",
+    in_range: reach >= 0.89,
+  },
+]
+
+const TOSS_DRILL = {
+  name: "Brazo arriba hasta el golpe",
+  instructions:
+    "Lanza y deja el brazo de lanzamiento apuntando a la pelota hasta que la raqueta empiece a subir. Haz 3 series de 8 saques suaves concentrándote solo en esa pausa.",
+}
+
+const points: ImprovementPoint[] = [
+  {
+    aspect: "toss",
+    label: "Brazo que lanza",
+    level: "validated",
+    level_label: "Modelo validado",
+    seen: "Tu muñeca de lanzamiento baja del hombro 0.37 s antes del impacto.",
+    evidence:
+      "5 de 5 versiones del modelo coinciden y MediaPipe vio el 94% de los puntos de tus brazos. En los videos de prueba, el modelo encontró el problema en 94% de los saques que lo tenían y recomendó el ejercicio de más en 56% de los que no.",
+    drill: TOSS_DRILL,
+  },
+  {
+    aspect: "landing",
+    label: "Aterrizaje",
+    level: "trial",
+    level_label: "Modelo en prueba",
+    seen: "Después del impacto, la cadera avanza 0.10 torsos. En los profesionales, la mediana es 0.46 y 9 de cada 10 llegan a 0.26 o más.",
+    evidence:
+      "5 de 5 versiones del modelo lo marcan. En validación acertó 73% de las veces que lo marcó y lo marcó en 7% de los saques profesionales. Está en prueba: falta probarlo con jugadores nuevos.",
+    drill: {
+      name: "Aterriza y sostén",
+      instructions:
+        "Después de cada saque, aterriza sobre el pie adelantado dentro de la cancha y mantén el equilibrio 2 segundos. 3 series de 8.",
+    },
+  },
+  {
+    aspect: "arm_at_contact",
+    label: "Brazo al impacto",
+    level: "measure",
+    level_label: "Medida frente a profesionales",
+    seen: "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro. En los profesionales, la mediana es 1.02 y 9 de cada 10 llegan a 0.89 o más.",
+    evidence:
+      "Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 profesionales. De los saques amateur fuera de ese rango, 98% tenían este problema según quien los etiquetó. No es un diagnóstico.",
+    drill: {
+      name: "Alcanzar el punto más alto",
+      instructions:
+        "Pide a un compañero que sostenga una pelota en alto, por encima de tu alcance con el brazo extendido. Haz 10 golpes de sombra tocándola con la raqueta y el brazo totalmente estirado.",
+    },
   },
 ]
 
@@ -110,11 +160,7 @@ const dropResult = (tint: string): Result => ({
     phase_label: "3. Posición de trofeo",
     observation: "Tu muñeca de lanzamiento baja del hombro 0.37 s antes del impacto.",
     reason: "Lo que más pesa hacia «baja antes de tiempo»: muñeca (lanza) entre 0.53 y 0.27 s antes del impacto.",
-    drill: {
-      name: "Brazo arriba hasta el golpe",
-      instructions:
-        "Lanza y deja el brazo de lanzamiento apuntando a la pelota hasta que la raqueta empiece a subir. Haz 3 series de 8 saques suaves concentrándote solo en esa pausa.",
-    },
+    drill: TOSS_DRILL,
     probability: 0.64,
     threshold: 0.198,
     seeds: [0.58, 0.61, 0.64, 0.66, 0.71],
@@ -125,8 +171,9 @@ const dropResult = (tint: string): Result => ({
   },
   moments: moments(true, tint),
   occlusion: occlusion(1),
+  points,
   progress: progress(0.38),
-  body: body(0.78, 0.57),
+  body: body(0.02, 0.57),
   slow_url: "/api/slow/mock.mp4",
   record: { time: "10:00", category: "toss_arm_drops_early", probability: 0.64, drill_id: "toss_hold" },
 })
@@ -137,7 +184,7 @@ const proResult: Result = {
   cached: true,
   feedback: {
     drops_early: false,
-    title: "No vemos que el brazo que lanza baje antes de tiempo",
+    title: "No vemos un problema claro",
     phase_label: "3. Posición de trofeo",
     observation: "Tu muñeca de lanzamiento baja del hombro 0.10 s antes del impacto.",
     reason: "Lo que más se parece a un saque sin el problema: muñeca (lanza) entre 1.33 y 1.07 s antes del impacto.",
@@ -156,8 +203,9 @@ const proResult: Result = {
   },
   moments: moments(false, "#e6f1f4"),
   occlusion: occlusion(-1),
+  points: [],
   progress: progress(1.05),
-  body: body(0.2, 1.02),
+  body: body(0.21, 1.02),
   slow_url: "/api/slow/mock-pro.mp4",
   record: { time: "10:05", category: "no_clear_problem", probability: 0.06, drill_id: "steady_serves" },
 }

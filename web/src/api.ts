@@ -47,12 +47,24 @@ export interface TossProgress {
   text: string
 }
 
-/** A pose measure that separates amateurs from professionals, not an answer of the model. */
+/** A pose measure that separates amateurs from professionals, next to the professionals'. */
 export interface BodyMeasure {
   aspect: string
   label: string
   mine: string
   pros: string
+  in_range: boolean
+}
+
+/** One point to improve, with how far it can be trusted and its drill. */
+export interface ImprovementPoint {
+  aspect: string
+  label: string
+  level: "validated" | "trial" | "measure"
+  level_label: string
+  seen: string
+  evidence: string
+  drill: { name: string; instructions: string }
 }
 
 export interface AttemptRecord {
@@ -71,6 +83,7 @@ export interface Result {
   feedback?: Feedback
   moments?: Moment[]
   occlusion?: Occlusion
+  points?: ImprovementPoint[]
   progress?: TossProgress
   body?: BodyMeasure[]
   slow_url?: string

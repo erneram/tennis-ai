@@ -1,6 +1,15 @@
 import { TriangleAlertIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import type { BodyMeasure, Config, Feedback as Answer, Occlusion, Result, Summary, TossProgress } from "@/api"
+import type {
+  BodyMeasure,
+  Config,
+  Feedback as Answer,
+  ImprovementPoint,
+  Occlusion,
+  Result,
+  Summary,
+  TossProgress,
+} from "@/api"
 import type { Run } from "@/App"
 import { Tips } from "@/components/InputPanel"
 import { MomentTiles } from "@/components/MomentTiles"
@@ -26,6 +35,7 @@ interface Props {
 }
 
 const CONFIDENCE = { high: "success", medium: "warning", low: "outline" } as const
+const LEVEL = { validated: "success", trial: "warning", measure: "outline" } as const
 
 export function ResultPanel({ config, run, current, previous, summary }: Props) {
   return (
@@ -45,7 +55,7 @@ function Idle() {
   const steps = [
     "Elige un video de la demo o sube el tuyo, grabado de lado.",
     "Pulsa Analizar saque: tarda unos 10 s, todo en esta computadora.",
-    "Mira si el brazo que lanza baja antes de tiempo, el ejercicio y en qué se fijó el modelo.",
+    "Mira hasta 3 puntos a mejorar, cada uno con su ejercicio y con qué tan seguro es.",
   ]
   return (
     <EmptyState title="Cómo funciona" className="animate-enter py-12">
@@ -108,12 +118,21 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
 
         <p className="max-w-[68ch] text-xl leading-normal">{f.observation}</p>
 
+        {r.points?.length ? <Points points={r.points} /> : null}
+
         <div className="grid gap-4 @2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <DataCard subtitle="Ejercicio" title={f.drill.name}>
-            <p className="text-lg leading-normal">{f.drill.instructions}</p>
-          </DataCard>
+          {r.points?.length ? (
+            <p className="max-w-[60ch] self-center text-lg text-muted-foreground">
+              El orden va de lo más seguro a lo menos: primero lo que dice el modelo validado, después lo que está en
+              prueba y al final las medidas comparadas con profesionales.
+            </p>
+          ) : (
+            <DataCard subtitle="Ejercicio" title={f.drill.name}>
+              <p className="text-lg leading-normal">{f.drill.instructions}</p>
+            </DataCard>
+          )}
           <div className="flex flex-col items-start gap-3 rounded border border-primary/30 bg-background p-5">
-            <span className="label-hud text-muted-foreground">Qué tan seguro está</span>
+            <span className="label-hud text-muted-foreground">Brazo que lanza: qué tan seguro está</span>
             <Badge variant={CONFIDENCE[f.confidence]} size="md" dot>
               Confianza {f.confidence_label}
             </Badge>
@@ -236,23 +255,56 @@ function Progress({ progress }: { progress: TossProgress }) {
   )
 }
 
-/** Pose measures next to the professionals': no model answers these parts of the body yet. */
+/** Up to 3 points to improve, the surest first, each with its evidence level and its drill. */
+function Points({ points }: { points: ImprovementPoint[] }) {
+  return (
+    <section aria-labelledby="points-title" className="flex flex-col gap-3">
+      <SectionTitle id="points-title">Puntos a mejorar</SectionTitle>
+      <ol className="flex flex-col gap-4">
+        {points.map((p, i) => (
+          <li key={p.aspect} className="flex flex-col gap-3 rounded border border-primary/30 bg-background p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-display font-bold text-2xl text-ink leading-none">{i + 1}</span>
+              <h4 className="font-bold text-2xl leading-tight">{p.label}</h4>
+              <Badge variant={LEVEL[p.level]} size="md" dot>
+                {p.level_label}
+              </Badge>
+            </div>
+            <p className="max-w-[68ch] text-lg leading-normal">{p.seen}</p>
+            <div className="rounded-sm border border-primary/20 bg-muted/40 p-4">
+              <p className="label-hud text-muted-foreground">Ejercicio · {p.drill.name}</p>
+              <p className="mt-1 text-lg leading-normal">{p.drill.instructions}</p>
+            </div>
+            <p className="max-w-[68ch] text-muted-foreground text-sm">{p.evidence}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+/** Pose measures that separate amateurs from professionals, next to the professionals'. */
 function Body({ measures }: { measures: BodyMeasure[] }) {
   return (
     <section aria-labelledby="body-title" className="flex flex-col gap-3">
-      <SectionTitle id="body-title">Tu cuerpo</SectionTitle>
+      <SectionTitle id="body-title">Tu cuerpo frente a los profesionales</SectionTitle>
       <dl className="grid gap-4 @2xl:grid-cols-2">
         {measures.map((m) => (
           <div key={m.aspect} className="rounded border border-primary/30 bg-background p-4">
-            <dt className="font-bold text-lg">{m.label}</dt>
+            <dt className="flex flex-wrap items-center gap-2 font-bold text-lg">
+              {m.label}
+              <Badge variant={m.in_range ? "success" : "outline"} size="sm">
+                {m.in_range ? "Dentro del rango" : "Fuera del rango"}
+              </Badge>
+            </dt>
             <dd className="mt-1 text-lg">{m.mine}</dd>
             <dd className="mt-1 text-muted-foreground">{m.pros}</dd>
           </div>
         ))}
       </dl>
       <p className="max-w-[68ch] text-sm text-muted-foreground">
-        Son medidas de la pose comparadas con saques de profesionales, no un diagnóstico: el modelo del cuerpo todavía
-        no pasó sus pruebas, así que no da ejercicio para estas partes.
+        Son medidas de la pose comparadas con saques de profesionales, no un diagnóstico. Una medida solo sale arriba
+        como punto a mejorar cuando además coincide con lo que marcó la persona que etiquetó los saques.
       </p>
     </section>
   )
