@@ -33,6 +33,7 @@ from app.service import (
     certainty,
     confidence,
     observation,
+    points,
     prepare_demo,
     reason,
     toss_progress,
@@ -145,9 +146,11 @@ def to_json(job: str, result: dict) -> dict:
     answer = result["answer"]
     drops = answer["drops_early"]
     category = baseline.POSITIVE if drops else baseline.NEGATIVE
-    drill_id = "toss_hold" if drops else "steady_serves"
+    found = points(answer)
+    drill_id = found[0]["drill_id"] if found else "steady_serves"
     drill = DRILLS[drill_id]
     level = confidence(answer)
+    others = [p["label"].lower() for p in found]
     return {
         "kind": "feedback",
         "seconds": round(result["seconds"], 1),
@@ -157,7 +160,10 @@ def to_json(job: str, result: dict) -> dict:
             "title": (
                 "El brazo que lanza baja antes de tiempo"
                 if drops
-                else "No vemos que el brazo que lanza baje antes de tiempo"
+                else "El brazo que lanza no baja antes de tiempo. A mejorar: "
+                + " y ".join(filter(None, [", ".join(others[:-1]), others[-1]]))
+                if found
+                else "No vemos un problema claro"
             ),
             "phase_label": STROKE.LABELS["trophy"],
             "observation": observation(answer),
@@ -185,6 +191,11 @@ def to_json(job: str, result: dict) -> dict:
             "starts": [round(model.seconds(s), 2) for s in model.STARTS],
             "values": answer["occlusion"],
         },
+        "points": [
+            {k: v for k, v in point.items() if k != "drill_id"}
+            | {"drill": {k: DRILLS[point["drill_id"]][k] for k in ("name", "instructions")}}
+            for point in found
+        ],
         "progress": toss_progress(answer),
         "body": body_measures(answer),
         "slow_url": f"/api/files/{job}/slow.mp4",

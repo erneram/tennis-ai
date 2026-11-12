@@ -4,9 +4,11 @@ cache. Used by the web app's API (app/api.py).
 One analysis: MediaPipe finds the body in every frame (core.pose), the serve model says whether
 the tossing arm drops early and which joints and moments the answer rests on
 (strokes/serve/model.py), and the frames around contact become key moments and a slow motion with
-the skeleton drawn. The toss height and the body measures that separate amateurs from
-professionals (strokes/serve/body.py) are shown next to the professionals'. No language model and
-no internet.
+the skeleton drawn. The answer is a list of up to MAX_POINTS points to improve (points): the
+tossing arm and the aspects of the body in experiments/serve/points.csv (eval/body.py --levels),
+each with how far it can be trusted (LEVELS) and its drill. The toss height and the body measures
+that separate amateurs from professionals are shown next to the professionals'. No language model
+and no internet.
 """
 
 import csv
@@ -46,28 +48,33 @@ IMAGE_SIDE = 720  # longest side of the key moments and the slow motion
 SPANISH = {"tossing": "lanza", "racket": "raqueta", "shoulder": "Hombro", "elbow": "Codo",
            "wrist": "Muñeca"}  # fmt: skip
 PARTS = [f"{SPANISH[joint]} ({SPANISH[arm]})" for arm, joint in map(str.split, MODEL["parts"])]
-# The professionals' toss height (eval/improvement.py) and, for each body measure that separates
-# amateurs from professionals (eval/body.py), the professionals' median. M3 answers no aspect: none
-# passed its checks (experiments/serve/m3-checks.csv, m3b-checks.csv).
+# The professionals' toss height (eval/improvement.py), and what the app says about each aspect of
+# the body (eval/body.py --levels): a point to improve from a body model or from its measure
+# against the professionals' range, or the measure next to the professionals' and no point
 _RESULTS = model.baseline.RESULTS
 PROS_TOSS = {r["measure"]: float(r["value"]) for r in csv.DictReader((_RESULTS / "improvement.csv").open())
              if r["group"] == "professionals"}  # fmt: skip
-PROS_BODY = {r["aspect"]: float(r["median_pros"]) for r in csv.DictReader((_RESULTS / "body.csv").open())
-             if float(r["auroc_pros"]) >= body.MIN_SEPARATES
-             and not float(r["retest_kappa"] or "nan") < body.MIN_KAPPA}  # fmt: skip
-# Each measure in the words of the "Cuerpo" form, and the sign that turns it into a height, a
-# distance or a time (body.MEASURES: higher means more to improve)
+POINTS = {r["aspect"]: r for r in csv.DictReader((_RESULTS / "points.csv").open())
+          if r["level"] or r["described"]}  # fmt: skip
+BODY = {name: body.load(name) for name in {r["model"] for r in POINTS.values()} - {""}}
+BODY_WEIGHTS = b"".join((_RESULTS / name).read_bytes()
+                        for name in ["points.csv", *(f"{m}.pt" for m in sorted(BODY))])  # fmt: skip
+LEVELS = {"validated": "Modelo validado", "trial": "Modelo en prueba",
+          "measure": "Medida frente a profesionales"}  # fmt: skip
+RANK = {"validated": 2, "trial": 1, "measure": 0}  # the order of the points: the surest first
+MAX_POINTS = 3  # points to improve one analysis gives at most
+# Each aspect in the words of the "Cuerpo" form: its audited measure (body.measures: higher means
+# more to improve; negated here it is a distance where more is better) and its drill
 BODY_TEXT = {
-    "legs": ("Piernas", "la cadera baja {:.2f} torsos antes del salto", -1),
-    "shoulders": ("Hombros", "en el trofeo, el hombro que lanza queda {:.2f} torsos sobre el otro", -1),
-    "racket_at_peak": ("Raqueta en el pico", "de la raqueta más baja al impacto pasan {:.2f} s", 1),
-    "racket_drop": ("Caída de la raqueta", ("en su punto más bajo, la muñeca de la raqueta queda "
-                                             "{:.2f} torsos sobre su hombro"), 1),
+    "legs": ("Piernas", "la cadera baja {:.2f} torsos antes del salto", "knee_load"),
+    "racket_drop": ("Caída de la raqueta", ("antes de subir a pegarle, la muñeca de la raqueta "
+                                             "cae {:.2f} torsos"), None),
     "arm_at_contact": ("Brazo al impacto", ("al impacto, la muñeca de la raqueta llega {:.2f} "
-                                             "torsos sobre su hombro"), -1),
-    "landing": ("Aterrizaje", "después del impacto, la cadera avanza {:.2f} torsos", -1),
+                                             "torsos sobre su hombro"), "high_reach"),
+    "landing": ("Aterrizaje", "después del impacto, la cadera avanza {:.2f} torsos", "land_and_hold"),
 }  # fmt: skip
-ANSWER = 2  # what a saved answer holds (2: the measures); a new one makes the demo cache again
+LEGS = ("legs", "landing")  # aspects read from the legs: they need them seen
+ANSWER = 3  # what a saved answer holds (3: the body points); a new one makes the demo cache again
 MOMENTS = {"start": "Inicio", "arm_up": "Brazo más arriba", "arm_down": "La muñeca baja del hombro",
            "contact": "Impacto"}  # fmt: skip
 
@@ -143,15 +150,69 @@ def toss_progress(answer: dict) -> dict:
     }  # fmt: skip
 
 
+def measured(aspect: str, answer: dict) -> tuple[str, str]:
+    """An aspect's measure of the serve and the professionals', in Spanish."""
+    _, sentence, _ = BODY_TEXT[aspect]
+    row = POINTS[aspect]
+    pros = (f"En los profesionales, la mediana es {-float(row['pros_median']):.2f} y 9 de cada 10 "
+            f"llegan a {-float(row['pros_p90']):.2f} o más.")  # fmt: skip
+    value = -answer["body"][aspect]
+    if aspect == "landing" and value < 0:  # the hips end behind where they were at contact
+        sentence, value = "después del impacto, la cadera retrocede {:.2f} torsos", -value
+    return sentence.format(value).capitalize() + ".", pros
+
+
 def body_measures(answer: dict) -> list[dict]:
-    """The PROS_BODY measures of the serve next to the professionals' median."""
-    out = []
-    for aspect, pros in PROS_BODY.items():
-        label, sentence, sign = BODY_TEXT[aspect]
-        out.append({"aspect": aspect, "label": label,
-                    "mine": sentence.format(sign * answer["body"][aspect]).capitalize() + ".",
-                    "pros": f"Profesionales (mediana): {sentence.format(sign * pros)}."})  # fmt: skip
-    return out
+    """The measures that separate amateurs from professionals next to the professionals'."""
+    return [{"aspect": aspect, "label": BODY_TEXT[aspect][0], "mine": measured(aspect, answer)[0],
+             "pros": measured(aspect, answer)[1],
+             "in_range": answer["body"][aspect] <= float(row["pros_p90"])}
+            for aspect, row in POINTS.items() if row["described"]]  # fmt: skip
+
+
+def body_evidence(aspect: str, answer: dict) -> str:
+    """How far a body point can be trusted, in Spanish: its level and its rates on our videos."""
+    row = POINTS[aspect]
+    if row["source"] == "measure":
+        return ("Es una medida de la pose, sin entrenar: quedas fuera del rango de 9 de cada 10 "
+                f"profesionales. De los saques amateur fuera de ese rango, {float(row['precision']):.0%} "
+                "tenían este problema según quien los etiquetó. No es un diagnóstico.")  # fmt: skip
+    mine = answer["needs_work"][aspect]
+    cut = BODY[row["model"]]["thresholds"][aspect]
+    return (f"{sum(s >= cut for s in mine['seeds'])} de {len(mine['seeds'])} versiones del modelo "
+            f"lo marcan. En validación acertó {float(row['precision']):.0%} de las veces que lo "
+            f"marcó y lo marcó en {float(row['pros_rate']):.0%} de los saques profesionales. Está "
+            "en prueba: falta probarlo con jugadores nuevos.")  # fmt: skip
+
+
+def points(answer: dict) -> list[dict]:
+    """Up to MAX_POINTS points to improve, the surest level first and within a level the furthest
+    past its threshold: the tossing arm (validated) and the aspects of POINTS with a level, by
+    their body model or by their measure past the professionals' range. An aspect read from the
+    legs is left out when MediaPipe did not see them, and the landing when the video ends before
+    it."""
+    found = []
+    if answer["drops_early"]:
+        found.append((RANK["validated"], answer["probability"] - answer["threshold"], {
+            "aspect": "toss", "label": "Brazo que lanza", "level": "validated",
+            "seen": observation(answer), "evidence": certainty(answer), "drill_id": "toss_hold"}))  # fmt: skip
+    for aspect, row in POINTS.items():
+        unseen = aspect in LEGS and (answer["legs_seen"] < MIN_SEEN
+                                     or (aspect == "landing" and not answer["landing_seen"]))  # fmt: skip
+        if not row["level"] or unseen:
+            continue
+        if row["source"] == "model":
+            margin = (answer["needs_work"][aspect]["probability"]
+                      - BODY[row["model"]]["thresholds"][aspect])  # fmt: skip
+        else:
+            margin = (answer["body"][aspect] - float(row["threshold"])) / float(row["scale"])
+        if margin >= 0:
+            found.append((RANK[row["level"]], margin, {
+                "aspect": aspect, "label": BODY_TEXT[aspect][0], "level": row["level"],
+                "seen": " ".join(measured(aspect, answer)),
+                "evidence": body_evidence(aspect, answer), "drill_id": BODY_TEXT[aspect][2]}))  # fmt: skip
+    found.sort(key=lambda point: point[:2], reverse=True)
+    return [point | {"level_label": LEVELS[point["level"]]} for *_, point in found[:MAX_POINTS]]
 
 
 def stretch_text(start: float, stop: float) -> str:
@@ -245,9 +306,22 @@ def run_analysis(video_path, progress) -> dict:
         return {"retake": f"Solo vimos el {answer['seen']:.0%} de los puntos de tus brazos cerca "
                           "del impacto. Graba de lado, con más luz y sin que nada tape el brazo."}  # fmt: skip
     x, mask = dataset.window(poses["keypoints"], poses["fps"], answer["contact"])
-    values = body.measures(x[None], mask[None])
+    values = body.measures(x[None], mask[None], audited=True)
     answer["toss_height"] = float(body.toss_height(x[None], mask[None])[0])
-    answer["body"] = {aspect: float(values[aspect][0]) for aspect in PROS_BODY}
+    answer["body"] = {aspect: float(values[aspect][0]) for aspect in BODY_TEXT}
+    answer["needs_work"] = {}
+    for aspect, row in POINTS.items():
+        if row["source"] == "model":
+            m3 = BODY[row["model"]]
+            o, k = (
+                body.oriented(x[None], mask[None], m3["at_reach"])[0],
+                m3["aspects"].index(aspect),
+            )
+            seeds = [float(body.probabilities(n, o, m3)[0, k]) for n in m3["networks"]]
+            answer["needs_work"][aspect] = {"probability": float(np.mean(seeds)),
+                                            "seeds": np.round(seeds, 4).tolist()}  # fmt: skip
+    answer["legs_seen"] = float(mask[:, body.LOWER].mean())  # share of leg points MediaPipe saw
+    answer["landing_seen"] = bool(mask[dataset.BEFORE + 1 :].any(1).all())  # the video goes on
     progress(0.85, desc="Paso 4 de 4: preparando la cámara lenta…")
     slow = OUTPUT_DIR / f"slow-{time.time_ns()}.mp4"
     images = render(video_path, poses, answer, slow)
@@ -258,7 +332,8 @@ def run_analysis(video_path, progress) -> dict:
 def cache_folder(video_path) -> Path:
     """One folder per video content, model weights, pose model and ANSWER."""
     digest = hashlib.sha256(Path(video_path).read_bytes())
-    digest.update(WEIGHTS + f"|{MODEL['threshold']}|{CONFIG['pose']['model']}|{ANSWER}".encode())
+    digest.update(WEIGHTS + BODY_WEIGHTS)
+    digest.update(f"|{MODEL['threshold']}|{CONFIG['pose']['model']}|{ANSWER}".encode())
     return CACHE_DIR / digest.hexdigest()[:16]
 
 

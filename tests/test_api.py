@@ -7,19 +7,54 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+# What eval/body.py --levels may write: the landing by a body model on trial, the arm at contact
+# by its measure against the professionals' range, the racket drop next to the professionals'
+POINTS = {
+    "racket_drop": {"level": "", "source": "", "described": "yes", "pros_median": "-0.21",
+                    "pros_p90": "-0.08"},
+    "arm_at_contact": {"level": "measure", "source": "measure", "model": "", "threshold": "-0.89",
+                       "scale": "0.17", "precision": "0.98", "pros_rate": "0.08",
+                       "described": "yes", "pros_median": "-1.02", "pros_p90": "-0.89"},
+    "landing": {"level": "trial", "source": "model", "model": "mx", "precision": "0.73",
+                "pros_rate": "0.07", "described": "", "pros_median": "-0.46",
+                "pros_p90": "-0.26"},
+}  # fmt: skip
+
 
 @pytest.fixture(scope="module")
 def api():
     return importlib.import_module("app.api")
 
 
-def answer(probability=0.64, seeds=(0.6, 0.62, 0.66, 0.64, 0.7)):
+@pytest.fixture(autouse=True)
+def levels(monkeypatch):
+    service = importlib.import_module("app.service")
+    monkeypatch.setattr(service, "POINTS", POINTS)
+    monkeypatch.setattr(service, "BODY", {"mx": {"thresholds": {"landing": 0.5}}})
+
+
+def answer(probability=0.64, seeds=(0.6, 0.62, 0.66, 0.64, 0.7), landing=0.8, reach=0.57,
+           legs_seen=1.0, advance=0.1):  # fmt: skip
     fall = np.zeros((4, 8))  # the app model's parts (M1e: elbows and wrists)
     fall[1, 4] = 0.05  # tossing wrist, from 0.53 s before contact
     return {"probability": probability, "seeds": list(seeds), "threshold": 0.2,
             "drops_early": probability >= 0.2, "tossing_side": "left", "drop_seconds": 0.4,
             "seen": 0.95, "contact": 90, "occlusion": fall.tolist(), "toss_height": 0.4,
-            "body": {"racket_at_peak": 0.78, "arm_at_contact": -0.57}}  # fmt: skip
+            "body": {"legs": -0.3, "racket_drop": -0.02, "arm_at_contact": -reach, "landing": -advance},
+            "needs_work": {"landing": {"probability": landing, "seeds": [landing] * 5}},
+            "legs_seen": legs_seen, "landing_seen": True}  # fmt: skip
+
+
+def analyzed(api, monkeypatch, tmp_path, **changed) -> dict:
+    """The page's result for an uploaded video whose analysis gives answer(**changed)."""
+    slow = tmp_path / "slow.mp4"
+    slow.write_bytes(b"mp4")
+    images = {"contact": np.zeros((40, 30, 3), np.uint8)}
+    monkeypatch.setattr(api, "analysis", lambda path, progress: {
+        "answer": answer(**changed), "images": images, "slow": str(slow), "seconds": 4})  # fmt: skip
+    client = TestClient(api.app)
+    job = client.post("/api/analyze", files={"file": ("a.mov", b"video")}).json()["job"]
+    return wait(client, job)["result"]
 
 
 def wait(client, job):
@@ -58,9 +93,39 @@ def test_an_uploaded_video_gives_the_answer_its_moments_and_slow_motion(api, mon
     assert not result["progress"]["in_range"] and "queda 0.40 torsos" in result["progress"]["text"]
     arm = {b["aspect"]: b for b in result["body"]}["arm_at_contact"]
     assert arm["mine"] == "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro."
+    assert not arm["in_range"] and "9 de cada 10 llegan a 0.89 o más" in arm["pros"]
+    # The surest level first: the tossing arm, the landing on trial, the measure last
+    assert [(p["aspect"], p["level_label"]) for p in result["points"]] == [
+        ("toss", "Modelo validado"), ("landing", "Modelo en prueba"),
+        ("arm_at_contact", "Medida frente a profesionales")]  # fmt: skip
+    assert result["points"][1]["drill"]["name"] == "Aterriza y sostén"
+    assert "5 de 5 versiones del modelo lo marcan" in result["points"][1]["evidence"]
     assert client.get(result["moments"][0]["image_url"]).status_code == 200
     assert client.get(result["slow_url"]).content == b"mp4"
     assert client.get(f"/api/files/{job}/..%2Fvideo.mov").status_code == 404
+
+
+def test_a_fine_tossing_arm_moves_on_to_the_rest_of_the_body(api, monkeypatch, tmp_path):
+    result = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, advance=-0.11)
+    assert result["points"][0]["seen"].startswith("Después del impacto, la cadera retrocede 0.11")
+    assert result["feedback"]["title"] == (
+        "El brazo que lanza no baja antes de tiempo. A mejorar: aterrizaje y brazo al impacto"
+    )
+    assert result["feedback"]["drill"]["name"] == "Aterriza y sostén"
+    assert result["record"] == result["record"] | {"category": "no_clear_problem",
+                                                   "drill_id": "land_and_hold"}  # fmt: skip
+    # The legs unseen: nothing is said about the landing
+    unseen = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, legs_seen=0.4)
+    assert [p["aspect"] for p in unseen["points"]] == ["arm_at_contact"]
+
+
+def test_nothing_past_its_threshold_is_no_clear_problem(api, monkeypatch, tmp_path):
+    result = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, landing=0.2,
+                      reach=1.0)  # fmt: skip
+    assert result["points"] == [] and result["feedback"]["title"] == "No vemos un problema claro"
+    assert result["feedback"]["drill"]["name"] == "Repetir el mismo saque"
+    assert {b["aspect"]: b["in_range"] for b in result["body"]} == {
+        "racket_drop": False, "arm_at_contact": True}  # fmt: skip
 
 
 def test_seeds_that_disagree_give_low_confidence(api):
