@@ -25,7 +25,7 @@ from eval import bias
 from strokes.serve import baseline, dataset, model, train
 
 MODEL = "m1e"  # the app's model (configs/default.yaml)
-LOOK = 18  # frames before contact the racket wrist is searched at its lowest: 0.6 s
+LOOK = train.LOOK  # frames before contact the racket wrist is searched at its lowest
 ROUNDS = 2000
 GROUPS = ["JC before", "JC after", "EA", "professionals"]
 

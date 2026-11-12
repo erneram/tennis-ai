@@ -47,3 +47,19 @@ def test_heights_are_above_each_shoulder_with_the_tossing_arm_first():
     assert up.shape == (1, x.shape[1], 4, 1) and seen.all()
     assert np.allclose(up[0, :, 1, 0], 0.5) and np.allclose(up[0, :, 0, 0], -1)  # wrist, elbow
     assert train.network(8)(train.features(up, seen)).shape == (1, 1)
+
+
+def test_synthetic_faults_drop_the_tossing_wrist_before_the_racket_is_lowest():
+    t = np.arange(dataset.BEFORE + 1 + dataset.AFTER)
+    up = np.zeros((1, len(t), 4, 1))
+    low = dataset.BEFORE - 10  # the racket wrist is lowest 10 frames before contact
+    up[0, :, 1, 0] = np.interp(t, [0, 20, dataset.BEFORE + 2, t[-1]], [0.2, 1.5, -0.6, -0.6])
+    up[0, :, 3, 0] = np.abs(t - low) / 10 - 0.5
+    assert up[0, low, 1, 0] > 0  # without the fault: the tossing wrist is still up
+    [made] = train.synthetic(up, np.random.default_rng(0))
+    assert made[low, 1, 0] < 0  # with it
+    assert np.array_equal(made[:, 2:], up[0, :, 2:])  # the racket arm is unchanged
+    assert np.array_equal(made[dataset.BEFORE :], up[0, dataset.BEFORE :])  # and so is the rest
+    already = up.copy()
+    already[0, :, 1, 0] = np.interp(t, [0, 20, low - 8, t[-1]], [0.2, 1.5, -0.6, -0.6])
+    assert len(train.synthetic(already, np.random.default_rng(0))) == 0
