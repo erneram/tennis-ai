@@ -1,0 +1,7 @@
+aspect,measure,answered,needs_work,auroc,auroc_ea,auroc_jc,median_needs_work,median_fine,median_pros,pros_like_needs_work,retest_kappa,retest_kappa_raw,retest_serves
+legs,"hips drop in the second before contact, negated (torso lengths)",153,32,0.8946280991735537,0.5980113636363636,1.0,-0.02172093838453293,-0.28896212577819824,-0.297817200422287,0.0,nan,nan,0
+shoulders,"tossing shoulder above the racket shoulder at the trophy, negated (torso)",152,81,0.6364110589462703,0.5528120713305898,0.6437037037037037,-0.1676526665687561,-0.19093218445777893,-0.25103560090065,0.13793103448275862,nan,nan,0
+racket_at_peak,seconds from the racket wrist lowest after the trophy to contact,154,92,0.7096774193548387,0.3314785373608903,0.38555555555555554,0.7833333333333334,0.6,0.2,0.0,nan,nan,0
+racket_drop,racket wrist above its shoulder at its lowest after the trophy (torso),154,56,0.5318877551020408,0.2612244897959184,0.4343629343629344,0.11814561486244202,0.09015530347824097,-0.010238289833068848,0.3448275862068966,nan,nan,0
+arm_at_contact,"highest racket wrist above its shoulder within 0.1 s of contact, negated",154,133,0.9781596849266022,nan,nan,-0.5713908672332764,-0.7102577686309814,-1.019371509552002,0.0,nan,nan,0
+landing,"hips forward in the 0.5 s after contact, negated (torso lengths)",154,55,0.8730945821854913,0.907608695652174,0.7828535669586983,-0.25427770614624023,-0.7182023525238037,-0.45983999967575073,0.27586206896551724,nan,nan,0
