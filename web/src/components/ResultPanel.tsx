@@ -1,6 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import type { Config, Feedback as Answer, Occlusion, Result, Summary } from "@/api"
+import type { BodyMeasure, Config, Feedback as Answer, Occlusion, Result, Summary, TossProgress } from "@/api"
 import type { Run } from "@/App"
 import { Tips } from "@/components/InputPanel"
 import { MomentTiles } from "@/components/MomentTiles"
@@ -127,6 +127,9 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
           <MomentTiles moments={r.moments ?? []} />
         </section>
 
+        {r.progress ? <Progress progress={r.progress} /> : null}
+        {r.body?.length ? <Body measures={r.body} /> : null}
+
         {r.occlusion ? (
           <section aria-labelledby="why-title" className="flex flex-col gap-3">
             <SectionTitle id="why-title">En qué se fijó el modelo</SectionTitle>
@@ -192,6 +195,66 @@ function Meter({ answer }: { answer: Answer }) {
         ejercicio desde {percent(answer.threshold)}.
       </p>
     </div>
+  )
+}
+
+/** The toss height on a line from 0 to past the professionals' median, their range shaded. */
+function Progress({ progress }: { progress: TossProgress }) {
+  const top = Math.max(progress.pros_median * 1.3, progress.height + 0.1)
+  const at = (v: number) => `${(Math.min(Math.max(v, 0), top) / top) * 100}%`
+  return (
+    <section aria-labelledby="progress-title" className="flex flex-col gap-3">
+      <SectionTitle id="progress-title">Tu mano frente a los profesionales</SectionTitle>
+      <p className="max-w-[68ch] text-lg">{progress.text}</p>
+      <div
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={Math.round(top * 100) / 100}
+        aria-valuenow={progress.height}
+        aria-label="Altura de la mano de lanzamiento, en torsos sobre el hombro"
+        className="relative h-3 w-full max-w-xl rounded-sm border border-primary/40 bg-muted"
+      >
+        <span
+          className="absolute inset-y-0 rounded-sm bg-success/30"
+          style={{ left: at(progress.pros_floor), right: 0 }}
+        />
+        <span
+          className={cn("absolute inset-y-0 w-1 -translate-x-1/2", progress.in_range ? "bg-success" : "bg-destructive")}
+          style={{ left: at(progress.height) }}
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
+          style={{ left: at(progress.pros_median) }}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {progress.in_range ? "Dentro" : "Fuera"} del rango de los profesionales (zona verde); la raya es su mediana. Es
+        una medida de la pose, sin entrenar: sirve para seguir tu avance entre sesiones.
+      </p>
+    </section>
+  )
+}
+
+/** Pose measures next to the professionals': no model answers these parts of the body yet. */
+function Body({ measures }: { measures: BodyMeasure[] }) {
+  return (
+    <section aria-labelledby="body-title" className="flex flex-col gap-3">
+      <SectionTitle id="body-title">Tu cuerpo</SectionTitle>
+      <dl className="grid gap-4 @2xl:grid-cols-2">
+        {measures.map((m) => (
+          <div key={m.aspect} className="rounded border border-primary/30 bg-background p-4">
+            <dt className="font-bold text-lg">{m.label}</dt>
+            <dd className="mt-1 text-lg">{m.mine}</dd>
+            <dd className="mt-1 text-muted-foreground">{m.pros}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="max-w-[68ch] text-sm text-muted-foreground">
+        Son medidas de la pose comparadas con saques de profesionales, no un diagnóstico: el modelo del cuerpo todavía
+        no pasó sus pruebas, así que no da ejercicio para estas partes.
+      </p>
+    </section>
   )
 }
 

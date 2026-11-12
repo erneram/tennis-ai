@@ -29,11 +29,13 @@ from app.service import (
     RECORDING_TIPS,
     STROKE,
     analysis,
+    body_measures,
     certainty,
     confidence,
     observation,
     prepare_demo,
     reason,
+    toss_progress,
 )
 from core import ROOT, history
 from strokes.serve import baseline, model
@@ -183,6 +185,8 @@ def to_json(job: str, result: dict) -> dict:
             "starts": [round(model.seconds(s), 2) for s in model.STARTS],
             "values": answer["occlusion"],
         },
+        "progress": toss_progress(answer),
+        "body": body_measures(answer),
         "slow_url": f"/api/files/{job}/slow.mp4",
         "record": history.attempt(category, answer["probability"], drill_id),
     }

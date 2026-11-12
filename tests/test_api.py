@@ -18,7 +18,8 @@ def answer(probability=0.64, seeds=(0.6, 0.62, 0.66, 0.64, 0.7)):
     fall[1, 4] = 0.05  # tossing wrist, from 0.53 s before contact
     return {"probability": probability, "seeds": list(seeds), "threshold": 0.2,
             "drops_early": probability >= 0.2, "tossing_side": "left", "drop_seconds": 0.4,
-            "seen": 0.95, "contact": 90, "occlusion": fall.tolist()}  # fmt: skip
+            "seen": 0.95, "contact": 90, "occlusion": fall.tolist(), "toss_height": 0.4,
+            "body": {"racket_at_peak": 0.78, "arm_at_contact": -0.57}}  # fmt: skip
 
 
 def wait(client, job):
@@ -54,6 +55,9 @@ def test_an_uploaded_video_gives_the_answer_its_moments_and_slow_motion(api, mon
         ("start", False), ("arm_down", True), ("contact", False)]  # fmt: skip
     assert len(result["occlusion"]["values"]) == 4 and len(result["occlusion"]["starts"]) == 8
     assert result["record"]["category"] == "toss_arm_drops_early"
+    assert not result["progress"]["in_range"] and "queda 0.40 torsos" in result["progress"]["text"]
+    arm = {b["aspect"]: b for b in result["body"]}["arm_at_contact"]
+    assert arm["mine"] == "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro."
     assert client.get(result["moments"][0]["image_url"]).status_code == 200
     assert client.get(result["slow_url"]).content == b"mp4"
     assert client.get(f"/api/files/{job}/..%2Fvideo.mov").status_code == 404

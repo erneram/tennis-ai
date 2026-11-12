@@ -38,6 +38,23 @@ export interface Occlusion {
   values: number[][]
 }
 
+/** The toss height (torso lengths above the shoulder) against the professionals'. */
+export interface TossProgress {
+  height: number
+  pros_median: number
+  pros_floor: number
+  in_range: boolean
+  text: string
+}
+
+/** A pose measure that separates amateurs from professionals, not an answer of the model. */
+export interface BodyMeasure {
+  aspect: string
+  label: string
+  mine: string
+  pros: string
+}
+
 export interface AttemptRecord {
   time: string
   category: string
@@ -54,6 +71,8 @@ export interface Result {
   feedback?: Feedback
   moments?: Moment[]
   occlusion?: Occlusion
+  progress?: TossProgress
+  body?: BodyMeasure[]
   slow_url?: string
   record?: AttemptRecord
 }

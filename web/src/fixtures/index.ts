@@ -1,5 +1,16 @@
 // Mock backend for VITE_MOCK=1: fixtures plus a fake 4-step job of ~4 s.
-import type { AttemptRecord, Config, Job, Moment, Occlusion, Result, Source, Summary } from "@/api"
+import type {
+  AttemptRecord,
+  BodyMeasure,
+  Config,
+  Job,
+  Moment,
+  Occlusion,
+  Result,
+  Source,
+  Summary,
+  TossProgress,
+} from "@/api"
 
 export const config: Config = {
   model: "MediaPipe + M1C",
@@ -66,6 +77,29 @@ function occlusion(sign: number): Occlusion {
   return { parts: PARTS, starts: STARTS, values }
 }
 
+const progress = (height: number): TossProgress => ({
+  height,
+  pros_median: 1.05,
+  pros_floor: 0.73,
+  in_range: height >= 0.73,
+  text: `Cuando la raqueta está más baja, tu mano de lanzamiento queda ${height.toFixed(2)} torsos sobre el hombro. En los profesionales, la mediana es 1.05 y 9 de cada 10 llegan a 0.73 o más.`,
+})
+
+const body = (peak: number, reach: number): BodyMeasure[] => [
+  {
+    aspect: "racket_at_peak",
+    label: "Raqueta en el pico",
+    mine: `De la raqueta más baja al impacto pasan ${peak.toFixed(2)} s.`,
+    pros: "Profesionales (mediana): de la raqueta más baja al impacto pasan 0.20 s.",
+  },
+  {
+    aspect: "arm_at_contact",
+    label: "Brazo al impacto",
+    mine: `Al impacto, la muñeca de la raqueta llega ${reach.toFixed(2)} torsos sobre su hombro.`,
+    pros: "Profesionales (mediana): al impacto, la muñeca de la raqueta llega 1.02 torsos sobre su hombro.",
+  },
+]
+
 const dropResult = (tint: string): Result => ({
   kind: "feedback",
   seconds: 4.8,
@@ -91,6 +125,8 @@ const dropResult = (tint: string): Result => ({
   },
   moments: moments(true, tint),
   occlusion: occlusion(1),
+  progress: progress(0.38),
+  body: body(0.78, 0.57),
   slow_url: "/api/slow/mock.mp4",
   record: { time: "10:00", category: "toss_arm_drops_early", probability: 0.64, drill_id: "toss_hold" },
 })
@@ -120,6 +156,8 @@ const proResult: Result = {
   },
   moments: moments(false, "#e6f1f4"),
   occlusion: occlusion(-1),
+  progress: progress(1.05),
+  body: body(0.2, 1.02),
   slow_url: "/api/slow/mock-pro.mp4",
   record: { time: "10:05", category: "no_clear_problem", probability: 0.06, drill_id: "steady_serves" },
 }

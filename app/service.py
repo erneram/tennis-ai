@@ -4,9 +4,12 @@ cache. Used by the web app's API (app/api.py).
 One analysis: MediaPipe finds the body in every frame (core.pose), the serve model says whether
 the tossing arm drops early and which joints and moments the answer rests on
 (strokes/serve/model.py), and the frames around contact become key moments and a slow motion with
-the skeleton drawn. No language model and no internet.
+the skeleton drawn. The toss height and the body measures that separate amateurs from
+professionals (strokes/serve/body.py) are shown next to the professionals'. No language model and
+no internet.
 """
 
+import csv
 import hashlib
 import json
 import shutil
@@ -22,7 +25,7 @@ import numpy as np
 from core import ROOT, load_config, pose, video
 from core.analysis import InsufficientEvidence, check_video, label, resize
 from strokes import base
-from strokes.serve import dataset, model
+from strokes.serve import body, dataset, model
 
 CONFIG = load_config()
 STROKE = base.get("serve")
@@ -43,6 +46,27 @@ IMAGE_SIDE = 720  # longest side of the key moments and the slow motion
 SPANISH = {"tossing": "lanza", "racket": "raqueta", "shoulder": "Hombro", "elbow": "Codo",
            "wrist": "Muñeca"}  # fmt: skip
 PARTS = [f"{SPANISH[joint]} ({SPANISH[arm]})" for arm, joint in map(str.split, MODEL["parts"])]
+# The professionals' toss height (eval/improvement.py) and, for each body measure that separates
+# amateurs from professionals (eval/body.py), the professionals' median. M3 answers no aspect: none
+# passed its checks (experiments/serve/m3-checks.csv, m3b-checks.csv).
+_RESULTS = model.baseline.RESULTS
+PROS_TOSS = {r["measure"]: float(r["value"]) for r in csv.DictReader((_RESULTS / "improvement.csv").open())
+             if r["group"] == "professionals"}  # fmt: skip
+PROS_BODY = {r["aspect"]: float(r["median_pros"]) for r in csv.DictReader((_RESULTS / "body.csv").open())
+             if float(r["auroc_pros"]) >= body.MIN_SEPARATES}  # fmt: skip
+# Each measure in the words of the "Cuerpo" form, and the sign that turns it into a height, a
+# distance or a time (body.MEASURES: higher means more to improve)
+BODY_TEXT = {
+    "legs": ("Piernas", "la cadera baja {:.2f} torsos antes del salto", -1),
+    "shoulders": ("Hombros", "en el trofeo, el hombro que lanza queda {:.2f} torsos sobre el otro", -1),
+    "racket_at_peak": ("Raqueta en el pico", "de la raqueta más baja al impacto pasan {:.2f} s", 1),
+    "racket_drop": ("Caída de la raqueta", ("en su punto más bajo, la muñeca de la raqueta queda "
+                                             "{:.2f} torsos sobre su hombro"), 1),
+    "arm_at_contact": ("Brazo al impacto", ("al impacto, la muñeca de la raqueta llega {:.2f} "
+                                             "torsos sobre su hombro"), -1),
+    "landing": ("Aterrizaje", "después del impacto, la cadera avanza {:.2f} torsos", -1),
+}  # fmt: skip
+ANSWER = 2  # what a saved answer holds (2: the measures); a new one makes the demo cache again
 MOMENTS = {"start": "Inicio", "arm_up": "Brazo más arriba", "arm_down": "La muñeca baja del hombro",
            "contact": "Impacto"}  # fmt: skip
 
@@ -102,6 +126,31 @@ def reason(answer: dict) -> str:
     if answer["drops_early"]:
         return f"Lo que más pesa hacia «baja antes de tiempo»: {PARTS[j].lower()} {when}."
     return f"Lo que más se parece a un saque sin el problema: {PARTS[j].lower()} {when}."
+
+
+def toss_progress(answer: dict) -> dict:
+    """The serve's toss height against the professionals' median and 10th percentile."""
+    height = answer["toss_height"]
+    median = PROS_TOSS["toss height (median, torso lengths)"]
+    floor = PROS_TOSS["toss height (10th percentile, torso lengths)"]
+    return {
+        "height": round(height, 2), "pros_median": round(median, 2), "pros_floor": round(floor, 2),
+        "in_range": height >= floor,
+        "text": f"Cuando la raqueta está más baja, tu mano de lanzamiento queda {height:.2f} torsos "
+                f"sobre el hombro. En los profesionales, la mediana es {median:.2f} y 9 de cada 10 "
+                f"llegan a {floor:.2f} o más.",
+    }  # fmt: skip
+
+
+def body_measures(answer: dict) -> list[dict]:
+    """The PROS_BODY measures of the serve next to the professionals' median."""
+    out = []
+    for aspect, pros in PROS_BODY.items():
+        label, sentence, sign = BODY_TEXT[aspect]
+        out.append({"aspect": aspect, "label": label,
+                    "mine": sentence.format(sign * answer["body"][aspect]).capitalize() + ".",
+                    "pros": f"Profesionales (mediana): {sentence.format(sign * pros)}."})  # fmt: skip
+    return out
 
 
 def stretch_text(start: float, stop: float) -> str:
@@ -194,6 +243,10 @@ def run_analysis(video_path, progress) -> dict:
     if answer["seen"] < MIN_SEEN:
         return {"retake": f"Solo vimos el {answer['seen']:.0%} de los puntos de tus brazos cerca "
                           "del impacto. Graba de lado, con más luz y sin que nada tape el brazo."}  # fmt: skip
+    x, mask = dataset.window(poses["keypoints"], poses["fps"], answer["contact"])
+    values = body.measures(x[None], mask[None])
+    answer["toss_height"] = float(body.toss_height(x[None], mask[None])[0])
+    answer["body"] = {aspect: float(values[aspect][0]) for aspect in PROS_BODY}
     progress(0.85, desc="Paso 4 de 4: preparando la cámara lenta…")
     slow = OUTPUT_DIR / f"slow-{time.time_ns()}.mp4"
     images = render(video_path, poses, answer, slow)
@@ -202,9 +255,9 @@ def run_analysis(video_path, progress) -> dict:
 
 
 def cache_folder(video_path) -> Path:
-    """One folder per video content, model weights and pose model."""
+    """One folder per video content, model weights, pose model and ANSWER."""
     digest = hashlib.sha256(Path(video_path).read_bytes())
-    digest.update(WEIGHTS + f"|{MODEL['threshold']}|{CONFIG['pose']['model']}".encode())
+    digest.update(WEIGHTS + f"|{MODEL['threshold']}|{CONFIG['pose']['model']}|{ANSWER}".encode())
     return CACHE_DIR / digest.hexdigest()[:16]
 
 
