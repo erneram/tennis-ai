@@ -13,7 +13,7 @@ legs,4 counterfactual,1.0,,yes,
 legs,5 occlusion on its own part,0.488,,,legs: 10 of 17 joints
 legs,7 Brier on validation,0.233,,,
 legs,8 test AUROC,nan,,,18 answered
-legs,8 fresh AUROC,nan,,,"0 answered, 15% called needs work"
+legs,8 fresh AUROC,nan,,,"13 answered, 15% called needs work"
 racket_at_peak,0 retest kappa,0.769,0.4,yes,
 racket_at_peak,1 within EA,0.45,0.7,no,measure 0.331
 racket_at_peak,1 within JC,0.323,0.7,no,measure 0.415
@@ -28,7 +28,7 @@ racket_at_peak,4 counterfactual,0.0,,no,
 racket_at_peak,5 occlusion on its own part,0.109,,,racket arm: 2 of 17 joints
 racket_at_peak,7 Brier on validation,0.172,,,
 racket_at_peak,8 test AUROC,nan,,,18 answered
-racket_at_peak,8 fresh AUROC,nan,,,"0 answered, 23% called needs work"
+racket_at_peak,8 fresh AUROC,nan,,,"13 answered, 23% called needs work"
 racket_drop,0 retest kappa,0.701,0.4,yes,
 racket_drop,1 within EA,0.429,0.7,no,measure 0.261
 racket_drop,1 within JC,0.451,0.7,no,measure 0.419
@@ -43,7 +43,7 @@ racket_drop,4 counterfactual,0.0,,no,
 racket_drop,5 occlusion on its own part,0.115,,,racket arm: 2 of 17 joints
 racket_drop,7 Brier on validation,0.193,,,
 racket_drop,8 test AUROC,nan,,,18 answered
-racket_drop,8 fresh AUROC,nan,,,"0 answered, 0% called needs work"
+racket_drop,8 fresh AUROC,nan,,,"12 answered, 0% called needs work"
 arm_at_contact,0 retest kappa,1.0,0.4,yes,
 arm_at_contact,1 within EA,nan,0.7,,measure nan
 arm_at_contact,1 within JC,nan,0.7,,measure nan
@@ -58,7 +58,7 @@ arm_at_contact,4 counterfactual,0.0,,no,
 arm_at_contact,5 occlusion on its own part,0.092,,,racket arm: 2 of 17 joints
 arm_at_contact,7 Brier on validation,0.189,,,
 arm_at_contact,8 test AUROC,nan,,,18 answered
-arm_at_contact,8 fresh AUROC,nan,,,"0 answered, 31% called needs work"
+arm_at_contact,8 fresh AUROC,nan,,,"12 answered, 31% called needs work"
 landing,0 retest kappa,0.537,0.4,yes,
 landing,1 within EA,0.832,0.7,no,measure 0.908
 landing,1 within JC,0.7,0.7,no,measure 0.790
@@ -73,7 +73,7 @@ landing,4 counterfactual,0.0,,no,
 landing,5 occlusion on its own part,0.426,,,legs: 10 of 17 joints
 landing,7 Brier on validation,0.16,,,
 landing,8 test AUROC,0.766,,,18 answered
-landing,8 fresh AUROC,nan,,,"0 answered, 23% called needs work"
+landing,8 fresh AUROC,nan,,,"12 answered, 23% called needs work"
 legs,"6 mirrored, largest change",0.0,,,
 legs,"6 points unseen, largest mean change",0.005,,,at 40% unseen
 legs,6 THETIS (front) called needs work,0.303,,,34% of the 103 the app keeps
