@@ -63,3 +63,40 @@ def test_m3_has_one_output_per_aspect_and_skips_unanswered_ones():
     assert body.probability(model, x, mask).shape == (6, 2)
     assert np.isfinite(curve).all()  # the unanswered (NaN) targets never reach the loss
 
+
+def full_serve() -> np.ndarray:
+    """A window where every aspect has something to move: the tossing (left) wrist is highest 20
+    frames in, the racket wrist drops below its shoulder then is highest at contact, the hips go
+    down before the jump and move into the court."""
+    t, before = np.arange(T), dataset.BEFORE
+    x = serve()
+    y = x[0, :, :, 1]
+    y[:, J("left_shoulder")], y[:, J("right_shoulder")] = -1.2, -1.0
+    y[:, J("left_wrist")] = np.interp(t, [0, 20, before, T - 1], [-0.5, -2.5, 0.5, 0.5])
+    y[:, J("left_elbow")] = y[:, J("left_wrist")] / 2
+    y[:, J("right_wrist")] = np.interp(
+        t, [0, 20, before - 10, before, T - 1], [-0.5, -1.5, -0.5, -2, 0]
+    )
+    y[:, J("right_elbow")] = y[:, J("right_wrist")] / 2
+    y[before - 20 : before - 10, list(dataset.HIPS)] = 0.3
+    y[:, [J("left_knee"), J("right_knee")]] = 1.0
+    return x
+
+
+def test_each_edit_moves_only_its_part_toward_needs_work():
+    from eval import body as checks
+
+    x, mask = full_serve(), np.ones((1, T, len(dataset.JOINTS)), bool)
+    upper = [J(j) for j in dataset.JOINTS[:9]] + [J("left_knee"), J("right_knee")]
+    racket = [J("right_elbow"), J("right_wrist")]
+    moved = {"legs": (upper, 1), "shoulders": ([J("left_shoulder"), J("right_shoulder")], 1),
+             "racket_at_peak": (racket, 1), "racket_drop": (racket, 1),
+             "arm_at_contact": (racket, 1), "landing": (range(len(dataset.JOINTS)), 0),
+             "toss": ([J("left_elbow"), J("left_wrist")], 1)}  # fmt: skip
+    before = body.measures(x, mask)
+    for part, (joints, axis) in moved.items():
+        edited = checks.edited(part, x)
+        changed = np.argwhere((edited != x).any(1)[0])  # (joint, axis) pairs that moved
+        assert len(changed) and all(j in joints and a == axis for j, a in changed), part
+        if part != "toss":
+            assert body.measures(edited, mask)[part] > before[part], part

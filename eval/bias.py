@@ -149,16 +149,18 @@ def within_jc(data, names: list[str]) -> None:
         print(f"  {name.upper()}: " + "; ".join(line))
 
 
-def unsee(x: np.ndarray, mask: np.ndarray, share: float, rng: np.random.Generator):
-    """Copies with `share` of the seen arm points set unseen, positions interpolated in time."""
+def unsee(x: np.ndarray, mask: np.ndarray, share: float, rng: np.random.Generator,
+          joints=ARM_JOINTS):  # fmt: skip
+    """Copies with `share` of the seen points of `joints` (the arms) set unseen, positions
+    interpolated in time."""
     x, mask = x.copy(), mask.copy()
     frames = np.arange(x.shape[1])
     for w in range(len(x)):
-        arm = mask[w][:, ARM_JOINTS]
+        arm = mask[w][:, joints]
         seen = np.argwhere(arm)
         for t, j in seen[rng.random(len(seen)) < share]:
-            mask[w, t, ARM_JOINTS[j]] = False
-        for j in ARM_JOINTS:
+            mask[w, t, joints[j]] = False
+        for j in joints:
             known = mask[w, :, j]
             if known.any():
                 for c in range(2):
