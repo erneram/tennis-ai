@@ -8,7 +8,9 @@ the skeleton drawn. The answer is a list of up to MAX_POINTS points to improve (
 tossing arm and the aspects of the body in experiments/serve/points.csv (eval/body.py --levels),
 each with how often it was right on validation, its level (LEVELS) and its drill; and the other
 parts the app looked at (others). The toss height and the body measures that separate amateurs
-from professionals are shown next to the professionals'. No language model and no internet.
+from professionals are shown next to the professionals'. What the player reads is in plain words
+(PLAIN, TRUST, BARS); the numbers go into each point's technical detail. No language model and no
+internet.
 """
 
 import csv
@@ -73,8 +75,62 @@ ASPECTS = {"toss": ("Brazo que lanza", "toss_hold"), "legs": ("Piernas", "knee_l
            "racket_drop": ("Caída de la raqueta", None),
            "arm_at_contact": ("Brazo al impacto", "high_reach"),
            "landing": ("Aterrizaje", "land_and_hold")}  # fmt: skip
-# Each aspect of the body in the words of the "Cuerpo" form: its audited measure (body.measures:
-# higher means more to improve; negated here it is a distance where more is better)
+# Each part of the serve in plain words, for a player who reads no numbers, as the questions of
+# the labeling forms put it: what the app saw when it marks the part ("back" when its measure is
+# under zero and "short" when it is under the professionals' range, else "improve"), what it saw
+# when it does not ("fine"), and what to aim for ("goal")
+PLAIN = {
+    "toss": {
+        "improve": "Bajas muy pronto el brazo con el que lanzas la pelota: cuando la raqueta va a "
+                   "subir a pegarle, esa mano ya está a la altura del hombro o más abajo.",
+        "fine": "Mantienes arriba el brazo con el que lanzas la pelota hasta que la raqueta sube "
+                "a pegarle.",
+        "goal": "Lo ideal: que siga arriba, apuntando a la pelota, hasta que la raqueta empiece a "
+                "subir.",
+    },
+    "legs": {
+        "short": "Casi no doblas las rodillas antes de subir a pegarle.",
+        "improve": "Doblas poco las rodillas antes de subir a pegarle.",
+        "fine": "Doblas las rodillas antes de subir a pegarle.",
+        "goal": "Lo ideal: rodillas dobladas y la cadera baja, como para saltar.",
+    },
+    "racket_drop": {
+        "improve": "Antes de subir a pegarle, tu raqueta casi no cae detrás de la espalda.",
+        "fine": "Antes de subir a pegarle, tu raqueta cae detrás de la espalda.",
+        "goal": "Lo ideal: que caiga detrás de la espalda, como si te rascaras, y luego suba hacia "
+                "la pelota.",
+    },
+    "arm_at_contact": {
+        "improve": "Le pegas a la pelota más abajo de lo que alcanzas: al pegarle, tu brazo no "
+                   "llega estirado hacia arriba.",
+        "fine": "Le pegas a la pelota arriba, con el brazo estirado.",
+        "goal": "Lo ideal: el brazo estirado, casi vertical, pegándole lo más alto que alcanzas.",
+    },
+    "landing": {
+        "back": "Después de pegarle te vas hacia atrás en vez de entrar a la cancha.",
+        "short": "Después de pegarle avanzas poco: caes casi en el mismo lugar.",
+        "improve": "Después de pegarle no terminas hacia adelante y en equilibrio.",
+        "fine": "Después de pegarle caes hacia adelante, dentro de la cancha.",
+        "goal": "Lo ideal: caer hacia adelante, dentro de la cancha, sobre el pie de adelante y en "
+                "equilibrio.",
+    },
+}  # fmt: skip
+# What each level means for the player, under how often the point was right (often)
+TRUST = {"validated": "Pasó todas nuestras pruebas.",
+         "trial": "Todavía lo estamos probando con más jugadores.",
+         "measure": "Sale de comparar tu video con saques de profesionales; no es un diagnóstico.",
+         "exploratory": "Con un jugador que la app nunca ha visto puede fallar más.",
+         "value": "Tómalo como una sugerencia, no como un hecho."}  # fmt: skip
+# What each bar of the comparison with the professionals shows
+BARS = {
+    "toss_height": "Qué tan arriba sigue tu mano de lanzamiento cuando la raqueta está atrás.",
+    "legs": "Cuánto bajas la cadera al doblar las rodillas.",
+    "racket_drop": "Cuánto cae tu raqueta detrás de la espalda antes de subir a pegarle.",
+    "arm_at_contact": "Qué tan arriba le pegas a la pelota.",
+    "landing": "Cuánto avanzas después de pegarle.",
+}
+# Each aspect of the body as a number, for the technical detail: its audited measure
+# (body.measures: higher means more to improve; negated here it is a distance where more is better)
 BODY_TEXT = {
     "legs": "la cadera baja {:.2f} torsos antes del salto",
     "racket_drop": "antes de subir a pegarle, la muñeca de la raqueta cae {:.2f} torsos",
@@ -89,9 +145,8 @@ UNDER_ZERO = {
 }
 # What a part can be on one serve (state): a point to improve, fine, or for a measure with no
 # point, outside or inside the professionals' range; or not seen in the video
-STATES = {"improve": "A mejorar", "fine": "Sin problema",
-          "outside": "Fuera del rango de los profesionales",
-          "inside": "Dentro del rango de los profesionales", "unseen": "No se ve en el video"}  # fmt: skip
+STATES = {"improve": "A mejorar", "fine": "Sin problema", "outside": "Distinto a los profesionales",
+          "inside": "Parecido a los profesionales", "unseen": "No se ve en el video"}  # fmt: skip
 # The aspects of the "Cuerpo" form the app says nothing about, unless points.csv has them
 UNCHECKED = [text for aspect, text in {
     "legs": "las piernas", "shoulders": "los hombros",
@@ -99,7 +154,7 @@ UNCHECKED = [text for aspect, text in {
     "racket_drop": "la caída de la raqueta", "arm_at_contact": "el brazo al impacto",
     "landing": "el aterrizaje"}.items() if aspect not in POINTS]  # fmt: skip
 LEGS = ("legs", "landing")  # aspects read from the legs: they need them seen
-ANSWER = 4  # what a saved answer holds (4: the moments of the body); a new one remakes the cache
+ANSWER = 5  # what a saved answer holds (5: a retake in plain words); a new one remakes the cache
 # Each key moment: its name, the aspect it shows and the part of the body drawn in orange
 MOMENTS = {"bend": ("Piernas flexionadas", "legs", "legs"),
            "arm_up": ("Brazo que lanza arriba", None, "toss"),
@@ -171,18 +226,14 @@ def toss_height(answer: dict) -> dict:
     height = answer["toss_height"]
     median = PROS_TOSS["toss height (median, torso lengths)"]
     floor = PROS_TOSS["toss height (10th percentile, torso lengths)"]
-    where = f"{height:.2f} torsos sobre" if height >= 0 else f"{-height:.2f} torsos bajo"
     return {"aspect": "toss_height", "label": "Altura de la mano que lanza",
-            "mine": f"Cuando la raqueta está más baja, tu mano de lanzamiento queda {where} el "
-                    "hombro.",
-            "pros": f"En los profesionales, la mediana es {median:.2f} y 9 de cada 10 llegan a "
-                    f"{floor:.2f} o más.",
-            "value": round(height, 2), "pros_median": round(median, 2),
-            "pros_floor": round(floor, 2), "in_range": height >= floor}  # fmt: skip
+            "caption": BARS["toss_height"], "value": round(height, 2),
+            "pros_median": round(median, 2), "pros_floor": round(floor, 2),
+            "in_range": height >= floor}  # fmt: skip
 
 
 def measured(aspect: str, answer: dict) -> tuple[str, str]:
-    """An aspect's measure of the serve and the professionals', in Spanish."""
+    """An aspect's measure of the serve and the professionals', as numbers, in Spanish."""
     sentence, row = BODY_TEXT[aspect], POINTS[aspect]
     pros = (f"En los profesionales, la mediana es {-float(row['pros_median']):.2f} y 9 de cada 10 "
             f"llegan a {-float(row['pros_p90']):.2f} o más.")  # fmt: skip
@@ -194,18 +245,38 @@ def measured(aspect: str, answer: dict) -> tuple[str, str]:
 
 def compared(answer: dict) -> list[dict]:
     """The measures that separate amateurs from professionals next to the professionals', in
-    the order of the motion: the toss height and those of the body (`described` in POINTS)."""
+    the order of the motion: the toss height and those of the body (`described` in POINTS). Each
+    is a bar on the page, with what it shows in plain words (BARS)."""
     return [toss_height(answer)] + [
-        {"aspect": aspect, "label": ASPECTS[aspect][0], "mine": measured(aspect, answer)[0],
-         "pros": measured(aspect, answer)[1], "value": round(-answer["body"][aspect], 2),
+        {"aspect": aspect, "label": ASPECTS[aspect][0], "caption": BARS[aspect],
+         "value": round(-answer["body"][aspect], 2),
          "pros_median": round(-float(row["pros_median"]), 2),
          "pros_floor": round(-float(row["pros_p90"]), 2),
          "in_range": answer["body"][aspect] <= float(row["pros_p90"])}
         for aspect, row in POINTS.items() if row["described"]]  # fmt: skip
 
 
+def often(precision: float) -> str:
+    """How often a point was right on validation, in plain words."""
+    return "casi siempre" if precision >= 0.95 else f"{round(precision * 10)} de cada 10 veces"
+
+
+def described(aspect: str, status: str, answer: dict) -> str:
+    """What the app saw of one aspect, in plain words (PLAIN): marked ("improve", or "outside"
+    the professionals' range) or not, and for a marked aspect of the body how far its measure is
+    from the professionals', without the number."""
+    words, marked = PLAIN[aspect], status in ("improve", "outside")
+    if marked and aspect in answer["body"]:
+        value = -answer["body"][aspect]
+        for name, under in (("back", 0), ("short", -float(POINTS[aspect]["pros_p90"]))):
+            if name in words and value < under:
+                return words[name]
+    return words["improve" if marked else "fine"]
+
+
 def evidence(aspect: str, answer: dict) -> str:
-    """How far a point can be trusted, in Spanish: its rates on our videos and its level."""
+    """How far a point can be trusted, with its rates on our videos and its level, in Spanish:
+    part of the technical detail."""
     row = POINTS[aspect]
     rates = (f"En validación acertó {float(row['precision']):.0%} de las veces que lo marcó y lo "
              f"marcó en {float(row['pros_rate']):.0%} de los saques profesionales.")  # fmt: skip
@@ -252,15 +323,20 @@ def state(aspect: str, answer: dict) -> tuple[str, float]:
     return ("improve" if margin >= 0 else "fine"), margin
 
 
-def seen(aspect: str, answer: dict) -> str:
-    """What the landmarks show of one aspect, in Spanish."""
-    return observation(answer) if aspect == "toss" else " ".join(measured(aspect, answer))
+def detail(aspect: str, answer: dict) -> str:
+    """The numbers behind a point, for who asks for them: its level, what the landmarks show
+    (distances in torso lengths) and its rates (evidence)."""
+    shown = (observation(answer) if aspect == "toss" else
+             " ".join(measured(aspect, answer)) + " Las distancias van en largos de torso.")  # fmt: skip
+    return f"{LEVELS[POINTS[aspect]['level']]}. {shown} {evidence(aspect, answer)}"
 
 
 def points(answer: dict) -> list[dict]:
     """Up to MAX_POINTS points to improve: the aspects of POINTS with a level that are past their
     threshold (state), the one that was right most often on validation first (the precision of
-    points.csv) and, between two alike, the furthest past."""
+    points.csv) and, between two alike, the furthest past. Each says what the app saw and what to
+    aim for in plain words, how often it was right and what its level means (often, TRUST), and
+    keeps the numbers apart (detail)."""
     found = []
     for aspect, (name, drill) in ASPECTS.items():
         row = POINTS.get(aspect)
@@ -271,7 +347,9 @@ def points(answer: dict) -> list[dict]:
             found.append((float(row["precision"]), margin, {
                 "aspect": aspect, "label": name, "level": row["level"],
                 "level_label": LEVELS[row["level"]], "precision": float(row["precision"]),
-                "seen": seen(aspect, answer), "evidence": evidence(aspect, answer),
+                "often": often(float(row["precision"])),
+                "seen": described(aspect, status, answer), "goal": PLAIN[aspect]["goal"],
+                "trust": TRUST[row["level"]], "detail": detail(aspect, answer),
                 "drill_id": drill}))  # fmt: skip
     found.sort(key=lambda point: point[:2], reverse=True)
     return [point for *_, point in found[:MAX_POINTS]]
@@ -279,9 +357,9 @@ def points(answer: dict) -> list[dict]:
 
 def others(answer: dict, found: list[dict]) -> list[dict]:
     """The parts the app looked at that are not among the points `found`, in the order of the
-    motion: fine, next to the professionals' range (a measure with no point, with how often the
-    amateur serves outside it were marked), not seen, or past its threshold with MAX_POINTS surer
-    points before it."""
+    motion and in plain words: fine, next to the professionals' range (a measure with no point,
+    with how often the amateur serves outside it were marked), not seen, or past its threshold
+    with MAX_POINTS surer points before it."""
     out = []
     for aspect, (name, _) in ASPECTS.items():
         if aspect not in POINTS or aspect in {point["aspect"] for point in found}:
@@ -294,14 +372,18 @@ def others(answer: dict, found: list[dict]) -> list[dict]:
                             "El video termina antes de que aterrices: deja medio segundo después "
                             "del golpe.")  # fmt: skip
         else:
-            part["seen"] = seen(aspect, answer)
-        if status in ("outside", "inside"):
-            part["note"] = ("Solo es una comparación, sin ejercicio: de los saques amateur fuera "
-                            f"de ese rango, {float(POINTS[aspect]['precision']):.0%} tenían este "
-                            "problema según quien los etiquetó.")  # fmt: skip
+            part["seen"] = described(aspect, status, answer)
+        if status in ("improve", "outside"):
+            part["goal"] = PLAIN[aspect]["goal"]
+        if status == "inside":
+            part["note"] = "Es solo una observación."
+        if status == "outside":
+            part["note"] = ("Es solo una observación, sin ejercicio: en los videos con los que "
+                            "probamos la app, esta señal acertó "
+                            f"{often(float(POINTS[aspect]['precision']))}.")  # fmt: skip
         if status == "improve":
-            part["note"] = (f"Pasa su umbral, pero damos {MAX_POINTS} puntos como máximo y los "
-                            "otros acertaron más veces en validación.")  # fmt: skip
+            part["note"] = (f"También lo marcamos, pero damos {MAX_POINTS} puntos como máximo y en "
+                            "los otros la app acierta más.")  # fmt: skip
         out.append(part)
     return out
 
@@ -437,8 +519,8 @@ def run_analysis(video_path, progress) -> dict:
         return {"retake": "La cámara no te ve de lado: un hombro tapa al otro. Graba de lado, con la "
                           "cámara mirando tu pecho, sobre la prolongación de la línea de fondo."}  # fmt: skip
     if answer["seen"] < MIN_SEEN:
-        return {"retake": f"Solo vimos el {answer['seen']:.0%} de los puntos de tus brazos cerca "
-                          "del impacto. Graba de lado, con más luz y sin que nada tape el brazo."}  # fmt: skip
+        return {"retake": "No alcanzamos a ver bien tus brazos cuando le pegas a la pelota. Graba "
+                          "de lado, con más luz y sin que nada tape el brazo."}  # fmt: skip
     x, mask = dataset.window(poses["keypoints"], poses["fps"], answer["contact"])
     values = body.measures(x[None], mask[None], audited=True)
     answer["toss_height"] = float(body.toss_height(x[None], mask[None])[0])

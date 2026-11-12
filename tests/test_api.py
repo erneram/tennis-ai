@@ -94,14 +94,30 @@ def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, mon
         ("landing", "Modelo en prueba", 0.73), ("toss", "Modelo elegido por valor", 0.2)]  # fmt: skip
     arm, landing, toss = result["points"]
     assert arm["drill"]["name"] == "Alcanzar el punto más alto"
-    assert arm["seen"].startswith("Al impacto, la muñeca de la raqueta llega 0.57 torsos")
-    assert "5 de 5 versiones del modelo lo marcan" in landing["evidence"]
-    assert "baja del hombro 0.40 s antes" in toss["seen"]
-    assert "En validación acertó 20% de las veces que lo marcó" in toss["evidence"]
+    # What the player reads has no numbers: what the app saw, what to aim for, how far to trust it
+    assert arm["seen"].startswith("Le pegas a la pelota más abajo de lo que alcanzas")
+    assert arm["goal"].startswith("Lo ideal: el brazo estirado")
+    assert landing["seen"] == "Después de pegarle avanzas poco: caes casi en el mismo lugar."
+    assert toss["seen"].startswith("Bajas muy pronto el brazo con el que lanzas la pelota")
+    assert [p["often"] for p in result["points"]] == [
+        "casi siempre", "7 de cada 10 veces", "2 de cada 10 veces"]  # fmt: skip
+    assert toss["trust"] == "Tómalo como una sugerencia, no como un hecho."
+    assert not any(
+        c.isdigit() for p in result["points"] for c in p["seen"] + p["goal"] + p["trust"]
+    )
+    # The numbers are in the technical detail of each point
+    assert arm["detail"].startswith("Medida frente a profesionales. Al impacto, la muñeca de la "
+                                    "raqueta llega 0.57 torsos")  # fmt: skip
+    assert "5 de 5 versiones del modelo lo marcan" in landing["detail"]
+    assert "baja del hombro 0.40 s antes" in toss["detail"]
+    assert "En validación acertó 20% de las veces que lo marcó" in toss["detail"]
     # The other parts the app looked at, in the order of the motion
     assert [(o["aspect"], o["status"]) for o in result["others"]] == [
         ("legs", "fine"), ("racket_drop", "outside")]  # fmt: skip
-    assert "49% tenían este problema" in result["others"][1]["note"]
+    legs, drop = result["others"]
+    assert legs["seen"] == "Doblas las rodillas antes de subir a pegarle." and "goal" not in legs
+    assert drop["seen"].startswith("Antes de subir a pegarle, tu raqueta casi no cae")
+    assert drop["goal"].startswith("Lo ideal") and "acertó 5 de cada 10 veces" in drop["note"]
     assert [(m["id"], m["evidence"]) for m in result["moments"]] == [
         ("bend", False), ("arm_down", True), ("contact", True)]  # fmt: skip
     assert result["moments"][2]["note"] == "En naranja: el brazo de la raqueta."
@@ -115,10 +131,10 @@ def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, mon
     assert [c["aspect"] for c in result["compare"]] == [
         "toss_height", "racket_drop", "arm_at_contact"]  # fmt: skip
     height, _, reach = result["compare"]
-    assert not height["in_range"] and "queda 0.40 torsos" in height["mine"]
-    assert reach["mine"] == "Al impacto, la muñeca de la raqueta llega 0.57 torsos sobre su hombro."
+    assert not height["in_range"] and height["value"] == 0.4
+    assert reach["caption"] == "Qué tan arriba le pegas a la pelota."
     assert (reach["value"], reach["pros_median"], reach["pros_floor"]) == (0.57, 1.02, 0.89)
-    assert not reach["in_range"] and "9 de cada 10 llegan a 0.89 o más" in reach["pros"]
+    assert not reach["in_range"]
     assert client.get(result["moments"][0]["image_url"]).status_code == 200
     assert client.get(result["slow_url"]).content == b"mp4"
     assert client.get(f"/api/files/{job}/..%2Fvideo.mov").status_code == 404
@@ -127,22 +143,27 @@ def test_an_uploaded_video_gives_the_points_its_moments_and_slow_motion(api, mon
 def test_of_four_points_past_their_threshold_the_three_surest_are_given(api, monkeypatch, tmp_path):
     result = analyzed(api, monkeypatch, tmp_path, legs=0.9)
     assert [p["aspect"] for p in result["points"]] == ["arm_at_contact", "landing", "legs"]
-    assert "Es exploratorio" in result["points"][2]["evidence"]
+    assert result["points"][2]["seen"] == "Doblas poco las rodillas antes de subir a pegarle."
+    assert result["points"][2]["trust"].startswith("Con un jugador que la app nunca ha visto")
+    assert "Es exploratorio" in result["points"][2]["detail"]
     assert result["points"][2]["drill"]["name"] == "Carga de piernas"
     # The tossing arm is still said, among the other parts
     toss = result["others"][0]
     assert (toss["aspect"], toss["status_label"]) == ("toss", "A mejorar")
-    assert toss["note"].startswith("Pasa su umbral, pero damos 3 puntos como máximo")
+    assert toss["note"].startswith("También lo marcamos, pero damos 3 puntos como máximo")
 
 
 def test_a_fine_tossing_arm_is_one_more_part_looked_at(api, monkeypatch, tmp_path):
     result = analyzed(api, monkeypatch, tmp_path, probability=0.1, seeds=(0.1,) * 5, advance=-0.11)
     assert result["title"] == "A mejorar: brazo al impacto y aterrizaje"
-    assert result["points"][1]["seen"].startswith("Después del impacto, la cadera retrocede 0.11")
+    assert result["points"][1]["seen"] == (
+        "Después de pegarle te vas hacia atrás en vez de entrar a la cancha."
+    )
+    assert "la cadera retrocede 0.11 torsos" in result["points"][1]["detail"]
     assert result["drill"]["name"] == "Alcanzar el punto más alto"
     toss = result["others"][0]
     assert (toss["aspect"], toss["status_label"]) == ("toss", "Sin problema")
-    assert toss["seen"] == "Tu muñeca de lanzamiento baja del hombro 0.40 s antes del impacto."
+    assert toss["seen"].startswith("Mantienes arriba el brazo con el que lanzas la pelota")
     assert result["record"] == result["record"] | {"category": "no_clear_problem",
                                                    "drill_id": "high_reach"}  # fmt: skip
     # The legs unseen: nothing is said about them or the landing
@@ -152,13 +173,15 @@ def test_a_fine_tossing_arm_is_one_more_part_looked_at(api, monkeypatch, tmp_pat
         "toss": "fine", "legs": "unseen", "racket_drop": "outside", "landing": "unseen"}  # fmt: skip
 
 
-def test_a_distance_under_zero_is_said_in_words():
+def test_hips_that_do_not_go_down_are_said_in_words():
     service = importlib.import_module("app.service")
-    # The hips stay above where they stood, and the tossing hand is under its shoulder
-    assert service.measured("legs", {"body": {"legs": 0.04}})[0] == (
+    still = {"body": {"legs": 0.04}}  # the hips stay above where they stood
+    assert service.described("legs", "improve", still) == (
+        "Casi no doblas las rodillas antes de subir a pegarle."
+    )
+    assert service.measured("legs", still)[0] == (
         "Antes del salto, la cadera no baja: queda 0.04 torsos más arriba que al empezar."
     )
-    assert "queda 0.20 torsos bajo el hombro" in service.toss_height({"toss_height": -0.2})["mine"]
 
 
 def test_nothing_past_its_threshold_is_no_clear_problem(api, monkeypatch, tmp_path):
