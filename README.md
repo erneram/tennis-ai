@@ -239,6 +239,10 @@ uv run python -m strokes.serve.model --name m1e               # occlusion map of
 uv run python -m eval.eda                                     # the data: labels, recordings, landmarks
 uv run python -m eval.bias                                    # errors by group, unseen points, mirror, camera in front, new players (after eval.eda)
 uv run python -m eval.improvement                             # how far JC moved toward the professionals after the feedback
+uv run python -m eval.body                                    # the "Cuerpo" answers against pose measures, and the retest
+uv run python -m strokes.serve.body                           # M3, one network for six aspects of the body (--travel: M3b)
+uv run python -m eval.body --checks --model m3b               # M3 or M3b aspect by aspect, against the adoption rule
+uv run python -m eval.body --recommend --model m3b            # the app's drill list against the answers and the baselines
 ```
 
 M2's pretraining reads THETIS ([github.com/THETIS-dataset](https://github.com/THETIS-dataset), Gourgari et al., CVPR Workshops 2013): 495 flat, kick and slice serves of 55 players (31 beginners), filmed indoors from the front without a ball. They are downloaded into the ignored `data/external/thetis/` and prepared once (about 20 minutes; licensing in [docs/licenses.md](docs/licenses.md)):
