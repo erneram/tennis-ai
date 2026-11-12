@@ -53,7 +53,8 @@ _RESULTS = model.baseline.RESULTS
 PROS_TOSS = {r["measure"]: float(r["value"]) for r in csv.DictReader((_RESULTS / "improvement.csv").open())
              if r["group"] == "professionals"}  # fmt: skip
 PROS_BODY = {r["aspect"]: float(r["median_pros"]) for r in csv.DictReader((_RESULTS / "body.csv").open())
-             if float(r["auroc_pros"]) >= body.MIN_SEPARATES}  # fmt: skip
+             if float(r["auroc_pros"]) >= body.MIN_SEPARATES
+             and not float(r["retest_kappa"] or "nan") < body.MIN_KAPPA}  # fmt: skip
 # Each measure in the words of the "Cuerpo" form, and the sign that turns it into a height, a
 # distance or a time (body.MEASURES: higher means more to improve)
 BODY_TEXT = {
