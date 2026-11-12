@@ -1,0 +1,109 @@
+aspect,check,value,line,passes,note
+legs,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+legs,1 within EA,0.366,0.7,no,measure 0.598
+legs,1 within JC,0.904,0.7,no,measure 1.000
+legs,1 within players,0.0,,no,both players
+legs,2 new player EA,0.497,0.65,no,
+legs,2 new player JC,0.4,0.65,no,
+legs,2 new players,0.0,,no,
+legs,3 professionals called needs work,0.172,0.2,yes,29 serves
+legs,4 own edit raises,0.777,0.8,,"121 serves, mean change +0.029"
+legs,4 unrelated edit (toss) moves,0.054,0.05,,
+legs,4 counterfactual,0.0,,no,
+legs,5 occlusion on its own part,0.464,,,legs: 10 of 17 joints
+legs,7 Brier on validation,0.237,,,
+legs,8 test AUROC,nan,,,18 answered
+legs,8 fresh AUROC,nan,,,"0 answered, 8% called needs work"
+shoulders,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+shoulders,1 within EA,0.344,0.7,no,measure 0.553
+shoulders,1 within JC,0.375,0.7,no,measure 0.641
+shoulders,1 within players,0.0,,no,both players
+shoulders,2 new player EA,0.476,0.65,no,
+shoulders,2 new player JC,0.418,0.65,no,
+shoulders,2 new players,0.0,,no,
+shoulders,3 professionals called needs work,0.414,0.2,no,29 serves
+shoulders,4 own edit raises,0.366,0.8,,"71 serves, mean change -0.000"
+shoulders,4 unrelated edit (toss) moves,0.048,0.05,,
+shoulders,4 counterfactual,0.0,,no,
+shoulders,5 occlusion on its own part,0.331,,,head and shoulders: 3 of 17 joints
+shoulders,7 Brier on validation,0.249,,,
+shoulders,8 test AUROC,0.846,,,18 answered
+shoulders,8 fresh AUROC,nan,,,"0 answered, 31% called needs work"
+racket_at_peak,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+racket_at_peak,1 within EA,0.429,0.7,no,measure 0.331
+racket_at_peak,1 within JC,0.37,0.7,no,measure 0.415
+racket_at_peak,1 within players,0.0,,no,both players
+racket_at_peak,2 new player EA,0.479,0.65,no,
+racket_at_peak,2 new player JC,0.702,0.65,yes,
+racket_at_peak,2 new players,0.0,,no,
+racket_at_peak,3 professionals called needs work,0.034,0.2,yes,29 serves
+racket_at_peak,4 own edit raises,0.323,0.8,,"62 serves, mean change -0.007"
+racket_at_peak,4 unrelated edit (legs) moves,0.008,0.05,,
+racket_at_peak,4 counterfactual,0.0,,no,
+racket_at_peak,5 occlusion on its own part,0.088,,,racket arm: 2 of 17 joints
+racket_at_peak,7 Brier on validation,0.164,,,
+racket_at_peak,8 test AUROC,nan,,,18 answered
+racket_at_peak,8 fresh AUROC,nan,,,"0 answered, 15% called needs work"
+racket_drop,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+racket_drop,1 within EA,0.478,0.7,no,measure 0.261
+racket_drop,1 within JC,0.473,0.7,no,measure 0.419
+racket_drop,1 within players,0.0,,no,both players
+racket_drop,2 new player EA,0.661,0.65,yes,
+racket_drop,2 new player JC,0.494,0.65,no,
+racket_drop,2 new players,0.0,,no,
+racket_drop,3 professionals called needs work,0.586,0.2,no,29 serves
+racket_drop,4 own edit raises,0.122,0.8,,"98 serves, mean change -0.004"
+racket_drop,4 unrelated edit (legs) moves,0.034,0.05,,
+racket_drop,4 counterfactual,0.0,,no,
+racket_drop,5 occlusion on its own part,0.101,,,racket arm: 2 of 17 joints
+racket_drop,7 Brier on validation,0.199,,,
+racket_drop,8 test AUROC,nan,,,18 answered
+racket_drop,8 fresh AUROC,nan,,,"0 answered, 0% called needs work"
+arm_at_contact,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+arm_at_contact,1 within EA,nan,0.7,,measure nan
+arm_at_contact,1 within JC,nan,0.7,,measure nan
+arm_at_contact,1 within players,nan,,no,0 player(s) with 5+ serves per class
+arm_at_contact,2 new player EA,nan,0.65,,
+arm_at_contact,2 new player JC,nan,0.65,,
+arm_at_contact,2 new players,nan,,no,
+arm_at_contact,3 professionals called needs work,0.517,0.2,no,29 serves
+arm_at_contact,4 own edit raises,0.0,0.8,,"21 serves, mean change -0.002"
+arm_at_contact,4 unrelated edit (legs) moves,0.003,0.05,,
+arm_at_contact,4 counterfactual,0.0,,no,
+arm_at_contact,5 occlusion on its own part,0.076,,,racket arm: 2 of 17 joints
+arm_at_contact,7 Brier on validation,0.187,,,
+arm_at_contact,8 test AUROC,nan,,,18 answered
+arm_at_contact,8 fresh AUROC,nan,,,"0 answered, 31% called needs work"
+landing,0 retest kappa,nan,0.4,,pending: Cuerpo · repetir
+landing,1 within EA,0.783,0.7,no,measure 0.908
+landing,1 within JC,0.735,0.7,no,measure 0.790
+landing,1 within players,0.0,,no,both players
+landing,2 new player EA,0.791,0.65,yes,
+landing,2 new player JC,0.685,0.65,yes,
+landing,2 new players,1.0,,yes,
+landing,3 professionals called needs work,0.034,0.2,yes,29 serves
+landing,4 own edit raises,0.071,0.8,,"99 serves, mean change -0.000"
+landing,4 unrelated edit (toss) moves,0.04,0.05,,
+landing,4 counterfactual,0.0,,no,
+landing,5 occlusion on its own part,0.403,,,legs: 10 of 17 joints
+landing,7 Brier on validation,0.165,,,
+landing,8 test AUROC,0.727,,,18 answered
+landing,8 fresh AUROC,nan,,,"0 answered, 15% called needs work"
+legs,"6 mirrored, largest change",0.0,,,
+legs,"6 points unseen, largest mean change",0.004,,,at 40% unseen
+legs,6 THETIS (front) called needs work,0.268,,,34% of the 103 the app keeps
+shoulders,"6 mirrored, largest change",0.0,,,
+shoulders,"6 points unseen, largest mean change",0.003,,,at 40% unseen
+shoulders,6 THETIS (front) called needs work,1.0,,,100% of the 103 the app keeps
+racket_at_peak,"6 mirrored, largest change",0.0,,,
+racket_at_peak,"6 points unseen, largest mean change",0.003,,,at 40% unseen
+racket_at_peak,6 THETIS (front) called needs work,0.955,,,91% of the 103 the app keeps
+racket_drop,"6 mirrored, largest change",0.0,,,
+racket_drop,"6 points unseen, largest mean change",0.004,,,at 40% unseen
+racket_drop,6 THETIS (front) called needs work,0.035,,,4% of the 103 the app keeps
+arm_at_contact,"6 mirrored, largest change",0.0,,,
+arm_at_contact,"6 points unseen, largest mean change",0.003,,,at 40% unseen
+arm_at_contact,6 THETIS (front) called needs work,1.0,,,100% of the 103 the app keeps
+landing,"6 mirrored, largest change",0.0,,,
+landing,"6 points unseen, largest mean change",0.004,,,at 40% unseen
+landing,6 THETIS (front) called needs work,0.941,,,89% of the 103 the app keeps
