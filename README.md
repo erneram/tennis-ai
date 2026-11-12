@@ -287,42 +287,43 @@ M1g is M1e trained with synthetic faults too (`--synthetic`). In each fold, each
 
 **The body: M3 and M3b.** The labeling tool's "Cuerpo" tab asks about six more aspects of the serve (legs, shoulders, the racket at the peak, the racket drop, the arm at contact, the landing). Ernesto answered them on 154 serves; Hugo could not, so there is no second rater. Each answer was checked against a pose measure written beforehand, with no training (`strokes/serve/body.py`, `eval/body.py`, `experiments/serve/body.csv`; AUROC of the measure for "needs work", on all serves and within EA and within JC):
 
-| Aspect | Needs work | All | Within EA | Within JC | Amateurs against pros |
-|---|---|---|---|---|---|
-| Legs: the hips go down before the jump | 32 of 153 | 0.89 | 0.60 | 1.00 | 0.68 |
-| Shoulders: the tossing one above at the trophy | 81 of 152 | 0.64 | 0.55 | 0.64 | 0.78 |
-| Racket at the peak: time from its lowest point to contact | 92 of 154 | 0.71 | 0.33 | 0.39 | 0.89 |
-| Racket drop: how low the racket wrist goes | 56 of 154 | 0.53 | 0.26 | 0.43 | 0.65 |
-| Arm at contact: the racket wrist above its shoulder | 133 of 154 | 0.98 | – | – | 0.99 |
-| Landing: the hips move into the court | 55 of 154 | 0.87 | 0.91 | 0.78 | 0.45 |
+| Aspect | Needs work | All | Within EA | Within JC | Amateurs against pros | Retest kappa |
+|---|---|---|---|---|---|---|
+| Legs: the hips go down before the jump | 32 of 153 | 0.89 | 0.60 | 1.00 | 0.68 | 0.67 |
+| Shoulders: the tossing one above at the trophy | 81 of 152 | 0.64 | 0.55 | 0.64 | 0.78 | 0.04 |
+| Racket at the peak: time from its lowest point to contact | 92 of 154 | 0.71 | 0.33 | 0.39 | 0.89 | 0.77 |
+| Racket drop: how low the racket wrist goes | 56 of 154 | 0.53 | 0.26 | 0.43 | 0.65 | 0.70 |
+| Arm at contact: the racket wrist above its shoulder | 133 of 154 | 0.98 | – | – | 0.99 | 1.00 |
+| Landing: the hips move into the court | 55 of 154 | 0.87 | 0.91 | 0.78 | 0.45 | 0.54 |
 
-Legs, landing and, less clearly, shoulders follow the serve within each player. For the two racket aspects, the answer and the measure disagree within each player (AUROC under 0.5), so the answer follows who serves. Arm at contact is "up" only on professional serves, so it separates amateurs from professionals and nothing else. The racket measures first searched 0.6 s before contact and saturated on every serve; the search was changed to between the trophy and contact before any model was trained. A blind retest of 30 answered serves ("Cuerpo · repetir", same seed, no file names) measures the annotator against themself; it is answered at least a day after the first pass and is still pending. By the rule fixed beforehand, an aspect with a retest kappa under 0.40 is not trained on or shown.
+Legs, landing and, less clearly, shoulders follow the serve within each player. For the two racket aspects, the answer and the measure disagree within each player (AUROC under 0.5), so the answer follows who serves. Arm at contact is "up" only on professional serves, so it separates amateurs from professionals and nothing else. The racket measures first searched 0.6 s before contact and saturated on every serve; the search was changed to between the trophy and contact before any model was trained. A blind retest of 30 answered serves ("Cuerpo · repetir", same seed, no file names) measures the annotator against themself, on the needs-work answer (`body.csv` also has it on the raw answer). Ernesto answered it on Nov 11, after the first pass of Nov 9 to 11. By the rule fixed beforehand, an aspect with a retest kappa under 0.40 is not trained on or shown: shoulders (0.04) is dropped, the other five pass, from 0.54 (landing) to 1.00 (arm at contact, where nearly every amateur serve needs work).
 
-M3 is M1e's network with one output per aspect (`train.network(outputs=6)`), trained on the 17 joints mirrored so the tossing arm is always the left one and measured from each frame's hips, with a masked loss so unanswered aspects do not count, 85 epochs and 5 seeds, nothing tuned. Folds keep each session on one side, thresholds come from validation (best F1). An aspect is adopted, that is shown as the model's answer, only if it passes every line fixed before training: retest kappa 0.40 or more; validation AUROC within EA and within JC of 0.70 or more and no lower than its measure's; AUROC 0.65 or more on a player left out of training (EA, then JC); at most 20 % of the professionals' serves called "needs work"; and moving the aspect's own body part toward "needs work" must raise the probability on 80 % of the serves answered "as it should be", while moving an unrelated part moves it less than 0.05. M3 fails that last check on every aspect (legs 78 %, landing 7 %): measuring every frame from its own hips hides how far the body moves. M3b, the same network on positions measured from the hips at contact, was added after seeing that (post hoc, so it is not a test of the original design) and scored by the same lines (`experiments/serve/m3-checks.csv`, `m3b-checks.csv`):
+M3 is M1e's network with one output per aspect the retest keeps (`train.network(outputs=5)`), trained on the 17 joints mirrored so the tossing arm is always the left one and measured from each frame's hips, with a masked loss so unanswered aspects do not count, 85 epochs and 5 seeds, nothing tuned. Folds keep each session on one side, thresholds come from validation (best F1). An aspect is adopted, that is shown as the model's answer, only if it passes every line fixed before training: retest kappa 0.40 or more; validation AUROC within EA and within JC of 0.70 or more and no lower than its measure's; AUROC 0.65 or more on a player left out of training (EA, then JC); at most 20 % of the professionals' serves called "needs work"; and moving the aspect's own body part toward "needs work" must raise the probability on 80 % of the serves answered "as it should be", while moving an unrelated part moves it less than 0.05. M3 fails that last check on every aspect but legs (landing 9 %), and legs fails within EA (0.35) and on both players left out (0.48, 0.46): measuring every frame from its own hips hides how far the body moves. M3b, the same network on positions measured from the hips at contact, was added after seeing that (post hoc, so it is not a test of the original design) and scored by the same lines (`experiments/serve/m3-checks.csv`, `m3b-checks.csv`):
 
 | M3b | Within EA | Within JC | New player EA | New player JC | Pros called needs work | Own edit raises | Unrelated edit moves |
 |---|---|---|---|---|---|---|---|
-| Legs | 0.39 | 0.97 | 0.66 | 0.95 | 0 % | 100 % | 0.028 |
-| Shoulders | 0.54 | 0.44 | 0.70 | 0.52 | 31 % | 80 % | 0.029 |
-| Racket at the peak | 0.53 | 0.35 | 0.59 | 0.49 | 24 % | 63 % | 0.009 |
-| Racket drop | 0.67 | 0.36 | 0.34 | 0.47 | 3 % | 95 % | 0.051 |
-| Arm at contact | – | – | – | – | 31 % | 0 % | 0.048 |
-| Landing | 0.905 | 0.788 | 0.90 | 0.67 | 7 % | 97 % | 0.028 |
+| Legs | 0.39 | 0.98 | 0.65 | 0.97 | 0 % | 100 % | 0.035 |
+| Racket at the peak | 0.53 | 0.34 | 0.59 | 0.42 | 24 % | 50 % | 0.006 |
+| Racket drop | 0.62 | 0.39 | 0.34 | 0.48 | 7 % | 99 % | 0.057 |
+| Arm at contact | – | – | – | – | 34 % | 0 % | 0.052 |
+| Landing | 0.913 | 0.780 | 0.89 | 0.72 | 7 % | 98 % | 0.047 |
 
-No aspect is adopted, by either model. Landing comes closest: it carries over to a new player, rarely flags professionals and rests on the right part of the body, but within EA and within JC it is 0.003 below its own untrained measure (0.905 against 0.908, 0.788 against 0.790), so the network adds nothing the measure does not already give. M3b also calls most THETIS serves, filmed from the front, "needs work" (77 to 100 % on every aspect but the racket drop), so the camera check would still be needed.
+Shoulders is not trained on (retest kappa 0.04).
+
+No aspect is adopted, by either model. Landing and legs come closest: both carry over to a new player, rarely flag professionals and rest on the right part of the body. Landing beats its untrained measure within EA (0.913 against 0.908) but is below it within JC (0.780 against 0.790), so the network adds little the measure does not already give; legs ranks EA's serves worse than chance (0.39). M3b also calls most THETIS serves, filmed from the front, "needs work" (88 to 100 % on every aspect but the racket drop), so the camera check would still be needed. The 13 fresh clips of Nov 9 have no body answers, so check 8 has only the test split, where landing is the one aspect with both answers (test AUROC M3b 0.88, M3 0.77).
 
 The drill list (`eval/body.py --recommend`, `experiments/serve/recommend.csv`): the toss arm from M1e plus the adopted aspects, at most two drills, the furthest past its threshold first. With none adopted it is M1e alone. Scored on Ernesto's answers and the toss labels (value per amateur analysis with the weights of `configs/value.yaml`, one miss per marked problem without a drill, so every list is negative while the body is not covered):
 
 | List (test, 18 serves) | Precision | Coverage | Pros told no clear problem | Q per amateur analysis |
 |---|---|---|---|---|
-| M1e, the app | 0.81 | 0.19 | 100 % | −95.70 |
-| M1e plus every M3b aspect, not adopted | 0.85 | 0.43 | 50 % | 35.55 |
-| Pose measures alone, no training | 0.47 | 0.24 | 50 % | −142.19 |
-| toss_hold always | 0.72 | 0.19 | 0 % | −95.70 |
+| M1e, the app | 0.81 | 0.24 | 100 % | −60.16 |
+| M1e plus every M3b aspect, not adopted | 0.91 | 0.55 | 50 % | 84.77 |
+| Pose measures alone, no training | 0.47 | 0.29 | 50 % | −106.64 |
+| toss_hold always | 0.72 | 0.24 | 0 % | −60.16 |
 
-Every M3b aspect would cover more than twice the marked problems and is worth the most, but it fails the within-player lines: part of that comes from telling the player, not the serve, which these answers, from one rater who sees the player, reward. On validation (136 serves of JC, EA and the professionals) the same order holds (M1e 0.20 precision, every M3b aspect 0.77, measures 0.62).
+Every M3b aspect would cover more than twice the marked problems and is worth the most, but it fails the within-player lines: part of that comes from telling the player, not the serve, which these answers, from one rater who sees the player, reward. On validation (136 serves of JC, EA and the professionals) the same order holds (M1e 0.20 precision, every M3b aspect 0.78, measures 0.64).
 
-So the app (`app/service.py`) still gives M1e's drill alone and, next to it, two things that are not the model's answer: the toss height against the professionals' (median 1.05 torso lengths, 9 in 10 at 0.73 or more, `improvement.csv`) and the body measures that separate amateurs from professionals with AUROC 0.80 or more, racket at the peak and arm at contact, against the professionals' median. On jc-s30 (test split, Nov 1) it reads 0.31 for the toss, 0.83 s against 0.20 s for the racket and 0.77 against 1.02 torso lengths for the arm at contact. What would let the body model answer: the retest kappa, a second rater who does not see the player, and amateurs with and without each problem recorded the same way.
+So the app (`app/service.py`) still gives M1e's drill alone and, next to it, two things that are not the model's answer: the toss height against the professionals' (median 1.05 torso lengths, 9 in 10 at 0.73 or more, `improvement.csv`) and the body measures that separate amateurs from professionals with AUROC 0.80 or more, racket at the peak and arm at contact, against the professionals' median. On jc-s30 (test split, Nov 1) it reads 0.31 for the toss, 0.83 s against 0.20 s for the racket and 0.77 against 1.02 torso lengths for the arm at contact. What would let the body model answer: a second rater who does not see the player, and amateurs with and without each problem recorded the same way.
 
 Bias and robustness (`eval/bias.py`, `experiments/serve/bias.csv` and `bias.png`), for B0, M1c, M2c and later M1d, M1e and M1f at their thresholds:
 
