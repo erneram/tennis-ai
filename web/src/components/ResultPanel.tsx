@@ -1,14 +1,14 @@
 import { TriangleAlertIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import type {
-  BodyMeasure,
+  Compared,
   Config,
-  Feedback as Answer,
   ImprovementPoint,
   Occlusion,
+  OtherPart,
   Result,
   Summary,
-  TossProgress,
+  TossModel,
 } from "@/api"
 import type { Run } from "@/App"
 import { Tips } from "@/components/InputPanel"
@@ -35,7 +35,13 @@ interface Props {
 }
 
 const CONFIDENCE = { high: "success", medium: "warning", low: "outline" } as const
-const LEVEL = { validated: "success", trial: "warning", measure: "outline" } as const
+const STATUS = { improve: "warning", fine: "success", outside: "outline", inside: "success", unseen: "outline" } as const
+/** How often a point was right on validation, as a badge: green from 90 %, amber from 70 %. */
+const sure = (precision: number) => (precision >= 0.9 ? "success" : precision >= 0.7 ? "warning" : "outline")
+const percent = (p: number) => `${Math.round(p * 100)} %`
+/** "a, b y c", or "a, b ni c" for what was not done. */
+const list = (items: string[], last = "y") =>
+  items.length > 1 ? `${items.slice(0, -1).join(", ")} ${last} ${items[items.length - 1]}` : (items[0] ?? "")
 
 export function ResultPanel({ config, run, current, previous, summary }: Props) {
   return (
@@ -92,9 +98,9 @@ function Retake({ result, tips }: { result: Result; tips: string[] }) {
 
 function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt }) {
   const r = attempt.result
-  const f = r.feedback
-  if (!f) return null
-  const evidence = r.moments?.find((m) => m.evidence) ?? r.moments?.find((m) => m.id === "contact")
+  const points = r.points ?? []
+  const others = r.others ?? []
+  const poster = r.moments?.find((m) => m.evidence) ?? r.moments?.find((m) => m.id === "contact")
 
   return (
     <HUDFrame label="Resultado" className="animate-enter">
@@ -110,59 +116,36 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
             ) : null}
             {r.cached ? " · Respuesta guardada" : null}
           </p>
-          <h2 className="font-bold text-3xl leading-tight sm:text-4xl">{f.title}</h2>
-          <p className="text-lg text-muted-foreground">
-            Fase: <span className="font-bold text-foreground">{f.phase_label}</span>
+          <h2 className="font-bold text-3xl leading-tight sm:text-4xl">{r.title}</h2>
+          <p className="max-w-[68ch] text-lg text-muted-foreground">
+            Revisamos {points.length + others.length} partes de tu saque
+            {points.length
+              ? `: ${points.length} ${points.length > 1 ? "tienen" : "tiene"} algo que mejorar.`
+              : " y ninguna pasa su umbral."}
           </p>
         </header>
 
-        <p className="max-w-[68ch] text-xl leading-normal">{f.observation}</p>
+        {points.length ? (
+          <Points points={points} />
+        ) : r.drill ? (
+          <DataCard subtitle="Ejercicio" title={r.drill.name}>
+            <p className="text-lg leading-normal">{r.drill.instructions}</p>
+          </DataCard>
+        ) : null}
 
-        {r.points?.length ? <Points points={r.points} /> : null}
-
-        <div className="grid gap-4 @2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          {r.points?.length ? (
-            <p className="max-w-[60ch] self-center text-lg text-muted-foreground">
-              El orden va de lo más seguro a lo menos: primero lo que dice el modelo validado, después lo que está en
-              prueba y al final las medidas comparadas con profesionales.
-            </p>
-          ) : (
-            <DataCard subtitle="Ejercicio" title={f.drill.name}>
-              <p className="text-lg leading-normal">{f.drill.instructions}</p>
-            </DataCard>
-          )}
-          <div className="flex flex-col items-start gap-3 rounded border border-primary/30 bg-background p-5">
-            <span className="label-hud text-muted-foreground">Brazo que lanza: qué tan seguro está</span>
-            <Badge variant={CONFIDENCE[f.confidence]} size="md" dot>
-              Confianza {f.confidence_label}
-            </Badge>
-            <Meter answer={f} />
-            <p className="text-base">{f.certainty}</p>
-          </div>
-        </div>
+        {others.length ? <Others others={others} unchecked={r.unchecked ?? []} /> : null}
 
         <section aria-labelledby="moments-title" className="flex flex-col gap-3">
           <SectionTitle id="moments-title">Momentos clave</SectionTitle>
           <MomentTiles moments={r.moments ?? []} />
         </section>
 
-        {r.progress ? <Progress progress={r.progress} /> : null}
-        {r.body?.length ? <Body measures={r.body} /> : null}
-
-        {r.occlusion ? (
-          <section aria-labelledby="why-title" className="flex flex-col gap-3">
-            <SectionTitle id="why-title">En qué se fijó el modelo</SectionTitle>
-            <p className="max-w-[68ch] text-lg">{f.reason}</p>
-            <OcclusionMap occlusion={r.occlusion} />
-          </section>
-        ) : null}
-
         {r.slow_url ? (
           <section aria-labelledby="slow-title" className="flex flex-col gap-3">
             <SectionTitle id="slow-title">Cámara lenta</SectionTitle>
             <video
               src={r.slow_url}
-              poster={evidence?.image_url}
+              poster={poster?.image_url}
               controls
               loop
               muted
@@ -173,89 +156,15 @@ function Feedback({ attempt, previous }: { attempt: Attempt; previous?: Attempt 
           </section>
         ) : null}
 
+        {r.compare?.length ? <Professionals measures={r.compare} /> : null}
+        {r.toss ? <TossDetails model={r.toss} /> : null}
         {previous ? <Comparison previous={previous} current={attempt} /> : null}
       </div>
     </HUDFrame>
   )
 }
 
-const percent = (p: number) => `${Math.round(p * 100)} %`
-
-/** The probability of "drops early" against the threshold chosen for the most value. */
-function Meter({ answer }: { answer: Answer }) {
-  const low = Math.min(...answer.seeds)
-  const high = Math.max(...answer.seeds)
-  return (
-    <div className="flex w-full flex-col gap-1.5">
-      <div
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(answer.probability * 100)}
-        aria-label="Probabilidad de que el brazo baje antes de tiempo"
-        className="relative h-3 w-full rounded-sm border border-primary/40 bg-muted"
-      >
-        <span
-          className="absolute inset-y-0 left-0 rounded-sm bg-ink/40"
-          style={{ left: `${low * 100}%`, width: `${(high - low) * 100}%` }}
-        />
-        <span
-          className={cn("absolute inset-y-0 w-1 -translate-x-1/2", answer.drops_early ? "bg-destructive" : "bg-success")}
-          style={{ left: `${answer.probability * 100}%` }}
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
-          style={{ left: `${answer.threshold * 100}%` }}
-        />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Probabilidad {percent(answer.probability)} (versiones: {percent(low)} a {percent(high)}); recomienda el
-        ejercicio desde {percent(answer.threshold)}.
-      </p>
-    </div>
-  )
-}
-
-/** The toss height on a line from 0 to past the professionals' median, their range shaded. */
-function Progress({ progress }: { progress: TossProgress }) {
-  const top = Math.max(progress.pros_median * 1.3, progress.height + 0.1)
-  const at = (v: number) => `${(Math.min(Math.max(v, 0), top) / top) * 100}%`
-  return (
-    <section aria-labelledby="progress-title" className="flex flex-col gap-3">
-      <SectionTitle id="progress-title">Tu mano frente a los profesionales</SectionTitle>
-      <p className="max-w-[68ch] text-lg">{progress.text}</p>
-      <div
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(top * 100) / 100}
-        aria-valuenow={progress.height}
-        aria-label="Altura de la mano de lanzamiento, en torsos sobre el hombro"
-        className="relative h-3 w-full max-w-xl rounded-sm border border-primary/40 bg-muted"
-      >
-        <span
-          className="absolute inset-y-0 rounded-sm bg-success/30"
-          style={{ left: at(progress.pros_floor), right: 0 }}
-        />
-        <span
-          className={cn("absolute inset-y-0 w-1 -translate-x-1/2", progress.in_range ? "bg-success" : "bg-destructive")}
-          style={{ left: at(progress.height) }}
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
-          style={{ left: at(progress.pros_median) }}
-        />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {progress.in_range ? "Dentro" : "Fuera"} del rango de los profesionales (zona verde); la raya es su mediana. Es
-        una medida de la pose, sin entrenar: sirve para seguir tu avance entre sesiones.
-      </p>
-    </section>
-  )
-}
-
-/** Up to 3 points to improve, the surest first, each with its evidence level and its drill. */
+/** Up to 3 points to improve, the one that was right most often first, each with its drill. */
 function Points({ points }: { points: ImprovementPoint[] }) {
   return (
     <section aria-labelledby="points-title" className="flex flex-col gap-3">
@@ -263,12 +172,13 @@ function Points({ points }: { points: ImprovementPoint[] }) {
       <ol className="flex flex-col gap-4">
         {points.map((p, i) => (
           <li key={p.aspect} className="flex flex-col gap-3 rounded border border-primary/30 bg-background p-5">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className="font-display font-bold text-2xl text-ink leading-none">{i + 1}</span>
               <h4 className="font-bold text-2xl leading-tight">{p.label}</h4>
-              <Badge variant={LEVEL[p.level]} size="md" dot>
-                {p.level_label}
+              <Badge variant={sure(p.precision)} size="md" dot>
+                Acertó {percent(p.precision)} en validación
               </Badge>
+              <span className="label-hud text-muted-foreground">{p.level_label}</span>
             </div>
             <p className="max-w-[68ch] text-lg leading-normal">{p.seen}</p>
             <div className="rounded-sm border border-primary/20 bg-muted/40 p-4">
@@ -279,34 +189,155 @@ function Points({ points }: { points: ImprovementPoint[] }) {
           </li>
         ))}
       </ol>
+      <p className="max-w-[68ch] text-muted-foreground">
+        Van del que más veces acertó al que menos. El porcentaje dice, de las veces que la app marcó ese punto en los
+        saques de validación, cuántas lo había marcado también la persona que los etiquetó.
+      </p>
     </section>
   )
 }
 
-/** Pose measures that separate amateurs from professionals, next to the professionals'. */
-function Body({ measures }: { measures: BodyMeasure[] }) {
+/** The parts the app looked at that are not points: fine, next to the professionals', not seen. */
+function Others({ others, unchecked }: { others: OtherPart[]; unchecked: string[] }) {
   return (
-    <section aria-labelledby="body-title" className="flex flex-col gap-3">
-      <SectionTitle id="body-title">Tu cuerpo frente a los profesionales</SectionTitle>
-      <dl className="grid gap-4 @2xl:grid-cols-2">
+    <section aria-labelledby="others-title" className="flex flex-col gap-3">
+      <SectionTitle id="others-title">Lo demás que revisamos</SectionTitle>
+      <ul className="grid gap-4 @2xl:grid-cols-2">
+        {others.map((o) => (
+          <li key={o.aspect} className="rounded border border-primary/30 bg-background p-4">
+            <p className="flex flex-wrap items-center gap-2 font-bold text-lg">
+              {o.label}
+              <Badge variant={STATUS[o.status]} size="sm">
+                {o.status_label}
+              </Badge>
+            </p>
+            <p className="mt-1 text-lg">{o.seen}</p>
+            {o.note ? <p className="mt-1 text-muted-foreground text-sm">{o.note}</p> : null}
+          </li>
+        ))}
+      </ul>
+      {unchecked.length ? (
+        <p className="max-w-[68ch] text-muted-foreground text-sm">
+          Todavía no evaluamos {list(unchecked, "ni")}: sus modelos no pasaron las pruebas.
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+/** Pose measures that separate amateurs from professionals, each on a line with their range. */
+function Professionals({ measures }: { measures: Compared[] }) {
+  return (
+    <section aria-labelledby="pros-title" className="flex flex-col gap-3">
+      <SectionTitle id="pros-title">Frente a los profesionales</SectionTitle>
+      <ul className="grid gap-4 @3xl:grid-cols-3">
         {measures.map((m) => (
-          <div key={m.aspect} className="rounded border border-primary/30 bg-background p-4">
-            <dt className="flex flex-wrap items-center gap-2 font-bold text-lg">
+          <li key={m.aspect} className="flex flex-col gap-2 rounded border border-primary/30 bg-background p-4">
+            <p className="flex flex-wrap items-center gap-2 font-bold text-lg">
               {m.label}
               <Badge variant={m.in_range ? "success" : "outline"} size="sm">
                 {m.in_range ? "Dentro del rango" : "Fuera del rango"}
               </Badge>
-            </dt>
-            <dd className="mt-1 text-lg">{m.mine}</dd>
-            <dd className="mt-1 text-muted-foreground">{m.pros}</dd>
-          </div>
+            </p>
+            <RangeMeter measure={m} />
+            <p>{m.mine}</p>
+            <p className="text-muted-foreground text-sm">{m.pros}</p>
+          </li>
         ))}
-      </dl>
-      <p className="max-w-[68ch] text-sm text-muted-foreground">
-        Son medidas de la pose comparadas con saques de profesionales, no un diagnóstico. Una medida solo sale arriba
-        como punto a mejorar cuando además coincide con lo que marcó la persona que etiquetó los saques.
+      </ul>
+      <p className="max-w-[68ch] text-muted-foreground text-sm">
+        Son medidas de la pose, sin entrenar, en largos de torso. La zona verde es donde están 9 de cada 10 saques
+        profesionales y la raya es su mediana. Sirven para seguir tu avance entre sesiones, no son un diagnóstico.
       </p>
     </section>
+  )
+}
+
+/** One measure on a line from 0 to past the professionals' median, their range shaded. */
+function RangeMeter({ measure: m }: { measure: Compared }) {
+  const top = Math.max(m.pros_median * 1.3, m.value + 0.1)
+  const at = (v: number) => `${(Math.min(Math.max(v, 0), top) / top) * 100}%`
+  return (
+    <div
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(top * 100) / 100}
+      aria-valuenow={m.value}
+      aria-label={`${m.label}, en largos de torso`}
+      className="relative h-3 w-full rounded-sm border border-primary/40 bg-muted"
+    >
+      <span className="absolute inset-y-0 rounded-sm bg-success/30" style={{ left: at(m.pros_floor), right: 0 }} />
+      <span
+        className={cn("absolute inset-y-0 w-1 -translate-x-1/2", m.in_range ? "bg-success" : "bg-destructive")}
+        style={{ left: at(m.value) }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
+        style={{ left: at(m.pros_median) }}
+      />
+    </div>
+  )
+}
+
+/** How the model of the tossing arm decided, folded: confidence, probability, occlusion map. */
+function TossDetails({ model }: { model: TossModel }) {
+  return (
+    <details className="group rounded border border-primary/30 bg-background">
+      <summary className="press label-hud flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-ink [&::-webkit-details-marker]:hidden">
+        Cómo decide el modelo del brazo que lanza
+        <span aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180">
+          ▾
+        </span>
+      </summary>
+      <div className="flex flex-col gap-4 border-primary/20 border-t p-4">
+        <div className="flex flex-col items-start gap-3">
+          <Badge variant={CONFIDENCE[model.confidence]} size="md" dot>
+            Confianza {model.confidence_label}
+          </Badge>
+          <Meter model={model} />
+          <p className="max-w-[68ch]">{model.certainty}</p>
+        </div>
+        <p className="max-w-[68ch] text-lg">{model.reason}</p>
+        <OcclusionMap occlusion={model.occlusion} />
+      </div>
+    </details>
+  )
+}
+
+/** The probability of "drops early" against the threshold chosen for the most value. */
+function Meter({ model }: { model: TossModel }) {
+  const low = Math.min(...model.seeds)
+  const high = Math.max(...model.seeds)
+  return (
+    <div className="flex w-full max-w-xl flex-col gap-1.5">
+      <div
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(model.probability * 100)}
+        aria-label="Probabilidad de que el brazo baje antes de tiempo"
+        className="relative h-3 w-full rounded-sm border border-primary/40 bg-muted"
+      >
+        <span
+          className="absolute inset-y-0 left-0 rounded-sm bg-ink/40"
+          style={{ left: `${low * 100}%`, width: `${(high - low) * 100}%` }}
+        />
+        <span
+          className={cn("absolute inset-y-0 w-1 -translate-x-1/2", model.drops_early ? "bg-destructive" : "bg-success")}
+          style={{ left: `${model.probability * 100}%` }}
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-foreground"
+          style={{ left: `${model.threshold * 100}%` }}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Probabilidad {percent(model.probability)} (versiones: {percent(low)} a {percent(high)}); lo marca desde{" "}
+        {percent(model.threshold)}.
+      </p>
+    </div>
   )
 }
 
@@ -362,18 +393,23 @@ function OcclusionMap({ occlusion }: { occlusion: Occlusion }) {
   )
 }
 
+/** What changed in the points since the attempt before, with both contacts side by side. */
 function Comparison({ previous, current }: { previous: Attempt; current: Attempt }) {
-  const before = previous.result.feedback
-  const now = current.result.feedback
-  if (!before || !now) return null
-  const change = now.probability - before.probability
+  const before = previous.result.points ?? []
+  const now = current.result.points ?? []
+  const names = (points: ImprovementPoint[]) => list(points.map((p) => p.label.toLowerCase()))
+  const gone = before.filter((b) => !now.some((n) => n.aspect === b.aspect))
+  const stays = now.filter((n) => before.some((b) => b.aspect === n.aspect))
+  const fresh = now.filter((n) => !before.some((b) => b.aspect === n.aspect))
   const sentence =
-    Math.abs(change) < 0.05
-      ? `La probabilidad casi no cambió: ${percent(before.probability)} antes, ${percent(now.probability)} ahora.`
-      : `La probabilidad de que el brazo baje antes ${change < 0 ? "bajó" : "subió"} de ${percent(before.probability)} a ${percent(now.probability)}.`
-  const image = (a: Attempt) =>
-    (a.result.moments?.find((m) => m.id === "arm_down") ?? a.result.moments?.find((m) => m.id === "contact"))
-      ?.image_url
+    [
+      gone.length ? `Ya no sale: ${names(gone)}.` : "",
+      stays.length ? `Sigue: ${names(stays)}.` : "",
+      fresh.length ? `Nuevo: ${names(fresh)}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ") || "En ninguno de los dos intentos vimos un problema claro."
+  const image = (a: Attempt) => a.result.moments?.find((m) => m.id === "contact")?.image_url
 
   return (
     <section aria-labelledby="compare-title" className="flex flex-col gap-3 border-primary/30 border-t pt-6">
@@ -387,7 +423,7 @@ function Comparison({ previous, current }: { previous: Attempt; current: Attempt
           <figure key={caption} className="flex flex-col gap-1.5">
             <img
               src={src}
-              alt={`${caption}: cuando la muñeca baja del hombro`}
+              alt={`${caption}: el impacto`}
               className="aspect-square w-full rounded-sm border border-primary/40 bg-muted object-contain"
             />
             <figcaption className="label-hud text-muted-foreground">{caption}</figcaption>

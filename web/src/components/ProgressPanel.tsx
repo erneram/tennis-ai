@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 const STEPS = [
   { label: "Revisar video" },
   { label: "Encontrar el cuerpo" },
-  { label: "Medir el brazo" },
+  { label: "Medir el saque" },
   { label: "Cámara lenta" },
 ]
 

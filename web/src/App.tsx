@@ -143,7 +143,7 @@ export default function App() {
           <h1 className="font-display font-bold text-3xl tracking-[0.08em] sm:text-4xl">
             SERVE <span className="text-ink">LAB</span>
           </h1>
-          <p className="mt-1 text-lg text-muted-foreground">Análisis de saque con MediaPipe y una red entrenada por el equipo</p>
+          <p className="mt-1 text-lg text-muted-foreground">Análisis de saque con MediaPipe y redes entrenadas por el equipo</p>
         </div>
       </header>
 

@@ -28,5 +28,5 @@ In mock mode `?auto=jc-s15.mp4,jc-s4.MOV` runs those demos in order (handy for s
 
 - `src/api.ts`: typed API client (and the mock switch)
 - `src/App.tsx`: state for the run and the session (React state only)
-- `src/components/InputPanel.tsx`, `ResultPanel.tsx`, `PhaseTiles.tsx`, `ProgressPanel.tsx`
+- `src/components/InputPanel.tsx`, `ResultPanel.tsx`, `MomentTiles.tsx`, `ProgressPanel.tsx`
 - `src/index.css`: theme tokens, fonts, motion rules

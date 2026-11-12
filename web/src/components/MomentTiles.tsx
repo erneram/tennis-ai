@@ -4,21 +4,21 @@ import { HUDCornerFrame } from "@/components/thegridcn/hud-corner-frame"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-// The key moments around contact, with the skeleton drawn (tossing arm in orange).
-// The moment that shows the problem is marked with a word and a border, never color alone.
+// The key moments of the serve, with the skeleton drawn and the part each one is about in orange.
+// A moment that shows a point to improve is marked with a word and a border, never color alone.
 export function MomentTiles({ moments }: { moments: Moment[] }) {
   const [open, setOpen] = useState<Moment | null>(null)
 
   return (
     <>
-      <ol className="grid grid-cols-2 gap-x-3 gap-y-5 @2xl:grid-cols-4">
+      <ol className="grid grid-cols-2 gap-x-3 gap-y-5 @xl:grid-cols-3 @3xl:grid-cols-5">
         {moments.map((m, i) => (
           <li key={m.id} className="animate-enter" style={{ animationDelay: `${i * 40}ms` }}>
             <button
               type="button"
               onClick={() => setOpen(m)}
               className="press group flex w-full flex-col gap-2 rounded-sm text-left"
-              aria-label={`${m.label}${m.evidence ? ", aquí se ve el problema" : ""}. Ver en grande`}
+              aria-label={`${m.label}${m.evidence ? ", aquí se ve un punto a mejorar" : ""}. Ver en grande`}
             >
               <span
                 className={cn(
@@ -59,7 +59,8 @@ export function MomentTiles({ moments }: { moments: Moment[] }) {
               <DialogHeader className="pr-10 text-left">
                 <DialogTitle className="text-2xl">{open.label}</DialogTitle>
                 <DialogDescription className="text-base">
-                  {open.evidence ? "★ Aquí se ve el problema. " : ""}Brazo que lanza en naranja.
+                  {open.evidence ? "★ Aquí se ve un punto a mejorar. " : ""}
+                  {open.note}
                 </DialogDescription>
               </DialogHeader>
               <img

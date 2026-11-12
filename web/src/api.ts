@@ -8,25 +8,16 @@ export interface Config {
   tips: string[]
 }
 
-export interface Feedback {
-  drops_early: boolean
-  title: string
-  phase_label: string
-  observation: string
-  reason: string
-  drill: { name: string; instructions: string }
-  probability: number
-  threshold: number
-  seeds: number[]
-  confidence: "high" | "medium" | "low"
-  confidence_label: "alta" | "media" | "baja"
-  certainty: string
+export interface Drill {
+  name: string
+  instructions: string
 }
 
-/** A key frame around contact, with the skeleton drawn. */
+/** A key frame of the serve with the skeleton drawn; `note` says which part is in orange. */
 export interface Moment {
   id: string
   label: string
+  note: string
   evidence: boolean
   image_url: string
 }
@@ -38,33 +29,51 @@ export interface Occlusion {
   values: number[][]
 }
 
-/** The toss height (torso lengths above the shoulder) against the professionals'. */
-export interface TossProgress {
-  height: number
-  pros_median: number
-  pros_floor: number
-  in_range: boolean
-  text: string
+/** How the model of the tossing arm decided: its probability, seeds and occlusion map. */
+export interface TossModel {
+  drops_early: boolean
+  reason: string
+  probability: number
+  threshold: number
+  seeds: number[]
+  confidence: "high" | "medium" | "low"
+  confidence_label: "alta" | "media" | "baja"
+  certainty: string
+  occlusion: Occlusion
 }
 
-/** A pose measure that separates amateurs from professionals, next to the professionals'. */
-export interface BodyMeasure {
+/** A pose measure (torso lengths) that separates amateurs from professionals, next to theirs. */
+export interface Compared {
   aspect: string
   label: string
   mine: string
   pros: string
+  value: number
+  pros_median: number
+  pros_floor: number
   in_range: boolean
 }
 
-/** One point to improve, with how far it can be trusted and its drill. */
+/** One point to improve: how often it was right on validation, its level and its drill. */
 export interface ImprovementPoint {
   aspect: string
   label: string
-  level: "validated" | "trial" | "measure"
+  level: "validated" | "trial" | "measure" | "exploratory" | "value"
   level_label: string
+  precision: number
   seen: string
   evidence: string
-  drill: { name: string; instructions: string }
+  drill: Drill
+}
+
+/** A part of the serve the app looked at that is not among the points. */
+export interface OtherPart {
+  aspect: string
+  label: string
+  status: "improve" | "fine" | "outside" | "inside" | "unseen"
+  status_label: string
+  seen: string
+  note?: string
 }
 
 export interface AttemptRecord {
@@ -72,6 +81,7 @@ export interface AttemptRecord {
   category: string
   probability: number
   drill_id: string
+  points: string[]
 }
 
 export interface Result {
@@ -80,12 +90,13 @@ export interface Result {
   message?: string
   seconds?: number
   cached?: boolean
-  feedback?: Feedback
-  moments?: Moment[]
-  occlusion?: Occlusion
   points?: ImprovementPoint[]
-  progress?: TossProgress
-  body?: BodyMeasure[]
+  others?: OtherPart[]
+  unchecked?: string[]
+  drill?: Drill
+  moments?: Moment[]
+  compare?: Compared[]
+  toss?: TossModel
   slow_url?: string
   record?: AttemptRecord
 }
