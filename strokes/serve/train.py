@@ -62,12 +62,13 @@ SOONER = 5  # the synthetic fault: the tossing wrist goes below its shoulder up 
 ENCODER = 5  # network()[:ENCODER]: both convolutions, before pooling over time
 
 
-def network(inputs: int = 3 * len(dataset.JOINTS), channels: int = 32, dropout: float = 0.3):
-    """Two 1-D convolutions over time (the second dilated), max over time, one output logit."""
+def network(inputs: int = 3 * len(dataset.JOINTS), channels: int = 32, dropout: float = 0.3,
+            outputs: int = 1):  # fmt: skip
+    """Two 1-D convolutions over time (the second dilated), max over time, one logit per output."""
     return nn.Sequential(
         nn.Conv1d(inputs, channels, 5, padding=2), nn.ReLU(), nn.Dropout(dropout),
         nn.Conv1d(channels, channels, 5, padding=4, dilation=2), nn.ReLU(),
-        nn.AdaptiveMaxPool1d(1), nn.Flatten(), nn.Dropout(dropout), nn.Linear(channels, 1),
+        nn.AdaptiveMaxPool1d(1), nn.Flatten(), nn.Dropout(dropout), nn.Linear(channels, outputs),
     )  # fmt: skip
 
 

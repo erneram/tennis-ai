@@ -44,3 +44,22 @@ def test_targets_are_one_for_needs_work_and_leave_out_unseen_answers():
     assert y.shape == (2, len(body.ANSWERS))
     assert np.array_equal(y[0], [1, np.nan, 0, 0, 1, np.nan], equal_nan=True)
     assert np.isnan(y[1]).all()
+
+
+def test_session_folds_keep_each_session_on_one_side():
+    videos = [f"ea-{s}-s{i:02d}" for s in range(1, 7) for i in range(1, 6)] + ["pro02_s01"]
+    fold = body.session_folds(videos, seed=0)
+    sessions = [body.SESSION.sub("", v) for v in videos]
+    assert all(len({f for f, s2 in zip(fold, sessions) if s2 == s}) == 1 for s in set(sessions))
+    assert len(set(fold)) == train.FOLDS
+
+
+def test_m3_has_one_output_per_aspect_and_skips_unanswered_ones():
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(6, T, len(dataset.JOINTS), 2)).astype(np.float32)
+    mask = np.ones(x.shape[:3], bool)
+    y = np.array([[1, np.nan], [0, np.nan], [1, 0], [0, 1], [1, 1], [0, 0]], np.float32)
+    model, curve = body.fit(x, mask, y, seed=0, epochs=2)
+    assert body.probability(model, x, mask).shape == (6, 2)
+    assert np.isfinite(curve).all()  # the unanswered (NaN) targets never reach the loss
+
