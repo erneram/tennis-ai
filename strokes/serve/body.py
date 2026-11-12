@@ -117,6 +117,16 @@ def oriented(x: np.ndarray, mask: np.ndarray, at_reach: bool = False):
     return x, mask
 
 
+def instants(x: np.ndarray, mask: np.ndarray) -> dict[str, np.ndarray]:
+    """Frame of each window, as dataset.window cut it, of two instants the audited measures read:
+    contact (reach) and, in the second before it, the hips at their lowest (the knees most bent)."""
+    o, _ = oriented(x, mask)
+    contact, frames = reach(o), np.arange(x.shape[1])[None]
+    loading = (frames >= contact[:, None] - LOAD) & (frames < contact[:, None])
+    hips = o[:, :, dataset.HIPS, 1].mean(2)  # image y grows downward
+    return {"bend": np.where(loading, hips, -np.inf).argmax(1), "contact": contact}
+
+
 def toss_height(x: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """Height of the tossing wrist above its shoulder when the racket wrist is lowest, per window:
     the labeling question as a number (eval/improvement.py)."""

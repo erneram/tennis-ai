@@ -110,6 +110,8 @@ def test_drill_list_keeps_the_two_furthest_allowed_problems_past_their_threshold
     said, first = checks.pick(margin, allowed)
     assert said.tolist() == [[True, True, False, False], [False, False, False, False]]
     assert first[0] == 0  # the disallowed 0.5 never comes first
+    # With a rank per column (the precision of each point) the highest comes first
+    assert checks.pick(margin, allowed, rank=[0.2, 0.9, 0.9, 0.7])[1][0] == 1
 
 
 def test_contact_moves_to_where_the_racket_wrist_is_highest():
@@ -120,6 +122,14 @@ def test_contact_moves_to_where_the_racket_wrist_is_highest():
     assert body.reach(moved)[0] == dataset.BEFORE
     assert np.allclose(moved[:, 4:], right[:, 4:])
     assert np.allclose(moved[:, dataset.BEFORE, dataset.HIPS].mean(1), 0)
+
+
+def test_the_key_instants_are_the_knees_most_bent_and_the_racket_wrist_highest():
+    x, mask = full_serve(), np.ones((1, T, len(dataset.JOINTS)), bool)
+    late = x[:, np.clip(np.arange(T) + 4, 0, T - 1)]  # contact was found 4 frames late
+    at = body.instants(late, mask)
+    assert at["contact"][0] == dataset.BEFORE - 4
+    assert at["bend"][0] == dataset.BEFORE - 20 - 4  # the first frame with the hips down
 
 
 def test_the_audited_racket_drop_is_how_far_the_racket_wrist_falls():
@@ -159,7 +169,7 @@ def test_m4_shows_each_aspect_only_its_part_of_the_body():
     assert np.allclose(body.probabilities(networks, legs, spec)[:, 1:4], said[:, 1:4])
 
 
-def test_an_aspect_is_validated_on_trial_or_neither():
+def test_an_aspect_is_validated_on_trial_exploratory_or_neither():
     from eval import body as checks
 
     def table(within_ea=0.75, **changed):
@@ -173,7 +183,9 @@ def test_an_aspect_is_validated_on_trial_or_neither():
     assert checks.level(table(), "landing") == "validated"
     # Under its measure within a player, but it ranks EA's serves: on trial
     assert checks.level(table(**{"1 within players": "no"}), "landing") == "trial"
-    assert checks.level(table(**{"1 within players": "no", "2 new players": "no"}), "landing") == ""
+    # It does not carry over to a player left out, the one line it fails: exploratory
+    unseen = table(**{"1 within players": "no", "2 new players": "no"})
+    assert checks.level(unseen, "landing") == "exploratory"
     wrong = table(**{"1 within players": "no", "9 precision among amateurs": "no"})
     assert checks.level(wrong, "landing") == ""
     # It ranks the serves of neither player: it may only tell the players apart

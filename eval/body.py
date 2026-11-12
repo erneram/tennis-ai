@@ -1,6 +1,6 @@
 """How far the team's answers about the body can be trusted, with no second annotator.
 
-    uv run python -m eval.body [--name ernesto] [--checks [--model m3b] | --ablation | --levels | --recommend]
+    uv run python -m eval.body [--name ernesto] [--checks [--model m3b] | --ablation | --levels | --recommend | --app]
 
 Reads data/processed/serve_dataset.npz (python -m strokes.serve.dataset) and the answers of the
 "Cuerpo" tab, eval/serve/aspects_<name>.csv. For each aspect of strokes/serve/body.ANSWERS and
@@ -41,24 +41,32 @@ retest kappa MIN_KAPPA or more; within EA and within JC (where both classes have
 serves) AUROC MIN_WITHIN or more and no lower than its measure's; on the player left out, AUROC
 MIN_NEW_PLAYER or more; at most MAX_PROS of the professionals called "needs work"; and its own
 edit raising the probability on MIN_RAISED of the serves while the unrelated edit moves it less
-than MAX_MOVED on average. Checks 5 to 8 are reported, not lines. --levels adds the two levels
-under it the app may also show, written after M3 and M3b's checks (level, levels), and writes
-experiments/serve/points.csv, which the app reads. --ablation is a diagnosis (ablation).
+than MAX_MOVED on average. Checks 5 to 8 are reported, not lines. --levels adds the levels under
+it the app may also show, written after M3 and M3b's checks (level, levels), scores the tossing
+arm by the same lines (toss_point) and writes experiments/serve/points.csv, which the app reads.
+--ablation is a diagnosis (ablation).
 
 --recommend scores the app's list of points (the toss arm by M1e and the aspects of points.csv; at
-most MAX_POINTS, the surest level first and within it the furthest past its threshold; none means
-"no clear problem") against the annotator's answers, next to M1e alone (the app before), the same
-list with EA and JC scored by models trained without them, every aspect of each model, the pose
-measures alone and toss_hold always. Per list, by split and player: precision (the points the
-annotator marked), coverage (the amateurs' marked problems that got a point), professional serves
-told "no clear problem", amateur serves with two or more marked problems told the same, how often
-the first point is the marked problem the measures find clearest, and the value per amateur
-analysis in quetzales (configs/value.yaml: one hit per right point, one false alarm per wrong one,
-one miss per marked problem left out). Writes experiments/serve/recommend.csv.
+most MAX_POINTS, the point with the highest precision on validation first and between two alike
+the furthest past its threshold; none means "no clear problem") against the annotator's answers,
+next to M1e alone (the app before), the same list with EA and JC scored by models trained
+without them, the list with the racket drop by its measure too (a what-if), every aspect of each
+model, the pose measures alone and toss_hold always. Per list, by split and player: precision
+(the points the annotator marked), coverage (the amateurs' marked problems that got a point),
+professional serves told "no clear problem", amateur serves with two or more marked problems told
+the same, how often the first point is the marked problem the measures find clearest, and the
+value per amateur analysis in quetzales (configs/value.yaml: one hit per right point, one false
+alarm per wrong one, one miss per marked problem left out). Writes
+experiments/serve/recommend.csv and, for the app's lists point by point (marked, said, right,
+wrong), recommend-points.csv.
+
+--app runs the app itself on the video of each of those serves (app_check).
 """
 
 import argparse
 import csv
+from collections import Counter
+from pathlib import Path
 
 import matplotlib
 
@@ -67,6 +75,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 
+from app import service
 from core import ROOT
 from eval import bias, improvement, value
 from eval.run_eval import kappa
@@ -96,8 +105,10 @@ SUMMARY = ("0 retest kappa", "1 within players", "2 new players",
 # player only and not against the measure, plus the precision
 TRIAL = ("0 retest kappa", "2 new players", "3 professionals called needs work",
          "4 counterfactual", "9 precision among amateurs")  # fmt: skip
+# The lines of "exploratory" (level): those of TRIAL without the player left out, so a model that
+# holds on the players it was trained on and is not shown to carry over to a new one
+EXPLORATORY = tuple(line for line in TRIAL if line != "2 new players")
 MAX_POINTS = 3  # points to improve one analysis gives at most
-RANK = {"validated": 2, "trial": 1, "measure": 0}  # the order of the points: the surest first
 MIN_SEPARATES = body.MIN_SEPARATES
 MEASURED = ("auroc", "auroc_ea", "auroc_jc", "median_needs_work", "median_fine", "median_pros",
             "pros_like_needs_work", "auroc_pros", "pros_p90", "outside_amateurs",
@@ -137,6 +148,7 @@ def main() -> None:
     parser.add_argument("--levels", action="store_true", help="what the app shows, and how sure")
     parser.add_argument("--recommend", action="store_true", help="score the lists of points")
     parser.add_argument("--ablation", action="store_true", help="M3c's two changes, one by one")
+    parser.add_argument("--app", action="store_true", help="run the app itself on every video")
     parser.add_argument("--model", default="m3", help="one of MODELS")
     args = parser.parse_args()
     data = np.load(dataset.OUT)
@@ -161,9 +173,11 @@ def main() -> None:
     if args.ablation:
         ablation(data, y)
     if args.levels:
-        levels()
+        levels(data, y)
     if args.recommend:
         recommend(data, y)
+    if args.app:
+        app_check(data, y)
 
 
 def measured(data, y: np.ndarray, kappas: dict) -> list[dict]:
@@ -443,16 +457,37 @@ def level(rows: list[dict], aspect: str) -> str:
     """How far a model's answer for one aspect can be trusted, from its checks table: "validated"
     when it passes every line fixed before M3 was trained (SUMMARY); "trial" when it passes those
     of TRIAL and ranks the serves of at least one player (AUROC MIN_WITHIN or more within EA or
-    within JC, not against the measure); else ""."""
+    within JC, not against the measure); "exploratory" when the one line of TRIAL it fails is the
+    player left out (EXPLORATORY); else ""."""
     mine = {r["check"]: r for r in rows if r["aspect"] == aspect}
     if all(mine[check]["passes"] == "yes" for check in SUMMARY):
         return "validated"
     within_one = any(float(mine[f"1 within {who}"]["value"]) >= MIN_WITHIN for who in ("EA", "JC"))
-    on_trial = all(mine.get(check, {}).get("passes") == "yes" for check in TRIAL)
-    return "trial" if on_trial and within_one else ""
+    for name, lines in (("trial", TRIAL), ("exploratory", EXPLORATORY)):
+        if within_one and all(mine.get(check, {}).get("passes") == "yes" for check in lines):
+            return name
+    return ""
 
 
-def levels() -> None:
+def toss_point(data, y_all: np.ndarray) -> dict:
+    """The tossing arm as a row of points.csv. Its model (improvement.MODEL) was chosen on Nov 8
+    by its value on validation, before any line here, and by them it would have no level: scored
+    as a body model, on the same validation serves, few of the amateur serves it calls "drops
+    early" were labeled so (precision), and no second player has the fault to leave out. The app
+    shows it as chosen by value ("value"), with that precision."""
+    names = body.kept()
+    y = y_all[:, [list(body.ANSWERS).index(a) for a in names]]
+    pool, judged = body.splits(data, y)["pool"], data["valid"] == 1
+    pros = np.char.startswith(data["player"], "pro")
+    said = improvement.drills(data)
+    marked = (data["category"] == baseline.POSITIVE)[pool & ~pros & said]
+    return {"aspect": "toss", "level": "value", "source": "model", "model": improvement.MODEL,
+            "precision": round(float(marked.mean()), 3),
+            "pros_rate": round(float(said[judged & pros].mean()), 3),
+            "fails": "9 precision among amateurs; 2 new players"}  # fmt: skip
+
+
+def levels(data, y_all: np.ndarray) -> None:
     """What the app may say about each aspect and how sure it is, to experiments/serve/points.csv.
     A model's answer, validated or on trial (level), from the model of MODELS with the highest
     level for the aspect (ties: the one that ranks a player it never saw best, its lowest AUROC of
@@ -461,9 +496,13 @@ def levels() -> None:
     90th percentile of the professionals trained on, at most MAX_PROS of those held out (pro01,
     pro05) and MIN_PRECISION or more of the amateur serves there marked "needs work"; and the
     measure not contradicting the answers within a player (AUROC 0.5 or more where there is one).
-    Written on Nov 12, after M3 and M3b's checks and before M3c and M4 were trained. `described`
-    marks the measures the app shows next to the professionals' without a point, by the rule from
-    before M3: retest kappa MIN_KAPPA or more and amateurs against professionals MIN_SEPARATES."""
+    Else an exploratory model's answer. `fails` names the lines of TRIAL the model shown does not
+    pass. Validated, trial and measure were written on Nov 12, after M3 and M3b's checks and
+    before M3c and M4 were trained; exploratory after them, on the team's decision to show the
+    legs, as was scoring the tossing arm by the same lines (toss_point). `described` marks the
+    measures the app shows next to the professionals' without a point, by the rule from before
+    M3: retest kappa MIN_KAPPA or more and amateurs against professionals MIN_SEPARATES; their
+    precision and professionals are those of the range."""
     with open(baseline.RESULTS / "body.csv", newline="") as file:
         measure = {r["aspect"]: r for r in csv.DictReader(file) if r["version"] == "audited"}
     tables = {}
@@ -473,8 +512,11 @@ def levels() -> None:
             with open(path, newline="") as file:
                 tables[name] = list(csv.DictReader(file))
     number = lambda text: float(text) if text not in ("", "nan") else np.nan
-    order = {"validated": 2, "trial": 1, "": 0}
-    rows = []
+    order = {"validated": 3, "trial": 2, "exploratory": 1, "": 0}
+    blank = dict.fromkeys(("aspect", "level", "source", "model", "threshold", "precision",
+                           "pros_rate", "new_player", "fails", "described", "pros_median",
+                           "pros_p90", "scale", "measure_fails"), "")  # fmt: skip
+    rows = [blank | toss_point(data, y_all)]
     for aspect in body.ANSWERS:
         best = ("", "", -np.inf)  # level, model, lowest AUROC on a player left out
         for name, table in tables.items():
@@ -496,34 +538,35 @@ def levels() -> None:
              np.nanmin([m["auroc_ea"], m["auroc_jc"], np.inf]) < 0.5),
         ) if bad]  # fmt: skip
         described = m["retest_kappa"] >= MIN_KAPPA and m["auroc_pros"] >= MIN_SEPARATES
-        row = {"aspect": aspect, "level": "", "source": "", "model": "", "threshold": "",
-               "precision": "", "pros_rate": "", "new_player": "",
-               "described": "yes" if described else "", "pros_median": m["median_pros"],
-               "pros_p90": m["pros_p90"], "scale": m["pool_sd"],
-               "measure_fails": "; ".join(fails)}  # fmt: skip
-        if best[0]:
+        row = blank | {"aspect": aspect, "described": "yes" if described else "",
+                       "pros_median": m["median_pros"], "pros_p90": m["pros_p90"],
+                       "scale": m["pool_sd"], "measure_fails": "; ".join(fails)}  # fmt: skip
+        if best[0] in ("validated", "trial") or (best[0] and fails):
             mine = {r["check"]: r for r in tables[best[1]] if r["aspect"] == aspect}
             row |= {"level": best[0], "source": "model", "model": best[1],
                     "precision": mine["9 precision among amateurs"]["value"],
                     "pros_rate": mine["3 professionals called needs work"]["value"],
-                    "new_player": round(best[2], 3)}  # fmt: skip
-        elif not fails:
-            row |= {"level": "measure", "source": "measure", "threshold": m["pros_p90"],
-                    "precision": round(m["outside_precision"], 3),
+                    "new_player": round(best[2], 3),
+                    "fails": "; ".join(c for c in TRIAL if mine[c]["passes"] != "yes")}  # fmt: skip
+        elif not fails or described:  # a point by the measure, or only next to the professionals'
+            row |= {"precision": round(m["outside_precision"], 3),
                     "pros_rate": round(m["held_pros_outside"], 3)}  # fmt: skip
+            if not fails:
+                row |= {"level": "measure", "source": "measure", "threshold": m["pros_p90"]}
         rows.append(row)
     baseline.save("points", rows)
     print("What the app says about each aspect (experiments/serve/points.csv):")
     for r in rows:
-        print(f"  {r['aspect']:15} {r['level'] or 'nothing':9} {r['model'] or r['source']:8}"
+        print(f"  {r['aspect']:15} {r['level'] or 'nothing':11} {r['model'] or r['source']:8}"
               + (f" precision {float(r['precision']):.2f}, pros {float(r['pros_rate']):.0%}"
+                 + (f", fails: {r['fails']}" if r["fails"] else "")
                  if r["level"] else f" measure fails: {r['measure_fails']}"))  # fmt: skip
 
 
 def pick(margin: np.ndarray, allowed: np.ndarray, rank=None) -> tuple[np.ndarray, np.ndarray]:
     """Which problems each serve gets a point for: at most MAX_POINTS of the allowed ones with a
-    margin past 0, the highest `rank` first (RANK, one per column) and within it the furthest
-    past; and the column of the first."""
+    margin past 0, the highest `rank` first (one per column: the precision of its point) and within
+    it the furthest past; and the column of the first."""
     margin = np.where(allowed & ~np.isnan(margin), margin, -np.inf)
     key = np.where(margin >= 0, margin + 1e3 * (0 if rank is None else np.asarray(rank)), -np.inf)
     order = np.argsort(-key, 1, kind="stable")[:, :MAX_POINTS]
@@ -575,10 +618,19 @@ def recommend(data, y_all: np.ndarray) -> None:
                                 if a in m3["aspects"] else np.full(len(score), np.nan)
                                 for a in names])  # fmt: skip
 
-    def app(left_out: bool = False):
+    with open(baseline.RESULTS / "points.csv", newline="") as file:
+        table = {r["aspect"]: r for r in csv.DictReader(file)}
+    # The racket drop as a point by its measure, which fails only the precision. Asked after the
+    # app's list was scored, to decide on it: the team left it next to the professionals'
+    what_if = {"racket_drop": table["racket_drop"] | {
+        "level": "measure", "source": "measure", "threshold": table["racket_drop"]["pros_p90"]}}  # fmt: skip
+
+    def app(left_out: bool = False, more: tuple = ()):
         """The app's list: the toss arm by M1e and each aspect of points.csv by its model or
-        its measure against the professionals' range, the surest level first."""
-        points, margin, rank = shown(), [toss_margin], [RANK["validated"]]
+        its measure against the professionals' range, the highest precision on validation first.
+        `more` adds aspects of what_if."""
+        points = shown() | {aspect: what_if[aspect] for aspect in more}
+        margin, rank = [toss_margin], [float(points["toss"]["precision"])]
         for k, aspect in enumerate(names):
             point = points.get(aspect)
             if not point:
@@ -587,7 +639,7 @@ def recommend(data, y_all: np.ndarray) -> None:
                 margin.append(margins(point["model"], left_out)[:, k])
             else:
                 margin.append((audited[aspect] - float(point["threshold"])) / float(point["scale"]))
-            rank.append(RANK[point["level"]] if point else 0)
+            rank.append(float(point["precision"]) if point else 0)
         return np.column_stack(margin), every, rank
 
     models = [m for m in MODELS if (baseline.RESULTS / f"{m}-left-out.csv").exists()]
@@ -595,6 +647,7 @@ def recommend(data, y_all: np.ndarray) -> None:
         "M1e alone (the app before)": (toss_margin[:, None] * np.eye(1, truth.shape[1]), every, None),
         "the app: M1e and the aspects of points.csv": app(),
         "the app, EA and JC by models that never saw them": app(left_out=True),
+        "what if: the app and the racket drop by its measure": app(more=("racket_drop",)),
         **{f"M1e and every {m.upper()} aspect": (np.column_stack([toss_margin, margins(m)]), every,
                                                  None) for m in models},
         "pose measures only": ((measured - cuts) / scale, every, None),
@@ -606,7 +659,7 @@ def recommend(data, y_all: np.ndarray) -> None:
     block = config["coach_per_hour"] * config["drill_minutes"] / 60
     groups = {"all": np.ones(len(truth), bool), "jc": player == "jc", "ea": player == "ea",
               "pros": ~amateurs}  # fmt: skip
-    rows = []
+    rows, by_point = [], []
     for title, (margin, allowed, rank) in lists.items():
         said, first = pick(margin, allowed, rank)
         right, wrong, missed = said & (truth == 1), said & (truth == 0), ~said & (truth == 1)
@@ -631,16 +684,67 @@ def recommend(data, y_all: np.ndarray) -> None:
                 "value": (block * gain.mean() - value.compute_cost(config, config["pose_seconds"])
                           if ama.any() else np.nan),
             })  # fmt: skip
+            if "the app" in title:  # the same list point by point: said, and marked or not
+                by_point += [{"list": title, "split": rows[-1]["split"], "player": group,
+                              "point": name, "serves": int(mine.sum()),
+                              "marked": int((truth[mine, j] == 1).sum()),
+                              "said": int(said[mine, j].sum()), "right": int(right[mine, j].sum()),
+                              "wrong": int(wrong[mine, j].sum())}
+                             for j, name in enumerate(["toss", *names])]  # fmt: skip
     baseline.save("recommend", rows)
+    baseline.save("recommend-points", by_point)
     print(f"Lists of points, at most {MAX_POINTS} per serve (experiments/serve/recommend.csv); "
           f"the app shows: {', '.join(f'{a} ({r['level']})' for a, r in shown().items()) or 'the toss arm only'}")  # fmt: skip
     for r in rows:
-        if r["player"] == "all" or r["list"].startswith("the app"):
-            print(f"  {r['list']:48} {r['split']:10} {r['player']:4} {r['serves']:3} serves, "
+        if r["player"] == "all" or "the app" in r["list"]:
+            print(f"  {r['list']:58} {r['split']:10} {r['player']:4} {r['serves']:3} serves, "
                   f"{r['points']:3} points: precision {r['precision']:.2f}, coverage "
                   f"{r['coverage']:.2f}, pros told no problem {r['pros_clear']:.2f}, told no "
                   f"problem with 2+ marked {r['several_told_clear']} of {r['several_marked']}, "
                   f"Q{r['value']:.2f} per amateur analysis")  # fmt: skip
+
+
+def app_check(data, y_all: np.ndarray) -> None:
+    """The app itself on the video of every serve recommend scores (app.service.run_analysis:
+    MediaPipe again, the contact it finds, its guards and its points), to
+    experiments/serve/app-points.csv: what it answered and, of the points it gave, those the
+    annotator marked and those they did not. recommend scores the same list from the windows of
+    the dataset; this checks that the app says what was scored, and counts what it sends back."""
+    names = body.kept()
+    y = y_all[:, [list(body.ANSWERS).index(a) for a in names]]
+    toss = np.where(data["valid"] == 1, data["category"] == baseline.POSITIVE, np.nan)
+    truth = dict(zip(["toss", *names], np.column_stack([toss, y]).T))
+    rows = []
+    for split, chosen in body.splits(data, y).items():
+        for i in np.flatnonzero(chosen):
+            path = ROOT / "data" / "raw" / f"{data['video'][i]}.mp4"
+            result = service.run_analysis(path, lambda *args, **kwargs: None)
+            said = []
+            if "answer" in result:
+                said = [point["aspect"] for point in service.points(result["answer"])]
+                Path(result["slow"]).unlink()  # the slow motion is not looked at here
+            player = str(data["player"][i])
+            rows.append({
+                "video": data["video"][i], "player": "pros" if player.startswith("pro") else player,
+                "split": "validation" if split == "pool" else split,
+                "answer": "points" if "answer" in result else "retake" if "retake" in result else "error",
+                "points": " ".join(said),
+                "right": " ".join(a for a in said if truth[a][i] == 1),
+                "wrong": " ".join(a for a in said if truth[a][i] == 0),
+            })  # fmt: skip
+            print(
+                f"  {rows[-1]['video']:14} {rows[-1]['answer']:7} {rows[-1]['points']}", flush=True
+            )
+    baseline.save("app-points", rows)
+    print("The app on each video (experiments/serve/app-points.csv):")
+    for split, player in dict.fromkeys((r["split"], r["player"]) for r in rows):
+        mine = [r for r in rows if (r["split"], r["player"]) == (split, player)]
+        said, right, wrong = (Counter(a for r in mine for a in r[column].split())
+                              for column in ("points", "right", "wrong"))  # fmt: skip
+        print(f"  {split:10} {player:4} {len(mine):3} serves, "
+              f"{sum(r['answer'] != 'points' for r in mine)} sent back, "
+              f"{sum(r['answer'] == 'points' and not r['points'] for r in mine)} with no point; "
+              + "; ".join(f"{a} said {said[a]}, right {right[a]}, wrong {wrong[a]}" for a in said))  # fmt: skip
 
 
 def occlusion(m3: dict, x: np.ndarray) -> np.ndarray:
