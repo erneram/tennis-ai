@@ -390,6 +390,32 @@ Bias and robustness (`eval/bias.py`, `experiments/serve/bias.csv` and `bias.png`
 
 **Limitation: what the app's answer means.** M1e is the first model that carries over to players it was not trained on (2 % false alarms on EA, none on Federer), but every serve with the fault still comes from one amateur, only 3 of JC's test serves are without it, and on JC's serves without the fault it recommends the drill 89 % of the time; on JC's after the feedback, 66 %. So "drops early" means "the tossing hand comes down sooner than in the serves the model learned as clean", worth trying the drill, and the confidence matters: next to every answer the app shows the model's test rates (the drill recommended on 56 % of the test serves without the fault, 5 serves) and the confidence. M1e was chosen after the new players were seen (above); its first fresh test, the YouTube clips of Nov 9, has no false alarms on ten new professionals, but its one amateur serve with the fault was filmed from the front and sent back. What would lift the limitation: the improvement study's amateurs, with and without the fault, recorded the same way; then retraining, and the within-player check of `eval/bias.py` again.
 
+## Explainability (Lab 10)
+
+`xai/explicabilidad.ipynb` explains M1e, the app's model for the tossing arm, with Integrated Gradients (captum), without retraining it. It regenerates every figure and table of the Lab 10 report (`docs/laboratorio-10.md`) into `xai/results/`. It needs the processed dataset (`data/processed/serve_dataset.npz`, built by `python -m strokes.serve.dataset`), because the players' data are not in Git. From the repository root:
+
+```bash
+uv sync --group xai
+uv run --group xai jupyter nbconvert --to notebook --execute --inplace xai/explicabilidad.ipynb
+```
+
+Settings:
+
+- **Baseline:** the clean reference serve saved with M1e.
+- **Integration:** 64 Gauss-Legendre steps. An assert checks that the attributions add up to P(serve) − P(clean serve).
+- **Seed:** the faithfulness check draws one random order, with seed 0. Two runs write the same CSV files.
+
+What it found:
+
+- **No leak in time.** 80 to 93 % of the attribution falls between the toss and contact. Only 4 to 12 % falls in the stance and 3 to 9 % after contact.
+- **The tossing wrist reads the fault.** 0.53 to 0.2 s before contact it pushes toward the fault on JC's serves with it, and away from it on the professionals'.
+- **The racket wrist is a signature of JC.** 1.07 to 0.53 s before contact it pushes toward the fault on every serve of JC, with or without the fault (median +0.05), and away from it on everyone else's. This explains the false alarms on his clean serves.
+- **A possible "En duda" rule.** A flagged serve goes to "En duda" when its racket arm pushes more than its tossing arm.
+  - JC's 44 serves after the feedback: false alarms fall from 66 % to 30 %.
+  - Test faults: 85 % still get the drill.
+  - Value with the ensemble's test rates: Q34.30 to Q35.08 per analysis.
+  - The rule was chosen after looking at the test explanations, so it is not in the app yet.
+
 ## Privacy
 
 - Videos and player histories stay in ignored folders under `data/`. Nothing is uploaded: the app listens only on `127.0.0.1`, and the Gradio labeling tool (`eval/label.py`) has its analytics disabled.
@@ -411,6 +437,7 @@ web/          web page (React), served by app/api.py
 data/         videos (not in Git) and annotations, see data/README.md
 eval/         evaluation sets and metric scripts, per stroke
 experiments/  iteration log (iterations.csv)
+xai/          explanations of M1e (Lab 10): notebook and its figures and tables
 docs/         proposal, licenses, images, fair poster
 tests/        automated checks
 ```
