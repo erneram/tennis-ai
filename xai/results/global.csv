@@ -1,0 +1,97 @@
+grupo,altura,desde_s,atribucion
+JC con la falla,codo que lanza,-1.6,0.0006
+JC con la falla,codo que lanza,-1.33,-0.0007
+JC con la falla,codo que lanza,-1.07,-0.0049
+JC con la falla,codo que lanza,-0.8,0.0064
+JC con la falla,codo que lanza,-0.53,0.0073
+JC con la falla,codo que lanza,-0.27,-0.0012
+JC con la falla,codo que lanza,0.0,0.0015
+JC con la falla,codo que lanza,0.27,-0.0001
+JC con la falla,muñeca que lanza,-1.6,0.0008
+JC con la falla,muñeca que lanza,-1.33,-0.0021
+JC con la falla,muñeca que lanza,-1.07,-0.0086
+JC con la falla,muñeca que lanza,-0.8,0.0206
+JC con la falla,muñeca que lanza,-0.53,0.0297
+JC con la falla,muñeca que lanza,-0.27,0.0233
+JC con la falla,muñeca que lanza,0.0,0.0024
+JC con la falla,muñeca que lanza,0.27,-0.0001
+JC con la falla,codo de la raqueta,-1.6,0.0004
+JC con la falla,codo de la raqueta,-1.33,0.0004
+JC con la falla,codo de la raqueta,-1.07,0.0009
+JC con la falla,codo de la raqueta,-0.8,-0.0004
+JC con la falla,codo de la raqueta,-0.53,-0.0004
+JC con la falla,codo de la raqueta,-0.27,0.0014
+JC con la falla,codo de la raqueta,0.0,0.0015
+JC con la falla,codo de la raqueta,0.27,-0.0
+JC con la falla,muñeca de la raqueta,-1.6,0.0038
+JC con la falla,muñeca de la raqueta,-1.33,0.0054
+JC con la falla,muñeca de la raqueta,-1.07,0.0175
+JC con la falla,muñeca de la raqueta,-0.8,0.0237
+JC con la falla,muñeca de la raqueta,-0.53,0.0027
+JC con la falla,muñeca de la raqueta,-0.27,-0.0001
+JC con la falla,muñeca de la raqueta,0.0,-0.0003
+JC con la falla,muñeca de la raqueta,0.27,0.0002
+JC sin la falla,codo que lanza,-1.6,0.0001
+JC sin la falla,codo que lanza,-1.33,-0.0009
+JC sin la falla,codo que lanza,-1.07,-0.005
+JC sin la falla,codo que lanza,-0.8,0.0058
+JC sin la falla,codo que lanza,-0.53,0.0069
+JC sin la falla,codo que lanza,-0.27,0.0059
+JC sin la falla,codo que lanza,0.0,0.0043
+JC sin la falla,codo que lanza,0.27,0.0005
+JC sin la falla,muñeca que lanza,-1.6,0.0001
+JC sin la falla,muñeca que lanza,-1.33,-0.0012
+JC sin la falla,muñeca que lanza,-1.07,-0.009
+JC sin la falla,muñeca que lanza,-0.8,0.0172
+JC sin la falla,muñeca que lanza,-0.53,0.0189
+JC sin la falla,muñeca que lanza,-0.27,0.0072
+JC sin la falla,muñeca que lanza,0.0,-0.0015
+JC sin la falla,muñeca que lanza,0.27,0.0
+JC sin la falla,codo de la raqueta,-1.6,0.0001
+JC sin la falla,codo de la raqueta,-1.33,0.0003
+JC sin la falla,codo de la raqueta,-1.07,0.0008
+JC sin la falla,codo de la raqueta,-0.8,0.0002
+JC sin la falla,codo de la raqueta,-0.53,-0.0025
+JC sin la falla,codo de la raqueta,-0.27,-0.0082
+JC sin la falla,codo de la raqueta,0.0,0.0029
+JC sin la falla,codo de la raqueta,0.27,-0.0002
+JC sin la falla,muñeca de la raqueta,-1.6,0.0008
+JC sin la falla,muñeca de la raqueta,-1.33,0.0033
+JC sin la falla,muñeca de la raqueta,-1.07,0.0216
+JC sin la falla,muñeca de la raqueta,-0.8,0.0274
+JC sin la falla,muñeca de la raqueta,-0.53,0.0023
+JC sin la falla,muñeca de la raqueta,-0.27,-0.0014
+JC sin la falla,muñeca de la raqueta,0.0,0.0003
+JC sin la falla,muñeca de la raqueta,0.27,0.0015
+Profesional (pro01),codo que lanza,-1.6,0.0
+Profesional (pro01),codo que lanza,-1.33,-0.0025
+Profesional (pro01),codo que lanza,-1.07,-0.0031
+Profesional (pro01),codo que lanza,-0.8,-0.0118
+Profesional (pro01),codo que lanza,-0.53,-0.0064
+Profesional (pro01),codo que lanza,-0.27,-0.0102
+Profesional (pro01),codo que lanza,0.0,-0.0018
+Profesional (pro01),codo que lanza,0.27,0.0011
+Profesional (pro01),muñeca que lanza,-1.6,-0.0
+Profesional (pro01),muñeca que lanza,-1.33,-0.0031
+Profesional (pro01),muñeca que lanza,-1.07,-0.0058
+Profesional (pro01),muñeca que lanza,-0.8,-0.0301
+Profesional (pro01),muñeca que lanza,-0.53,-0.0187
+Profesional (pro01),muñeca que lanza,-0.27,-0.009
+Profesional (pro01),muñeca que lanza,0.0,0.0002
+Profesional (pro01),muñeca que lanza,0.27,-0.0012
+Profesional (pro01),codo de la raqueta,-1.6,0.0
+Profesional (pro01),codo de la raqueta,-1.33,-0.0003
+Profesional (pro01),codo de la raqueta,-1.07,-0.0014
+Profesional (pro01),codo de la raqueta,-0.8,-0.003
+Profesional (pro01),codo de la raqueta,-0.53,0.0087
+Profesional (pro01),codo de la raqueta,-0.27,0.0268
+Profesional (pro01),codo de la raqueta,0.0,-0.0022
+Profesional (pro01),codo de la raqueta,0.27,0.0
+Profesional (pro01),muñeca de la raqueta,-1.6,0.0003
+Profesional (pro01),muñeca de la raqueta,-1.33,-0.0002
+Profesional (pro01),muñeca de la raqueta,-1.07,-0.0154
+Profesional (pro01),muñeca de la raqueta,-0.8,-0.0589
+Profesional (pro01),muñeca de la raqueta,-0.53,-0.0033
+Profesional (pro01),muñeca de la raqueta,-0.27,0.0027
+Profesional (pro01),muñeca de la raqueta,0.0,-0.0
+Profesional (pro01),muñeca de la raqueta,0.27,-0.0007

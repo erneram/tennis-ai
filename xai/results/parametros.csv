@@ -1,0 +1,6 @@
+configuracion,p_linea_base,error_completitud,acuerdo_con_elegida,parte_brazo_que_lanza
+"saque limpio, 64 pasos (elegida)",0.472,0.00043,1.0,0.6
+"saque limpio, 32 pasos",0.472,0.00058,1.0,0.6
+"saque limpio, 128 pasos",0.472,0.00013,1.0,0.6
+"ceros (codos y muñecas a la altura del hombro), 64 pasos",0.661,0.00093,0.16,0.55
+oclusión por tramos de la app (saque limpio),0.472,,0.9,0.49

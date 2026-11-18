@@ -1,0 +1,6 @@
+caso,video,verdad,p,decision,brazo_que_lanza,brazo_de_raqueta,suma
+Acierto seguro,jc-s41,con la falla,0.627,ejercicio,0.088,0.067,0.155
+Error (falsa alarma),jc-s36,sin la falla,0.579,ejercicio,0.075,0.032,0.107
+Cerca del umbral,jc-s30,con la falla,0.554,ejercicio,0.058,0.025,0.083
+Falsa alarma cerca del umbral,jc-s42,sin la falla,0.558,ejercicio,0.025,0.061,0.086
+Profesional (subgrupo),pro01_s01,sin la falla,0.302,sin ejercicio,-0.115,-0.055,-0.17

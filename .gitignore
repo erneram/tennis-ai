@@ -30,6 +30,7 @@ Proyecto Final - Caso de uso real.pdf
 # and docs/poster/poster.html
 docs/propuesta*.pdf
 docs/informe*.pdf
+docs/laboratorio*.pdf
 docs/poster/*.pdf
 
 # Downloaded model weights
