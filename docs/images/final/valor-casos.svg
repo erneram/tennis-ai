@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1794" height="732" viewBox="-2 -2 1794 732" font-family="Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <style>
+      .card { fill: #ffffff; stroke: #d5dde6; stroke-width: 1.5; }
+      .rule { stroke: #cfd8e3; stroke-width: 2; }
+      .head { font-size: 28px; font-weight: bold; fill: #0b1f2a; }
+      .chip { font-size: 24px; font-weight: bold; fill: #1e4f8c; text-anchor: middle; }
+      .count { font-size: 64px; font-weight: bold; fill: #0b1f2a; text-anchor: end; }
+      .label { font-size: 34px; font-weight: bold; fill: #0b1f2a; }
+      .value { font-size: 64px; font-weight: bold; }
+      .unit { font-size: 24px; fill: #6b7780; text-anchor: end; }
+    </style>
+    <g id="ball">
+      <circle r="40" fill="#d6e84a" stroke="#b5c536" stroke-width="2"/>
+      <path d="M -28.3 -28.3 Q -5.5 0 -28.3 28.3 M 28.3 -28.3 Q 5.5 0 28.3 28.3" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <path id="check" d="M -7.5 0 L -2 5.5 L 8 -5.5" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </defs>
+
+  <!-- The two kinds of serve and the rate each gives -->
+  <text class="head" x="0" y="34">62 saques con la falla</text>
+  <rect x="690" y="2" width="190" height="44" rx="22" fill="#eaf1f9"/>
+  <text class="chip" x="785" y="33">recall 94 %</text>
+  <line class="rule" x1="0" y1="62" x2="880" y2="62"/>
+  <text class="head" x="910" y="34">38 saques sin la falla</text>
+  <rect x="1510" y="2" width="280" height="44" rx="22" fill="#eaf1f9"/>
+  <text class="chip" x="1650" y="33">falsas alarmas 56 %</text>
+  <line class="rule" x1="910" y1="62" x2="1790" y2="62"/>
+
+  <!-- Four outcomes: ball with a mark, how many of 100, what it is, what it is worth -->
+  <g transform="translate(0 90)">
+    <rect class="card" width="425" height="400" rx="16"/>
+    <use href="#ball" x="72" y="78"/>
+    <circle cx="104" cy="110" r="19" fill="#1e4f8c" stroke="#ffffff" stroke-width="3"/>
+    <use href="#check" x="104" y="110"/>
+    <text class="count" x="390" y="104">58</text>
+    <text class="unit" x="390" y="136">saques</text>
+    <text class="label" x="34" y="218">Detecta la falla</text>
+    <text class="value" x="34" y="330" fill="#1e4f8c">+Q87.50</text>
+  </g>
+  <g transform="translate(455 90)">
+    <rect class="card" width="425" height="400" rx="16"/>
+    <use href="#ball" x="72" y="78"/>
+    <circle cx="104" cy="110" r="19" fill="#d9622b" stroke="#ffffff" stroke-width="3"/>
+    <path d="M 97.5 103.5 L 110.5 116.5 M 110.5 103.5 L 97.5 116.5" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <text class="count" x="390" y="104">4</text>
+    <text class="unit" x="390" y="136">saques</text>
+    <text class="label" x="34" y="218">No la detecta</text>
+    <text class="value" x="34" y="330" fill="#d9622b">−Q43.75</text>
+  </g>
+  <g transform="translate(910 90)">
+    <rect class="card" width="425" height="400" rx="16"/>
+    <use href="#ball" x="72" y="78"/>
+    <circle cx="104" cy="110" r="19" fill="#d9622b" stroke="#ffffff" stroke-width="3"/>
+    <path d="M 104 100 L 104 112" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="104" cy="119" r="2.4" fill="#ffffff"/>
+    <text class="count" x="390" y="104">21</text>
+    <text class="unit" x="390" y="136">saques</text>
+    <text class="label" x="34" y="218">Alarma falsa</text>
+    <text class="value" x="34" y="330" fill="#d9622b">−Q87.50</text>
+  </g>
+  <g transform="translate(1365 90)">
+    <rect class="card" width="425" height="400" rx="16"/>
+    <use href="#ball" x="72" y="78"/>
+    <circle cx="104" cy="110" r="19" fill="#8a959c" stroke="#ffffff" stroke-width="3"/>
+    <use href="#check" x="104" y="110"/>
+    <text class="count" x="390" y="104">17</text>
+    <text class="unit" x="390" y="136">saques</text>
+    <text class="label" x="34" y="218">Calla con razón</text>
+    <text class="value" x="34" y="330" fill="#6b7780">Q0</text>
+  </g>
+
+  <!-- Result -->
+  <rect x="0" y="526" width="1790" height="202" rx="18" fill="#eaf1f9"/>
+  <g transform="translate(66 610) rotate(-40)" fill="none" stroke="#1e4f8c" stroke-width="3" stroke-linecap="round">
+    <ellipse cx="0" cy="-8" rx="13" ry="17"/>
+    <path d="M -6.5 -22 L -6.5 6 M 0 -25 L 0 9 M 6.5 -22 L 6.5 6 M -12 -15 L 12 -15 M -13 -8 L 13 -8 M -12 -1 L 12 -1"/>
+    <path d="M 0 9 L 0 27" stroke-width="5"/>
+  </g>
+  <text x="108" y="614" font-size="34" font-weight="bold" fill="#0b1f2a">15 min de entrenador = Q87.50</text>
+  <text x="108" y="664" font-size="28" fill="#2b3a45">Sumamos los 100 saques y dividimos entre 100.</text>
+  <text x="1740" y="652" font-size="96" font-weight="bold" fill="#1e4f8c" text-anchor="end">Q30.62<tspan font-size="34" fill="#0b1f2a" font-weight="normal" dx="18">por saque</tspan></text>
+</svg>

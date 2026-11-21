@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="350" viewBox="0 0 1000 350" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#52514e"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #a3a29c; stroke-width: 1.5; }
+      .model { fill: #eaf2fc; stroke: #2a78d6; stroke-width: 2; }
+      .t { font-size: 15px; font-weight: bold; fill: #0b0b0b; }
+      .s { font-size: 12.5px; fill: #52514e; }
+      .line { stroke: #52514e; stroke-width: 1.5; fill: none; marker-end: url(#a); }
+    </style>
+  </defs>
+
+  <rect class="box" x="20" y="20" width="215" height="100" rx="8"/>
+  <text class="t" x="34" y="46">1. Entrada</text>
+  <text class="s" x="34" y="68">video del saque, de lado</text>
+  <text class="s" x="34" y="86">.mp4 o .mov, hasta 200 MB</text>
+  <text class="s" x="34" y="104">grabado con un teléfono</text>
+
+  <rect class="box" x="270" y="20" width="215" height="100" rx="8"/>
+  <text class="t" x="284" y="46">2. Acceso</text>
+  <text class="s" x="284" y="68">app web local</text>
+  <text class="s" x="284" y="86">en 127.0.0.1:7860</text>
+  <text class="s" x="284" y="104">el video no sale de la Mac</text>
+
+  <rect class="box" x="520" y="20" width="215" height="100" rx="8"/>
+  <text class="t" x="534" y="46">3. API (FastAPI)</text>
+  <text class="s" x="534" y="68">valida tipo y tamaño</text>
+  <text class="s" x="534" y="86">un análisis a la vez</text>
+  <text class="s" x="534" y="104">avance paso a paso</text>
+
+  <rect class="box" x="770" y="20" width="215" height="100" rx="8"/>
+  <text class="t" x="784" y="46">4. Pose (preentrenado)</text>
+  <text class="s" x="784" y="68">MediaPipe Pose heavy</text>
+  <text class="s" x="784" y="86">33 puntos por cuadro</text>
+  <text class="s" x="784" y="104">unos 5 s por video, en CPU</text>
+
+  <path class="line" d="M235 70 H268"/>
+  <path class="line" d="M485 70 H518"/>
+  <path class="line" d="M735 70 H768"/>
+  <path class="line" d="M877 120 V150 H127 V178"/>
+
+  <rect class="box" x="20" y="180" width="215" height="110" rx="8"/>
+  <text class="t" x="34" y="206">5. Chequeos</text>
+  <text class="s" x="34" y="228">70 % de los puntos vistos</text>
+  <text class="s" x="34" y="246">cámara de lado</text>
+  <text class="s" x="34" y="264">si no se cumplen: pide</text>
+  <text class="s" x="34" y="282">otra grabación</text>
+
+  <rect class="box" x="270" y="180" width="215" height="110" rx="8"/>
+  <text class="t" x="284" y="206">6. Preprocesamiento</text>
+  <text class="s" x="284" y="228">busca el contacto</text>
+  <text class="s" x="284" y="246">64 cuadros a 30 fps</text>
+  <text class="s" x="284" y="264">centrado en la cadera</text>
+  <text class="s" x="284" y="282">en largos de torso</text>
+
+  <rect class="model" x="520" y="180" width="215" height="110" rx="8"/>
+  <text class="t" x="534" y="206">7. Modelos del equipo</text>
+  <text class="s" x="534" y="228">M1e: CNN temporal (brazo)</text>
+  <text class="s" x="534" y="246">M3b aterrizaje, M4 piernas</text>
+  <text class="s" x="534" y="264">medida del brazo al impacto</text>
+  <text class="s" x="534" y="282">umbral elegido por valor</text>
+
+  <rect class="box" x="770" y="180" width="215" height="110" rx="8"/>
+  <text class="t" x="784" y="206">8. Interfaz (React)</text>
+  <text class="s" x="784" y="228">hasta 3 puntos a mejorar</text>
+  <text class="s" x="784" y="246">un ejercicio por punto</text>
+  <text class="s" x="784" y="264">nivel de confianza y</text>
+  <text class="s" x="784" y="282">detalle técnico</text>
+
+  <path class="line" d="M235 235 H268"/>
+  <path class="line" d="M485 235 H518"/>
+  <path class="line" d="M735 235 H768"/>
+
+  <text class="s" x="500" y="328" text-anchor="middle">Todo corre en una Mac con Apple M5 Pro: 3 a 6 s por saque, sin GPU dedicada, sin servidor y sin nube.</text>
+</svg>
